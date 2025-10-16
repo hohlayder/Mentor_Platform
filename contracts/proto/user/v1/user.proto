@@ -1,0 +1,170 @@
+syntax = "proto3";
+
+package user.v1;
+
+option go_package = "github.com/Sergey-1214/contracts_mentors/user/v1;userv1";
+
+service UserService {
+    rpc CreateUser(CreateUserRequest) returns (CreateUserResponse);
+    rpc GetUserById(GetUserByIdRequest) returns (GetUserByIdResponse);
+    rpc GetUserByEmail(GetUserByEmailRequest) returns (GetUserByEmailResponse);
+    rpc DeleteUser(DeleteUserRequest) returns (DeleteUserResponse);
+    rpc GetProfileById(GetProfileByIdRequest) returns (GetProfileByIdResponse);
+    rpc UpdateProfile(UpdateProfileRequest) returns (UpdateProfileResponse);
+    rpc UploadAvatar(UploadAvatarRequest) returns (UploadAvatarResponse);
+    rpc DeleteAvatar(DeleteAvatarRequest) returns (DeleteAvatarResponse);
+}
+
+message User {
+    string user_id = 1;
+    string first_name = 2;
+    string last_name = 3;
+    string email = 4;
+    optional string avatar_url = 5; 
+    string created_at = 6; 
+}
+
+message MentorProfile {
+    string user_id = 1;
+    optional string withdrawal_address = 2;
+    double rating = 3;
+    optional string description = 4;
+    string created_at = 5;
+}
+
+message StudentProfile {
+    string user_id = 1;
+    optional string learning_goals = 2;
+    optional string preferred_learning_style = 3;
+    string created_at = 4;
+}
+
+message TeachingSkill {
+    string skill_id = 1;
+    string user_id = 2;
+    string skill_name = 3;
+    string proficiency_level = 4;
+    int32 years_of_experience = 5;
+    string created_at = 6;
+}
+
+message LearningSkill {
+    string skill_id = 1;
+    string user_id = 2;
+    string skill_name = 3;
+    string proficiency_level = 4;
+    string created_at = 5;
+}
+
+message MentorUpdate {
+    optional string withdrawal_address = 1;
+    optional string description = 2;
+}
+
+message StudentUpdate {
+    optional string learning_goals = 1;
+    optional string preferred_learning_style = 2;
+}
+
+message TeachingSkillUpdate {
+    string skill_name = 1;
+    string proficiency_level = 2;
+    int32 years_of_experience = 3;
+}
+
+message LearningSkillUpdate {
+    string skill_name = 1;
+    string proficiency_level = 2;
+}
+
+message CreateUserRequest {
+    string first_name = 1;
+    string last_name = 2;
+    string email = 3;
+}
+
+message CreateUserResponse {
+    string user_id = 1;
+}
+
+message GetUserByIdRequest {
+    string user_id = 1;
+}
+
+message GetUserByIdResponse {
+    User user = 1;
+}
+
+message GetUserByEmailRequest {
+    string email = 1;
+}
+
+message GetUserByEmailResponse {
+    User user = 1;
+}
+
+message TeachingSkillsUpdate {
+    repeated TeachingSkillUpdate teaching_skills = 1;
+}
+
+message LearningSkillsUpdate {
+    repeated LearningSkillUpdate learning_skills = 1;
+}
+
+message UpdateProfileRequest {
+    string user_id = 1;
+    optional string first_name = 2;
+    optional string last_name = 3;
+    optional string email = 4;
+    optional string avatar_url = 5;
+    
+    optional MentorUpdate mentor_data = 6;
+    
+    optional StudentUpdate student_data = 7;
+    
+    optional TeachingSkillsUpdate teaching_skills = 8;
+    optional LearningSkillsUpdate learning_skills = 9;
+}
+
+message UpdateProfileResponse {
+   bool success = 1;
+}
+
+message GetProfileByIdRequest {
+    string user_id = 1;
+}
+
+message GetProfileByIdResponse {
+    User user = 1;
+    MentorProfile mentor = 2;           
+    StudentProfile student = 3;         
+    repeated TeachingSkill teaching_skills = 4;
+    repeated LearningSkill learning_skills = 5;
+}
+
+message DeleteUserRequest {
+    string user_id = 1;
+}
+
+message DeleteUserResponse {
+    bool success = 1;
+}
+
+message UploadAvatarRequest {
+    string user_id = 1;
+    bytes image_data = 2;           // бинарные данные изображения
+    string file_name = 3;  
+    string content_type = 4;        // "image/jpeg", "image/png", и другие
+}
+
+message UploadAvatarResponse {
+    string avatar_url = 1;
+}
+
+message DeleteAvatarRequest {
+    string user_id = 1;
+}
+
+message DeleteAvatarResponse {
+    bool success = 1;
+}
