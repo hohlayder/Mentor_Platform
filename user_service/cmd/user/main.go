@@ -34,6 +34,8 @@ func main() {
 		log.Fatal("failed to init database", err)
 	}
 
+	defer db.Close()
+
 	repository := postgres.NewUserRepositoryPostgres(db)
 	service := service.NewUserService(repository)
 	grpcHandler := handler.NewGRPCHandler(service)
