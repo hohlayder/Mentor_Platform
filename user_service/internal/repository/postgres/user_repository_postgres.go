@@ -75,13 +75,13 @@ func (r *UserRepositoryPostgres) GetProfileByID(ctx context.Context, id string) 
 	query := `SELECT u.id, u.email, u.name, u.surname, u.avatar_url, u.created_at,
 				m.user_id as mentor_user_id, m.withdrawal_address, m.rating, m.description,
 				s.user_id as student_user_id, s.learning_goals, s.preferred_learning_style,
-				ts.id as ts_id, ts.skill_name as teaching_skill_name, ts.proficiency_level as teaching_level, ts.years_of_experience,
-				ls.id as ls_id, ls.skill_name as learning_skill_name, ls.proficiency_level as learning_level FROM users AS u
+                ts.id as ts_id, ts.skill_name as teaching_skill_name, ts.proficiency_level as teaching_level, ts.years_of_experience,
+                ls.id as ls_id, ls.skill_name as learning_skill_name, ls.proficiency_level as learning_level FROM users AS u
 			  LEFT JOIN mentors AS m ON u.id = m.user_id
 			  LEFT JOIN students AS s ON u.id = s.user_id
 			  LEFT JOIN learning_skills as ls ON ls.user_id = s.user_id
 			  LEFT JOIN teaching_skills as ts ON ts.user_id = m.user_id
-			  WHERE u.id=$1`
+              WHERE u.id=$1`
 
 	err := r.db.SelectContext(ctx, &rows, query, id)
 	if err != nil {
@@ -401,8 +401,20 @@ func (r *UserRepositoryPostgres) UpdateProfileStudent(ctx context.Context, id st
 }
 
 func (r *UserRepositoryPostgres) UpdateLearningSkills(ctx context.Context, id string, learningSkills *[]*domain.LearningSkillUpdate) error {
+    exists, err := r.ExistsStudentProfile(ctx, id)
+    if err != nil {
+        return fmt.Errorf("failed to check user exists: %w", err)
+    }
+
+    if !exists {
+        err := r.CreateProfileStudent(ctx, id, &domain.StudentUpdate{})
+        if err != nil {
+            return fmt.Errorf("failed to create mentor profile: %w", err)
+        }
+    }
+    
     query := `DELETE FROM learning_skills WHERE user_id=$1`
-    _, err := r.db.ExecContext(ctx, query, id)
+    _, err = r.db.ExecContext(ctx, query, id)
     if err != nil {
         return fmt.Errorf("failed to delete learning skills: %w", err)
     }
@@ -420,8 +432,20 @@ func (r *UserRepositoryPostgres) UpdateLearningSkills(ctx context.Context, id st
 }
 
 func (r *UserRepositoryPostgres) UpdateTeachingSkills(ctx context.Context, id string, teachingSkills *[]*domain.TeachingSkillUpdate) error {
+    exists, err := r.ExistsMentorProfile(ctx, id)
+    if err != nil {
+        return fmt.Errorf("failed to check user exists: %w", err)
+    }
+
+    if !exists {
+        err := r.CreateProfileMentor(ctx, id, &domain.MentorUpdate{})
+        if err != nil {
+            return fmt.Errorf("failed to create mentor profile: %w", err)
+        }
+    }
+
     query := `DELETE FROM teaching_skills WHERE user_id=$1`
-    _, err := r.db.ExecContext(ctx, query, id)
+    _, err = r.db.ExecContext(ctx, query, id)
     if err != nil {
         return fmt.Errorf("failed to delete teaching skills: %w", err)
     }
