@@ -1,0 +1,124 @@
+syntax = "proto3";
+
+package posts.v1;
+
+option go_package = "github.com/yourorg/yourrepo/gen/posts/v1;postsv1";
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/field_mask.proto";
+
+// -----------------------------------------------------------------------------
+// ENUMS
+// -----------------------------------------------------------------------------
+
+// Статус публикации
+enum PostStatus {
+  POST_STATUS_UNSPECIFIED = 0;
+  DRAFT = 1;
+  PUBLISHED = 2;
+  ARCHIVED = 3;
+}
+
+// Порядок сортировки при запросе списка
+enum SortOrder {
+  SORT_ORDER_UNSPECIFIED = 0;
+  ASC = 1;
+  DESC = 2;
+}
+
+// Поле, по которому выполняется сортировка
+enum SortField {
+  SORT_FIELD_UNSPECIFIED = 0;
+  CREATED_AT = 1;
+  UPDATED_AT = 2;
+  TITLE = 3;
+}
+
+// -----------------------------------------------------------------------------
+// ENTITIES
+// -----------------------------------------------------------------------------
+
+message Post {
+  string id = 1;                         // UUID
+  string author_id = 2;                  // ID автора
+  string title = 3;                      // Заголовок
+  string content = 4;                    // Основной текст
+  repeated string tags = 5;              // Теги
+  PostStatus status = 6;                 // Статус поста
+  google.protobuf.Timestamp created_at = 7;
+  google.protobuf.Timestamp updated_at = 8;
+}
+
+// -----------------------------------------------------------------------------
+// REQUEST / RESPONSE MESSAGES
+// -----------------------------------------------------------------------------
+
+message CreatePostRequest {
+  string author_id = 1;
+  string title = 2;
+  string content = 3;
+  repeated string tags = 4;
+  PostStatus status = 5; // можно сразу задать статус (по умолчанию DRAFT)
+}
+
+message CreatePostResponse {
+  Post post = 1;
+}
+
+message GetPostRequest {
+  string id = 1;
+}
+
+message GetPostResponse {
+  Post post = 1;
+}
+
+// Используем FieldMask для частичных обновлений
+message UpdatePostRequest {
+  Post post = 1; // обязательно содержит id
+  google.protobuf.FieldMask update_mask = 2;
+}
+
+message UpdatePostResponse {
+  Post post = 1;
+}
+
+message DeletePostRequest {
+  string id = 1;
+}
+
+message DeletePostResponse {
+  bool success = 1;
+}
+
+message ListPostsRequest {
+  int32 page_size = 1;                   // количество записей на странице
+  string page_token = 2;                 // токен для пагинации
+  string author_id = 3;                  // фильтр по автору
+  PostStatus status = 4;                 // фильтр по статусу
+  repeated string tags = 5;              // фильтр по тегам
+  SortField sort_field = 6;              // сортировка
+  SortOrder sort_order = 7;              // порядок сортировки
+  string search_query = 8;               // поиск по содержанию/заголовку
+}
+
+message ListPostsResponse {
+  repeated Post posts = 1;
+  string next_page_token = 2;
+  int32 total_count = 3; // общее число (опционально, может быть 0)
+}
+
+// -----------------------------------------------------------------------------
+// SERVICE
+// -----------------------------------------------------------------------------
+
+service Posts {
+  // CRUD
+  rpc CreatePost(CreatePostRequest) returns (CreatePostResponse);
+  rpc GetPost(GetPostRequest) returns (GetPostResponse);
+  rpc UpdatePost(UpdatePostRequest) returns (UpdatePostResponse);
+  rpc DeletePost(DeletePostRequest) returns (DeletePostResponse);
+
+  // Listing
+  rpc ListPosts(ListPostsRequest) returns (ListPostsResponse);
+}
