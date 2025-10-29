@@ -57,12 +57,12 @@ func (s *AuthService) Register(ctx context.Context, name string, surname string,
 	
 	hashPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to generate hash password: %w", err)
 	}
 
 	resp, err := s.userClient.CreateUser(ctx, req)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to create user: %w", err)
 	}
 
 	err = s.authRepo.Register(ctx, resp.UserId, string(hashPassword))
@@ -75,13 +75,13 @@ func (s *AuthService) Register(ctx context.Context, name string, surname string,
 		rollbackCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 
-		_, err := s.userClient.DeleteUser(rollbackCtx, req)
-		if err != nil {
+		_, delErr := s.userClient.DeleteUser(rollbackCtx, req)
+		if delErr != nil {
 			slog.Error("Failed to delete user when rollback user create")
-			return "", err
+			return "", fmt.Errorf("failed to delete user when rollback user create: %w", delErr)
 		}
 
-		return "", err
+		return "", fmt.Errorf("failed to register user: %w", err)
 	}
 
 	return resp.UserId, nil
@@ -91,7 +91,7 @@ func (s *AuthService) Register(ctx context.Context, name string, surname string,
 func (s *AuthService) Login(ctx context.Context, email string, password string) (*jwt.TokenPair, error){
 	userId, err := s.ValidateCredential(email, password)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to validate credential: %w", err)
 	}
 	slog.Info("credential validated")
 

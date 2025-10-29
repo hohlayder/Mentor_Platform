@@ -3,6 +3,7 @@ package grpc
 import (
 	"context"
 	"log/slog"
+	"strings"
 
 	authv1 "github.com/Sergey-1214/contracts_mentors/auth/v1"
 	"github.com/hohlayder/Mentor_Platform/auth_service/internal/auth/jwt"
@@ -63,9 +64,21 @@ func (h *GRPCHandler) Login(ctx context.Context, req *authv1.LoginRequest) (*aut
 
 func (h *GRPCHandler) RefreshToken(ctx context.Context, req *authv1.RefreshRequest) (*authv1.RefreshResponse, error) {
 	tokens, err := h.service.RefreshToken(ctx, req.RefreshToken)
+
+	
 	if err != nil {
+		errorMsg := err.Error()
 		slog.Error(err.Error())
-		return nil, status.Error(codes.Internal, "failed to refresh token") 
+		switch {
+        case strings.Contains(errorMsg, "invalid"):
+            return nil, status.Error(codes.Unauthenticated, "invalid token")
+        case strings.Contains(errorMsg, "expired"):
+            return nil, status.Error(codes.Unauthenticated, "token expired")
+        case strings.Contains(errorMsg, "empty"):
+            return nil, status.Error(codes.InvalidArgument, "empty token")
+        default:
+            return nil, status.Error(codes.Internal, "failed to refresh token")
+        }
 	}
 
 	resp := authv1.RefreshResponse{
