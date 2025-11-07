@@ -11,6 +11,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type UserProfileService interface {
@@ -60,7 +61,7 @@ func (h *GRPCHandler) GetUserById(ctx context.Context, req *userv1.GetUserByIdRe
 			LastName: user.Surname,
 			Email: user.Email,
 			AvatarUrl: user.AvatarURL,
-			CreatedAt: user.CreatedAt.String(),
+			CreatedAt: timestamppb.New(user.CreatedAt),
 		},
 	}
 
@@ -80,7 +81,7 @@ func (h *GRPCHandler) GetUserByEmail(ctx context.Context, req *userv1.GetUserByE
 			LastName: user.Surname,
 			Email: user.Email,
 			AvatarUrl: user.AvatarURL,
-			CreatedAt: user.CreatedAt.String(),
+			CreatedAt: timestamppb.New(user.CreatedAt),
 		},
 	}
 	return &resp, nil
@@ -154,7 +155,7 @@ func (h *GRPCHandler) GetProfileById(ctx context.Context, req *userv1.GetProfile
 			LastName: profile.User.Surname,
 			Email: profile.User.Email,
 			AvatarUrl: profile.User.AvatarURL,
-			CreatedAt: profile.User.CreatedAt.String(),
+			CreatedAt: timestamppb.New(profile.User.CreatedAt),
 		},
 		Mentor: mentorProfile,
 		Student: studentProfile,

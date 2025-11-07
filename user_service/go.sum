@@ -1,6 +1,10 @@
 filippo.io/edwards25519 v1.1.0/go.mod h1:BxyFTGdWcka3PhytdK4V28tE5sGfRvvvRV7EaN4VDT4=
+github.com/DATA-DOG/go-sqlmock v1.5.2 h1:OcvFkGmslmlZibjAjaHm3L//6LiuBgolP7OputlJIzU=
+github.com/DATA-DOG/go-sqlmock v1.5.2/go.mod h1:88MAG/4G7SMwSE3CeA0ZKzrT5CiOU3OJ+JlNzwDqpNU=
 github.com/Sergey-1214/contracts_mentors v0.0.9 h1:tRNL2rAC8YcwX1jJtUN8iiCm58b6hnLh1ptysAB85C4=
 github.com/Sergey-1214/contracts_mentors v0.0.9/go.mod h1:Xx9OdLITeP+igwFuzoAgss5haM3sG538DEpUi/AnQf8=
+github.com/Sergey-1214/contracts_mentors v0.0.13 h1:/ObKlZ2j/yEbjoi2v5IQOh1wc/CF3aZ/2N2QdAYqUXM=
+github.com/Sergey-1214/contracts_mentors v0.0.13/go.mod h1:Xx9OdLITeP+igwFuzoAgss5haM3sG538DEpUi/AnQf8=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/go-sql-driver/mysql v1.8.1/go.mod h1:wEBSXgmK//2ZFJyE+qWnIsVGmvmEKlqwuVSjsCm7DZg=
@@ -8,6 +12,7 @@ github.com/hohlayder/Mentor_Platform v0.0.0-20251016180944-cb62c84677e2 h1:+hFAA
 github.com/hohlayder/Mentor_Platform v0.0.0-20251016180944-cb62c84677e2/go.mod h1:zYm2EUDsnJoguHYx3mZwSCAVwbFy9GLFiS5txNIQyPE=
 github.com/jmoiron/sqlx v1.4.0 h1:1PLqN7S1UYp5t4SrVVnt4nUVNemrDAtxlulVe+Qgm3o=
 github.com/jmoiron/sqlx v1.4.0/go.mod h1:ZrZ7UsYB/weZdl2Bxg6jCRO9c3YHl8r3ahlKmRT4JLY=
+github.com/kisielk/sqlstruct v0.0.0-20201105191214-5f3e10d3ab46/go.mod h1:yyMNCyc/Ib3bDTKd379tNMpB/7/H5TjM2Y9QJ5THLbE=
 github.com/lib/pq v1.10.9 h1:YXG7RB+JIjhP29X+OtkiDnYaXQwpS4JEWq7dtCCRUEw=
 github.com/lib/pq v1.10.9/go.mod h1:AlVN5x4E4T544tWzH6hKfbfQvm3HdbOxrmggDNAPY9o=
 github.com/mattn/go-sqlite3 v1.14.22/go.mod h1:Uh1q+B4BYcTPb+yiD3kU8Ct7aC0hY9fxUwlHK0RXw+Y=
