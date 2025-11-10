@@ -29,7 +29,7 @@ type GRPCHandler struct {
 }
 
 func NewGRPCHandler(service UserProfileService) *GRPCHandler {
-	return &GRPCHandler{service:service}
+	return &GRPCHandler{service: service}
 }
 
 func (h *GRPCHandler) Register(server *grpc.Server) {
@@ -56,10 +56,10 @@ func (h *GRPCHandler) GetUserById(ctx context.Context, req *userv1.GetUserByIdRe
 
 	resp := userv1.GetUserByIdResponse{
 		User: &userv1.User{
-			UserId: user.Id,
+			UserId:    user.Id,
 			FirstName: user.Name,
-			LastName: user.Surname,
-			Email: user.Email,
+			LastName:  user.Surname,
+			Email:     user.Email,
 			AvatarUrl: user.AvatarURL,
 			CreatedAt: timestamppb.New(user.CreatedAt),
 		},
@@ -69,6 +69,7 @@ func (h *GRPCHandler) GetUserById(ctx context.Context, req *userv1.GetUserByIdRe
 }
 
 func (h *GRPCHandler) GetUserByEmail(ctx context.Context, req *userv1.GetUserByEmailRequest) (*userv1.GetUserByEmailResponse, error) {
+	slog.Info("get user by id start", "email", req.Email)
 	user, err := h.service.GetUserByEmail(ctx, req.Email)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
@@ -76,14 +77,15 @@ func (h *GRPCHandler) GetUserByEmail(ctx context.Context, req *userv1.GetUserByE
 
 	resp := userv1.GetUserByEmailResponse{
 		User: &userv1.User{
-			UserId: user.Id,
+			UserId:    user.Id,
 			FirstName: user.Name,
-			LastName: user.Surname,
-			Email: user.Email,
+			LastName:  user.Surname,
+			Email:     user.Email,
 			AvatarUrl: user.AvatarURL,
 			CreatedAt: timestamppb.New(user.CreatedAt),
 		},
 	}
+
 	return &resp, nil
 }
 
@@ -112,53 +114,56 @@ func (h *GRPCHandler) GetProfileById(ctx context.Context, req *userv1.GetProfile
 
 	for _, skill := range profile.TeachingSkills {
 		respTeachingSkills = append(respTeachingSkills, &userv1.TeachingSkill{
-			SkillId: skill.Id,
-			UserId: skill.UserId,
-			SkillName: skill.SkillName,
-			ProficiencyLevel: skill.ProficiencyLevel,
+			SkillId:           skill.Id,
+			UserId:            skill.UserId,
+			SkillName:         skill.SkillName,
+			ProficiencyLevel:  skill.ProficiencyLevel,
 			YearsOfExperience: int32(skill.YearsOfExperience),
+			CreatedAt:         timestamppb.New(skill.CreatedAt),
 		})
 	}
-
 	respLearningSkills := []*userv1.LearningSkill{}
 	for _, skill := range profile.LearningSkills {
 		respLearningSkills = append(respLearningSkills, &userv1.LearningSkill{
-			SkillId: skill.Id,
-			UserId: skill.UserId,
-			SkillName: skill.SkillName,
+			SkillId:          skill.Id,
+			UserId:           skill.UserId,
+			SkillName:        skill.SkillName,
 			ProficiencyLevel: skill.ProficiencyLevel,
+			CreatedAt:        timestamppb.New(skill.CreatedAt),
 		})
 	}
 
 	var mentorProfile *userv1.MentorProfile
 	if profile.Mentor != nil {
 		mentorProfile = &userv1.MentorProfile{
-			UserId: profile.Mentor.UserId,
-			Rating: *profile.Mentor.Rating,
+			UserId:            profile.Mentor.UserId,
+			Rating:            *profile.Mentor.Rating,
 			WithdrawalAddress: profile.Mentor.Withdrawal,
-			Description: profile.Mentor.Description,
+			Description:       profile.Mentor.Description,
+			CreatedAt:         timestamppb.New(*profile.Mentor.CreatedAt),
 		}
 	}
 
 	var studentProfile *userv1.StudentProfile
 	if profile.Student != nil {
 		studentProfile = &userv1.StudentProfile{
-			UserId: profile.Student.UserId,
-			LearningGoals: profile.Student.LearningGoals,
+			UserId:                 profile.Student.UserId,
+			LearningGoals:          profile.Student.LearningGoals,
 			PreferredLearningStyle: profile.Student.PreferredLearningStyle,
+			CreatedAt:              timestamppb.New(*profile.Student.CreatedAt),
 		}
 	}
 	resp := userv1.GetProfileByIdResponse{
 		User: &userv1.User{
-			UserId: profile.User.Id,
+			UserId:    profile.User.Id,
 			FirstName: profile.User.Name,
-			LastName: profile.User.Surname,
-			Email: profile.User.Email,
+			LastName:  profile.User.Surname,
+			Email:     profile.User.Email,
 			AvatarUrl: profile.User.AvatarURL,
 			CreatedAt: timestamppb.New(profile.User.CreatedAt),
 		},
-		Mentor: mentorProfile,
-		Student: studentProfile,
+		Mentor:         mentorProfile,
+		Student:        studentProfile,
 		TeachingSkills: respTeachingSkills,
 		LearningSkills: respLearningSkills,
 	}
@@ -179,15 +184,15 @@ func (h *GRPCHandler) UpdateProfile(ctx context.Context, req *userv1.UpdateProfi
 		learningSkills = &skills
 	}
 
-	var teachingSkills *[]*domain.TeachingSkillUpdate  
+	var teachingSkills *[]*domain.TeachingSkillUpdate
 	if req.TeachingSkills != nil {
 		skills := make([]*domain.TeachingSkillUpdate, 0, len(req.TeachingSkills.TeachingSkills))
 		for _, teachingSkill := range req.TeachingSkills.TeachingSkills {
-			yearsExp := teachingSkill.YearsOfExperience 
+			yearsExp := teachingSkill.YearsOfExperience
 			skills = append(skills, &domain.TeachingSkillUpdate{
-				SkillName:          teachingSkill.SkillName,
-				ProficiencyLevel:   teachingSkill.ProficiencyLevel,
-				YearsOfExperience:  &yearsExp,
+				SkillName:         teachingSkill.SkillName,
+				ProficiencyLevel:  teachingSkill.ProficiencyLevel,
+				YearsOfExperience: &yearsExp,
 			})
 		}
 		teachingSkills = &skills
@@ -196,7 +201,7 @@ func (h *GRPCHandler) UpdateProfile(ctx context.Context, req *userv1.UpdateProfi
 	var studentData *domain.StudentUpdate
 	if req.StudentData != nil {
 		studentData = &domain.StudentUpdate{
-			LearningGoals: req.StudentData.LearningGoals,
+			LearningGoals:          req.StudentData.LearningGoals,
 			PreferredLearningStyle: req.StudentData.PreferredLearningStyle,
 		}
 	}
@@ -204,20 +209,20 @@ func (h *GRPCHandler) UpdateProfile(ctx context.Context, req *userv1.UpdateProfi
 	var mentorData *domain.MentorUpdate
 	if req.MentorData != nil {
 		mentorData = &domain.MentorUpdate{
-			Withdrawal: req.MentorData.WithdrawalAddress,
+			Withdrawal:  req.MentorData.WithdrawalAddress,
 			Description: req.MentorData.Description,
 		}
 	}
 
 	profile := &domain.UpdateProfile{
-		Id: req.UserId,
-		Email: req.Email,
-		Name: req.FirstName,
-		Surname: req.LastName,
-		AvatarURL: req.AvatarUrl,
-		Mentor: mentorData,
-		Student: studentData, 
-		LearningSkill: learningSkills,
+		Id:             req.UserId,
+		Email:          req.Email,
+		Name:           req.FirstName,
+		Surname:        req.LastName,
+		AvatarURL:      req.AvatarUrl,
+		Mentor:         mentorData,
+		Student:        studentData,
+		LearningSkill:  learningSkills,
 		TeachingSkills: teachingSkills,
 	}
 
