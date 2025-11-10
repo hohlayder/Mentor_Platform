@@ -352,7 +352,7 @@ func TestGRPCHandler_RefreshToken(t *testing.T) {
             tt.setupMock(mockService)
 
             ctx := context.Background()
-            resp, err := handler.RefreshToken(ctx, tt.request)
+            resp, err := handler.Refresh(ctx, tt.request)
 
             if tt.expectedError {
                 assert.Error(t, err)

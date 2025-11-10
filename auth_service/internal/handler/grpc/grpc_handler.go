@@ -62,7 +62,7 @@ func (h *GRPCHandler) Login(ctx context.Context, req *authv1.LoginRequest) (*aut
 	return &resp, err
 }
 
-func (h *GRPCHandler) RefreshToken(ctx context.Context, req *authv1.RefreshRequest) (*authv1.RefreshResponse, error) {
+func (h *GRPCHandler) Refresh(ctx context.Context, req *authv1.RefreshRequest) (*authv1.RefreshResponse, error) {
 	tokens, err := h.service.RefreshToken(ctx, req.RefreshToken)
 
 	
