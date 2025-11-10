@@ -1,0 +1,7 @@
+DROP TABLE IF EXISTS learning_skills;
+DROP TABLE IF EXISTS teaching_skills;
+
+DROP TABLE IF EXISTS students;
+DROP TABLE IF EXISTS mentors;
+
+DROP TABLE IF EXISTS users;
