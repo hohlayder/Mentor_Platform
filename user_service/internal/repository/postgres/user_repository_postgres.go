@@ -255,7 +255,7 @@ func (r *UserRepositoryPostgres) UpdateProfileUser(ctx context.Context, id strin
 
 	query = strings.TrimSuffix(query, ", ")
 
-	query += fmt.Sprintf(`WHERE id=$%d`, argCount+1)
+	query += fmt.Sprintf(` WHERE id=$%d`, argCount+1)
 	args = append(args, id)
 
 	_, err := r.db.ExecContext(ctx, query, args...)
@@ -324,7 +324,7 @@ func (r *UserRepositoryPostgres) UpdateProfileMentor(ctx context.Context, id str
 
 	query = strings.TrimSuffix(query, ", ")
 
-	query += fmt.Sprintf(`WHERE user_id=$%d`, argCount+1)
+	query += fmt.Sprintf(` WHERE user_id=$%d`, argCount+1)
 	args = append(args, id)
 
 	_, err := r.db.ExecContext(ctx, query, args...)
@@ -393,7 +393,7 @@ func (r *UserRepositoryPostgres) UpdateProfileStudent(ctx context.Context, id st
 
 	query = strings.TrimSuffix(query, ", ")
 
-	query += fmt.Sprintf(`WHERE user_id=$%d`, argCount+1)
+	query += fmt.Sprintf(` WHERE user_id=$%d`, argCount+1)
 	args = append(args, id)
 
 	_, err := r.db.ExecContext(ctx, query, args...)
