@@ -1,0 +1,6 @@
+db:
+  port: 5432
+  host: "user-db"
+  username: "mentors"
+  db_name: "user_mentors_db"
+  ssl_mode: "disable"
