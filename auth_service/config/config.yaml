@@ -1,0 +1,10 @@
+db:
+  port: 5432
+  host: "auth-db"
+  username: "mentors"
+  db_name: "auth_mentors_db"
+  ssl_mode: "disable"
+
+token:
+  access_expiry: 15m
+  refresh_expiry: 43200m
