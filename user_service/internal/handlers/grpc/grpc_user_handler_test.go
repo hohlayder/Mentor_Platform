@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	userv1 "github.com/Sergey-1214/contracts_mentors/user/v1"
 	"github.com/hohlayder/Mentor_Platform/user_service/internal/domain"
@@ -132,26 +133,34 @@ func TestGRPCHandler_GetProfileById_Success(t *testing.T) {
 	ctx := context.Background()
 	req := &userv1.GetProfileByIdRequest{UserId: "user-123"}
 
-	// Создаем тестовый профиль
+	// Создаем тестовый профиль с полными данными
 	rating := 4.5
+	mentorCreatedAt := time.Now()
+	studentCreatedAt := time.Now()
+	teachingSkillCreatedAt := time.Now()
+	learningSkillCreatedAt := time.Now()
+
 	expectedProfile := &domain.UserProfile{
 		User: domain.User{
 			Id:        "user-123",
 			Name:      "John",
 			Surname:   "Doe",
 			Email:     "john@example.com",
-			AvatarURL: nil,
+			AvatarURL: stringPtr("https://example.com/avatar.jpg"),
+			CreatedAt: time.Now(),
 		},
 		Mentor: &domain.Mentor{
 			UserId:      "user-123",
 			Withdrawal:  stringPtr("wallet123"),
 			Rating:      &rating,
 			Description: stringPtr("Experienced mentor"),
+			CreatedAt:   &mentorCreatedAt,
 		},
 		Student: &domain.Student{
-			UserId:                "user-123",
-			LearningGoals:         stringPtr("Learn Go"),
+			UserId:                 "user-123",
+			LearningGoals:          stringPtr("Learn Go"),
 			PreferredLearningStyle: stringPtr("practice"),
+			CreatedAt:              &studentCreatedAt,
 		},
 		TeachingSkills: []domain.TeachingSkill{
 			{
@@ -160,6 +169,7 @@ func TestGRPCHandler_GetProfileById_Success(t *testing.T) {
 				SkillName:         "Go",
 				ProficiencyLevel:  "expert",
 				YearsOfExperience: 5,
+				CreatedAt:         teachingSkillCreatedAt,
 			},
 		},
 		LearningSkills: []domain.LearningSkill{
@@ -168,6 +178,7 @@ func TestGRPCHandler_GetProfileById_Success(t *testing.T) {
 				UserId:           "user-123",
 				SkillName:        "Docker",
 				ProficiencyLevel: "intermediate",
+				CreatedAt:        learningSkillCreatedAt,
 			},
 		},
 	}
@@ -178,11 +189,46 @@ func TestGRPCHandler_GetProfileById_Success(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.NotNil(t, resp)
+	
+	// Проверяем User данные
 	assert.Equal(t, "user-123", resp.User.UserId)
+	assert.Equal(t, "John", resp.User.FirstName)
+	assert.Equal(t, "Doe", resp.User.LastName)
+	assert.Equal(t, "john@example.com", resp.User.Email)
+	assert.Equal(t, "https://example.com/avatar.jpg", *resp.User.AvatarUrl)
+	
+	// Проверяем Mentor данные
 	assert.NotNil(t, resp.Mentor)
+	assert.Equal(t, "user-123", resp.Mentor.UserId)
+	assert.Equal(t, "wallet123", *resp.Mentor.WithdrawalAddress)
+	assert.Equal(t, float64(4.5), resp.Mentor.Rating)
+	assert.Equal(t, "Experienced mentor", *resp.Mentor.Description)
+	assert.NotNil(t, resp.Mentor.CreatedAt)
+	
+	// Проверяем Student данные
 	assert.NotNil(t, resp.Student)
+	assert.Equal(t, "user-123", resp.Student.UserId)
+	assert.Equal(t, "Learn Go", *resp.Student.LearningGoals)
+	assert.Equal(t, "practice", *resp.Student.PreferredLearningStyle)
+	assert.NotNil(t, resp.Student.CreatedAt)
+	
+	// Проверяем TeachingSkills
 	assert.Len(t, resp.TeachingSkills, 1)
+	assert.Equal(t, "ts-1", resp.TeachingSkills[0].SkillId)
+	assert.Equal(t, "user-123", resp.TeachingSkills[0].UserId)
+	assert.Equal(t, "Go", resp.TeachingSkills[0].SkillName)
+	assert.Equal(t, "expert", resp.TeachingSkills[0].ProficiencyLevel)
+	assert.Equal(t, int32(5), resp.TeachingSkills[0].YearsOfExperience)
+	assert.NotNil(t, resp.TeachingSkills[0].CreatedAt)
+	
+	// Проверяем LearningSkills
 	assert.Len(t, resp.LearningSkills, 1)
+	assert.Equal(t, "ls-1", resp.LearningSkills[0].SkillId)
+	assert.Equal(t, "user-123", resp.LearningSkills[0].UserId)
+	assert.Equal(t, "Docker", resp.LearningSkills[0].SkillName)
+	assert.Equal(t, "intermediate", resp.LearningSkills[0].ProficiencyLevel)
+	assert.NotNil(t, resp.LearningSkills[0].CreatedAt)
+	
 	mockService.AssertExpectations(t)
 }
 
@@ -200,8 +246,9 @@ func TestGRPCHandler_GetProfileById_NoMentorStudent(t *testing.T) {
 			Surname:   "Doe",
 			Email:     "john@example.com",
 			AvatarURL: nil,
+			CreatedAt: time.Now(),
 		},
-		// Mentor и Student = nil
+
 		TeachingSkills: []domain.TeachingSkill{},
 		LearningSkills: []domain.LearningSkill{},
 	}
@@ -212,6 +259,9 @@ func TestGRPCHandler_GetProfileById_NoMentorStudent(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.NotNil(t, resp)
+	assert.Equal(t, "user-123", resp.User.UserId)
+	assert.Equal(t, "John", resp.User.FirstName)
+	assert.Equal(t, "Doe", resp.User.LastName)
 	assert.Nil(t, resp.Mentor)
 	assert.Nil(t, resp.Student)
 	assert.Empty(t, resp.TeachingSkills)
@@ -462,7 +512,6 @@ func TestGRPCHandler_UpdateProfile_NilOptionalFields(t *testing.T) {
 	ctx := context.Background()
 	req := &userv1.UpdateProfileRequest{
 		UserId: "user-123",
-		// Все optional поля = nil
 	}
 
 	mockService.On("UpdateProfile", ctx, mock.MatchedBy(func(profile *domain.UpdateProfile) bool {
