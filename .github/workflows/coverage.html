@@ -1,0 +1,1071 @@
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<title>user: Go Coverage Report</title>
+		<style>
+			body {
+				background: black;
+				color: rgb(80, 80, 80);
+			}
+			body, pre, #legend span {
+				font-family: Menlo, monospace;
+				font-weight: bold;
+			}
+			#topbar {
+				background: black;
+				position: fixed;
+				top: 0; left: 0; right: 0;
+				height: 42px;
+				border-bottom: 1px solid rgb(80, 80, 80);
+			}
+			#content {
+				margin-top: 50px;
+			}
+			#nav, #legend {
+				float: left;
+				margin-left: 10px;
+			}
+			#legend {
+				margin-top: 12px;
+			}
+			#nav {
+				margin-top: 10px;
+			}
+			#legend span {
+				margin: 0 5px;
+			}
+			.cov0 { color: rgb(192, 0, 0) }
+.cov1 { color: rgb(128, 128, 128) }
+.cov2 { color: rgb(116, 140, 131) }
+.cov3 { color: rgb(104, 152, 134) }
+.cov4 { color: rgb(92, 164, 137) }
+.cov5 { color: rgb(80, 176, 140) }
+.cov6 { color: rgb(68, 188, 143) }
+.cov7 { color: rgb(56, 200, 146) }
+.cov8 { color: rgb(44, 212, 149) }
+.cov9 { color: rgb(32, 224, 152) }
+.cov10 { color: rgb(20, 236, 155) }
+
+		</style>
+	</head>
+	<body>
+		<div id="topbar">
+			<div id="nav">
+				<select id="files">
+				
+				<option value="file0">github.com/hohlayder/Mentor_Platform/user_service/cmd/user/main.go (0.0%)</option>
+				
+				<option value="file1">github.com/hohlayder/Mentor_Platform/user_service/internal/config/config.go (0.0%)</option>
+				
+				<option value="file2">github.com/hohlayder/Mentor_Platform/user_service/internal/handlers/grpc/grpc_user_handler.go (85.1%)</option>
+				
+				<option value="file3">github.com/hohlayder/Mentor_Platform/user_service/internal/logger/logger.go (0.0%)</option>
+				
+				<option value="file4">github.com/hohlayder/Mentor_Platform/user_service/internal/middleware/logging_middleware.go (0.0%)</option>
+				
+				<option value="file5">github.com/hohlayder/Mentor_Platform/user_service/internal/repository/postgres/postgres_repository.go (0.0%)</option>
+				
+				<option value="file6">github.com/hohlayder/Mentor_Platform/user_service/internal/repository/postgres/user_repository_postgres.go (28.2%)</option>
+				
+				<option value="file7">github.com/hohlayder/Mentor_Platform/user_service/internal/service/service.go (0.0%)</option>
+				
+				</select>
+			</div>
+			<div id="legend">
+				<span>not tracked</span>
+			
+				<span class="cov0">not covered</span>
+				<span class="cov8">covered</span>
+			
+			</div>
+		</div>
+		<div id="content">
+		
+		<pre class="file" id="file0" style="display: none">package main
+
+import (
+        "context"
+        "log"
+        "net"
+        "os"
+        "os/signal"
+        "syscall"
+        "time"
+
+        "github.com/hohlayder/Mentor_Platform/user_service/internal/config"
+        handler "github.com/hohlayder/Mentor_Platform/user_service/internal/handlers/grpc"
+        "github.com/hohlayder/Mentor_Platform/user_service/internal/logger"
+        "github.com/hohlayder/Mentor_Platform/user_service/internal/middleware"
+        "github.com/hohlayder/Mentor_Platform/user_service/internal/repository/postgres"
+        "github.com/hohlayder/Mentor_Platform/user_service/internal/service"
+        "google.golang.org/grpc"
+        "google.golang.org/grpc/reflection"
+)
+
+func main() <span class="cov0" title="0">{
+        configPath := config.GetConfigPath()
+
+        cfg, err := config.InitConfig(configPath)
+        if err != nil </span><span class="cov0" title="0">{
+                log.Fatal("failed to load config", err)
+        }</span>
+
+        <span class="cov0" title="0">logger.SetupJSONLogger()
+
+        db, err := postgres.NewPostgresRepository(*cfg)
+        if err != nil </span><span class="cov0" title="0">{
+                log.Fatal("failed to init database", err)
+        }</span>
+
+        <span class="cov0" title="0">defer db.Close()
+
+        repository := postgres.NewUserRepositoryPostgres(db)
+        service := service.NewUserService(repository)
+        grpcHandler := handler.NewGRPCHandler(service)
+
+        grpcServer := grpc.NewServer(
+                grpc.ChainUnaryInterceptor(
+                        middleware.LoggingMiddleware(),
+                ),
+                grpc.ConnectionTimeout(30*time.Second),
+        )
+
+        grpcHandler.Register(grpcServer)
+
+        reflection.Register(grpcServer)
+
+        go func() </span><span class="cov0" title="0">{
+                lis, err := net.Listen("tcp", ":50051")
+                if err != nil </span><span class="cov0" title="0">{
+                        log.Fatal("failed to listen port :50051", err)
+                }</span>
+
+                <span class="cov0" title="0">if err := grpcServer.Serve(lis); err != nil </span><span class="cov0" title="0">{
+                        log.Fatal("failed to start grpc server", err)
+                }</span>
+        }()
+        
+        <span class="cov0" title="0">stop := make(chan os.Signal, 1)
+        signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
+        &lt;- stop
+
+        ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+        defer cancel()
+
+        go func() </span><span class="cov0" title="0">{
+            grpcServer.GracefulStop()
+            cancel()
+        }</span>()
+
+        <span class="cov0" title="0">&lt;-ctx.Done()</span>
+}</pre>
+		
+		<pre class="file" id="file1" style="display: none">package config
+
+import (
+        "fmt"
+        "os"
+
+        "gopkg.in/yaml.v3"
+)
+
+type Config struct {
+        DBConfig `yaml:"db"`
+}
+
+type DBConfig struct {
+        Port     string `yaml:"port"`
+        Host     string `yaml:"host"`
+        DBName   string `yaml:"db_name"`
+        Password string `yaml:"-"`
+        Username string `yaml:"username"`
+        SSLMode  string `yaml:"ssl_mode"`
+}
+
+func InitConfig(configPath string) (*Config, error) <span class="cov0" title="0">{
+        var cfg Config
+        if _, err := os.Stat(configPath); os.IsNotExist(err) </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("config path not found")
+        }</span>
+
+        <span class="cov0" title="0">data, err := os.ReadFile(configPath)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to read data: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">if err := yaml.Unmarshal(data, &amp;cfg); err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to read data to config: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">cfg.DBConfig.Password = os.Getenv("DB_PASSWORD")
+        return &amp;cfg, nil</span>
+}
+
+func GetConfigPath() string <span class="cov0" title="0">{
+        var configPath string
+        if _, err := os.Stat("./config/config.yaml"); err == nil </span><span class="cov0" title="0">{
+                configPath = "./config/config.yaml"  
+        }</span> else<span class="cov0" title="0"> {
+                configPath = "/home/appuser/config/config.yaml"  
+        }</span>
+    <span class="cov0" title="0">return configPath</span>
+}</pre>
+		
+		<pre class="file" id="file2" style="display: none">package grpc
+
+import (
+        "context"
+        "fmt"
+        "log/slog"
+
+        userv1 "github.com/Sergey-1214/contracts_mentors/user/v1"
+        "github.com/hohlayder/Mentor_Platform/user_service/internal/domain"
+
+        "google.golang.org/grpc"
+        "google.golang.org/grpc/codes"
+        "google.golang.org/grpc/status"
+        "google.golang.org/protobuf/types/known/timestamppb"
+)
+
+type UserProfileService interface {
+        CreateUser(ctx context.Context, name string, surname string, email string) (string, error)
+        GetUserById(ctx context.Context, id string) (*domain.User, error)
+        GetUserByEmail(ctx context.Context, email string) (*domain.User, error)
+        DeleteUser(ctx context.Context, id string) error
+        GetProfileById(ctx context.Context, id string) (*domain.UserProfile, error)
+        UpdateProfile(ctx context.Context, profile *domain.UpdateProfile) error
+}
+
+type GRPCHandler struct {
+        service UserProfileService
+        userv1.UnimplementedUserServiceServer
+}
+
+func NewGRPCHandler(service UserProfileService) *GRPCHandler <span class="cov8" title="1">{
+        return &amp;GRPCHandler{service: service}
+}</span>
+
+func (h *GRPCHandler) Register(server *grpc.Server) <span class="cov0" title="0">{
+        userv1.RegisterUserServiceServer(server, h)
+}</span>
+
+func (h *GRPCHandler) CreateUser(ctx context.Context, req *userv1.CreateUserRequest) (*userv1.CreateUserResponse, error) <span class="cov8" title="1">{
+        id, err := h.service.CreateUser(ctx, req.FirstName, req.LastName, req.Email)
+        if err != nil </span><span class="cov8" title="1">{
+                return nil, status.Error(codes.Internal, err.Error())
+        }</span>
+
+        <span class="cov8" title="1">resp := userv1.CreateUserResponse{
+                UserId: id,
+        }
+        return &amp;resp, nil</span>
+}
+
+func (h *GRPCHandler) GetUserById(ctx context.Context, req *userv1.GetUserByIdRequest) (*userv1.GetUserByIdResponse, error) <span class="cov8" title="1">{
+        user, err := h.service.GetUserById(ctx, req.UserId)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, status.Error(codes.Internal, err.Error())
+        }</span>
+
+        <span class="cov8" title="1">resp := userv1.GetUserByIdResponse{
+                User: &amp;userv1.User{
+                        UserId:    user.Id,
+                        FirstName: user.Name,
+                        LastName:  user.Surname,
+                        Email:     user.Email,
+                        AvatarUrl: user.AvatarURL,
+                        CreatedAt: timestamppb.New(user.CreatedAt),
+                },
+        }
+
+        return &amp;resp, nil</span>
+}
+
+func (h *GRPCHandler) GetUserByEmail(ctx context.Context, req *userv1.GetUserByEmailRequest) (*userv1.GetUserByEmailResponse, error) <span class="cov0" title="0">{
+        slog.Info("get user by id start", "email", req.Email)
+        user, err := h.service.GetUserByEmail(ctx, req.Email)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, status.Error(codes.Internal, err.Error())
+        }</span>
+
+        <span class="cov0" title="0">resp := userv1.GetUserByEmailResponse{
+                User: &amp;userv1.User{
+                        UserId:    user.Id,
+                        FirstName: user.Name,
+                        LastName:  user.Surname,
+                        Email:     user.Email,
+                        AvatarUrl: user.AvatarURL,
+                        CreatedAt: timestamppb.New(user.CreatedAt),
+                },
+        }
+
+        return &amp;resp, nil</span>
+}
+
+func (h *GRPCHandler) DeleteUser(ctx context.Context, req *userv1.DeleteUserRequest) (*userv1.DeleteUserResponse, error) <span class="cov8" title="1">{
+        err := h.service.DeleteUser(ctx, req.UserId)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, status.Error(codes.Internal, err.Error())
+        }</span>
+
+        <span class="cov8" title="1">resp := userv1.DeleteUserResponse{
+                Success: true,
+        }
+
+        return &amp;resp, nil</span>
+}
+
+func (h *GRPCHandler) GetProfileById(ctx context.Context, req *userv1.GetProfileByIdRequest) (*userv1.GetProfileByIdResponse, error) <span class="cov8" title="1">{
+        profile, err := h.service.GetProfileById(ctx, req.UserId)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, status.Error(codes.Internal, err.Error())
+        }</span>
+
+        <span class="cov8" title="1">fmt.Println(profile.LearningSkills)
+        slog.Info("profile get success")
+        respTeachingSkills := []*userv1.TeachingSkill{}
+
+        for _, skill := range profile.TeachingSkills </span><span class="cov8" title="1">{
+                respTeachingSkills = append(respTeachingSkills, &amp;userv1.TeachingSkill{
+                        SkillId:           skill.Id,
+                        UserId:            skill.UserId,
+                        SkillName:         skill.SkillName,
+                        ProficiencyLevel:  skill.ProficiencyLevel,
+                        YearsOfExperience: int32(skill.YearsOfExperience),
+                        CreatedAt:         timestamppb.New(skill.CreatedAt),
+                })
+        }</span>
+        <span class="cov8" title="1">respLearningSkills := []*userv1.LearningSkill{}
+        for _, skill := range profile.LearningSkills </span><span class="cov8" title="1">{
+                respLearningSkills = append(respLearningSkills, &amp;userv1.LearningSkill{
+                        SkillId:          skill.Id,
+                        UserId:           skill.UserId,
+                        SkillName:        skill.SkillName,
+                        ProficiencyLevel: skill.ProficiencyLevel,
+                        CreatedAt:        timestamppb.New(skill.CreatedAt),
+                })
+        }</span>
+
+        <span class="cov8" title="1">var mentorProfile *userv1.MentorProfile
+        if profile.Mentor != nil </span><span class="cov8" title="1">{
+                mentorProfile = &amp;userv1.MentorProfile{
+                        UserId:            profile.Mentor.UserId,
+                        Rating:            *profile.Mentor.Rating,
+                        WithdrawalAddress: profile.Mentor.Withdrawal,
+                        Description:       profile.Mentor.Description,
+                        CreatedAt:         timestamppb.New(*profile.Mentor.CreatedAt),
+                }
+        }</span>
+
+        <span class="cov8" title="1">var studentProfile *userv1.StudentProfile
+        if profile.Student != nil </span><span class="cov8" title="1">{
+                studentProfile = &amp;userv1.StudentProfile{
+                        UserId:                 profile.Student.UserId,
+                        LearningGoals:          profile.Student.LearningGoals,
+                        PreferredLearningStyle: profile.Student.PreferredLearningStyle,
+                        CreatedAt:              timestamppb.New(*profile.Student.CreatedAt),
+                }
+        }</span>
+        <span class="cov8" title="1">resp := userv1.GetProfileByIdResponse{
+                User: &amp;userv1.User{
+                        UserId:    profile.User.Id,
+                        FirstName: profile.User.Name,
+                        LastName:  profile.User.Surname,
+                        Email:     profile.User.Email,
+                        AvatarUrl: profile.User.AvatarURL,
+                        CreatedAt: timestamppb.New(profile.User.CreatedAt),
+                },
+                Mentor:         mentorProfile,
+                Student:        studentProfile,
+                TeachingSkills: respTeachingSkills,
+                LearningSkills: respLearningSkills,
+        }
+
+        return &amp;resp, nil</span>
+}
+
+func (h *GRPCHandler) UpdateProfile(ctx context.Context, req *userv1.UpdateProfileRequest) (*userv1.UpdateProfileResponse, error) <span class="cov8" title="1">{
+        var learningSkills *[]*domain.LearningSkillUpdate
+        if req.LearningSkills != nil </span><span class="cov8" title="1">{
+                skills := make([]*domain.LearningSkillUpdate, 0, len(req.LearningSkills.LearningSkills))
+                for _, learningSkill := range req.LearningSkills.LearningSkills </span><span class="cov8" title="1">{
+                        skills = append(skills, &amp;domain.LearningSkillUpdate{
+                                SkillName:        learningSkill.SkillName,
+                                ProficiencyLevel: learningSkill.ProficiencyLevel,
+                        })
+                }</span>
+                <span class="cov8" title="1">learningSkills = &amp;skills</span>
+        }
+
+        <span class="cov8" title="1">var teachingSkills *[]*domain.TeachingSkillUpdate
+        if req.TeachingSkills != nil </span><span class="cov8" title="1">{
+                skills := make([]*domain.TeachingSkillUpdate, 0, len(req.TeachingSkills.TeachingSkills))
+                for _, teachingSkill := range req.TeachingSkills.TeachingSkills </span><span class="cov8" title="1">{
+                        yearsExp := teachingSkill.YearsOfExperience
+                        skills = append(skills, &amp;domain.TeachingSkillUpdate{
+                                SkillName:         teachingSkill.SkillName,
+                                ProficiencyLevel:  teachingSkill.ProficiencyLevel,
+                                YearsOfExperience: &amp;yearsExp,
+                        })
+                }</span>
+                <span class="cov8" title="1">teachingSkills = &amp;skills</span>
+        }
+
+        <span class="cov8" title="1">var studentData *domain.StudentUpdate
+        if req.StudentData != nil </span><span class="cov8" title="1">{
+                studentData = &amp;domain.StudentUpdate{
+                        LearningGoals:          req.StudentData.LearningGoals,
+                        PreferredLearningStyle: req.StudentData.PreferredLearningStyle,
+                }
+        }</span>
+
+        <span class="cov8" title="1">var mentorData *domain.MentorUpdate
+        if req.MentorData != nil </span><span class="cov8" title="1">{
+                mentorData = &amp;domain.MentorUpdate{
+                        Withdrawal:  req.MentorData.WithdrawalAddress,
+                        Description: req.MentorData.Description,
+                }
+        }</span>
+
+        <span class="cov8" title="1">profile := &amp;domain.UpdateProfile{
+                Id:             req.UserId,
+                Email:          req.Email,
+                Name:           req.FirstName,
+                Surname:        req.LastName,
+                AvatarURL:      req.AvatarUrl,
+                Mentor:         mentorData,
+                Student:        studentData,
+                LearningSkill:  learningSkills,
+                TeachingSkills: teachingSkills,
+        }
+
+        err := h.service.UpdateProfile(ctx, profile)
+        if err != nil </span><span class="cov8" title="1">{
+                return nil, status.Error(codes.Internal, err.Error())
+        }</span>
+
+        <span class="cov8" title="1">resp := userv1.UpdateProfileResponse{
+                Success: true,
+        }
+
+        return &amp;resp, nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file3" style="display: none">package logger
+
+import (
+        "log/slog"
+        "os"
+)
+
+func SetupJSONLogger() <span class="cov0" title="0">{
+        handler := slog.NewJSONHandler(os.Stdout, &amp;slog.HandlerOptions{
+                Level:     slog.LevelInfo, 
+                AddSource: true,          
+        })
+
+        logger := slog.New(handler)
+        slog.SetDefault(logger)
+}</pre>
+		
+		<pre class="file" id="file4" style="display: none">package middleware
+
+import (
+        "context"
+        "fmt"
+        "log/slog"
+        "time"
+
+        "google.golang.org/grpc"
+        "google.golang.org/grpc/status"
+)
+
+func LoggingMiddleware() grpc.UnaryServerInterceptor <span class="cov0" title="0">{
+        return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) </span><span class="cov0" title="0">{
+                start := time.Now()
+
+                resp, err := handler(ctx, req)
+
+                duration := time.Since(start)
+                if err != nil </span><span class="cov0" title="0">{
+                        if st, ok := status.FromError(err); ok </span><span class="cov0" title="0">{
+                                slog.Info(fmt.Sprintf(`{"time": "%s", "method": "%s", "event": "request_error", "duration_ms": %d, "code": "%s", "message": "%s"}`,
+                                        time.Now().Format(time.RFC3339), info.FullMethod, duration.Milliseconds(), st.Code(), st.Message()))
+                        }</span> else<span class="cov0" title="0"> {
+                                slog.Info(fmt.Sprintf(`{"time": "%s", "method": "%s", "event": "request_error", "duration_ms": %d, "message": "%s"}`,
+                                        time.Now().Format(time.RFC3339), info.FullMethod, duration.Milliseconds(), st.Message()))
+                        }</span>
+                } else<span class="cov0" title="0"> {
+                        slog.Info(fmt.Sprintf(`{"time": "%s", "method": "%s", "event": "request_success", "duration_ms": %d, "response": "%+v"}`,
+                                time.Now().Format(time.RFC3339), info.FullMethod, duration.Milliseconds(), resp))
+                }</span>
+
+                <span class="cov0" title="0">return resp, err</span>
+        }
+}</pre>
+		
+		<pre class="file" id="file5" style="display: none">package postgres
+
+import (
+        "fmt"
+
+        "github.com/hohlayder/Mentor_Platform/user_service/internal/config"
+        "github.com/jmoiron/sqlx"
+        _ "github.com/lib/pq"
+)
+
+func NewPostgresRepository(cfg config.Config) (*sqlx.DB, error)<span class="cov0" title="0">{
+        connStr := fmt.Sprintf(`port=%s host=%s user=%s dbname=%s password=%s sslmode=%s`,
+                                                        cfg.Port, cfg.Host, cfg.Username, cfg.DBName, cfg.Password, cfg.SSLMode)
+        db, err := sqlx.Connect("postgres", connStr)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to connect to database: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">if err := db.Ping(); err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to Ping to database: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">return db, nil</span>
+}</pre>
+		
+		<pre class="file" id="file6" style="display: none">package postgres
+
+import (
+        "context"
+        "database/sql"
+        "errors"
+        "fmt"
+        "strings"
+
+        "github.com/hohlayder/Mentor_Platform/user_service/internal/domain"
+        "github.com/jmoiron/sqlx"
+)
+
+type UserRepositoryPostgres struct {
+        db *sqlx.DB
+}
+
+func NewUserRepositoryPostgres(db *sqlx.DB) *UserRepositoryPostgres <span class="cov8" title="1">{
+        return &amp;UserRepositoryPostgres{db: db}
+}</span>
+
+func (r *UserRepositoryPostgres) CreateUser(ctx context.Context, name string, surname string, email string) (string, error) <span class="cov8" title="1">{
+        var userId string
+        query := `INSERT INTO users (email, name, surname) VALUES ($1, $2, $3) RETURNING id`
+        row := r.db.QueryRowContext(ctx, query, email, name, surname)
+        if err := row.Scan(&amp;userId); err != nil </span><span class="cov8" title="1">{
+                return "", fmt.Errorf("failed to get user id: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">return userId, nil</span>
+}
+
+func (r *UserRepositoryPostgres) GetUserByEmail(ctx context.Context, email string) (*domain.User, error) <span class="cov8" title="1">{
+        var user domain.User
+        query := `SELECT * FROM users WHERE email=$1`
+        err := r.db.GetContext(ctx, &amp;user, query, email)
+        if err != nil </span><span class="cov8" title="1">{
+                if errors.Is(err, sql.ErrNoRows) </span><span class="cov8" title="1">{
+                        return nil, errors.New("user not found")
+                }</span>
+
+                <span class="cov8" title="1">return nil, err</span>
+        }
+
+        <span class="cov8" title="1">return &amp;user, nil</span>
+}
+
+func (r *UserRepositoryPostgres) GetUserByID(ctx context.Context, id string) (*domain.User, error) <span class="cov8" title="1">{
+        var user domain.User
+        query := `SELECT * FROM users WHERE id=$1`
+        err := r.db.GetContext(ctx, &amp;user, query, id)
+        if err != nil </span><span class="cov0" title="0">{
+                if errors.Is(err, sql.ErrNoRows) </span><span class="cov0" title="0">{
+                        return nil, errors.New("user not found")
+                }</span>
+
+                <span class="cov0" title="0">return nil, err</span>
+        }
+
+        <span class="cov8" title="1">return &amp;user, nil</span>
+}
+
+func (r *UserRepositoryPostgres) DeleteUser(ctx context.Context, id string) error <span class="cov8" title="1">{
+        query := `DELETE FROM users WHERE id=$1`
+        _, err := r.db.ExecContext(ctx, query, id)
+        if err != nil </span><span class="cov8" title="1">{
+                return fmt.Errorf("failed to delete user with id=%s: %w", id, err)
+        }</span>
+
+        <span class="cov8" title="1">return nil</span>
+}
+
+func (r *UserRepositoryPostgres) GetProfileByID(ctx context.Context, id string) (*domain.UserProfile, error) <span class="cov8" title="1">{
+        var rows []domain.UserProfileRow
+        query := `SELECT u.id, u.email, u.name, u.surname, u.avatar_url, u.created_at,
+            m.user_id as mentor_user_id, m.withdrawal_address, m.rating, m.description, m.created_at as mentor_created_at,
+            s.user_id as student_user_id, s.learning_goals, s.preferred_learning_style, s.created_at as student_created_at,
+                    ts.id as ts_id, ts.skill_name as teaching_skill_name, ts.proficiency_level as teaching_level, ts.years_of_experience,
+                    ts.created_at as ts_created_at,
+                    ls.id as ls_id, ls.skill_name as learning_skill_name, ls.proficiency_level as learning_level,
+                    ls.created_at as ls_created_at
+                    FROM users AS u
+            LEFT JOIN mentors AS m ON u.id = m.user_id
+            LEFT JOIN students AS s ON u.id = s.user_id
+            LEFT JOIN learning_skills as ls ON ls.user_id = s.user_id
+            LEFT JOIN teaching_skills as ts ON ts.user_id = m.user_id
+                WHERE u.id=$1`
+
+        err := r.db.SelectContext(ctx, &amp;rows, query, id)
+        if err != nil </span><span class="cov8" title="1">{
+                if errors.Is(err, sql.ErrNoRows) </span><span class="cov8" title="1">{
+                        return nil, errors.New("user not found")
+                }</span>
+
+                <span class="cov8" title="1">return nil, err</span>
+        }
+
+        <span class="cov8" title="1">if len(rows) == 0 </span><span class="cov8" title="1">{
+                return nil, errors.New("profile not found")
+        }</span>
+
+        <span class="cov8" title="1">return r.buildUserProfileFromRows(rows), nil</span>
+}
+
+func (r *UserRepositoryPostgres) buildUserProfileFromRows(rows []domain.UserProfileRow) *domain.UserProfile <span class="cov8" title="1">{
+        if len(rows) == 0 </span><span class="cov8" title="1">{
+                return nil
+        }</span>
+
+        <span class="cov8" title="1">firstRow := rows[0]
+
+        profile := &amp;domain.UserProfile{
+                User: domain.User{
+                        Id:        firstRow.ID,
+                        Email:     firstRow.Email,
+                        Name:      firstRow.Name,
+                        Surname:   firstRow.Surname,
+                        AvatarURL: firstRow.AvatarURL,
+                        CreatedAt: firstRow.CreatedAt,
+                },
+        }
+
+        if firstRow.MUserID != nil </span><span class="cov8" title="1">{
+                profile.Mentor = &amp;domain.Mentor{
+                        UserId:      *firstRow.MUserID,
+                        Withdrawal:  firstRow.WithdrawalAddress,
+                        Rating:      firstRow.Rating,
+                        Description: firstRow.Description,
+                        CreatedAt:   firstRow.MCreatedAt,
+                }
+        }</span>
+        <span class="cov8" title="1">if firstRow.SUserID != nil </span><span class="cov8" title="1">{
+                profile.Student = &amp;domain.Student{
+                        UserId:                 *firstRow.SUserID,
+                        LearningGoals:          firstRow.LearningGoals,
+                        PreferredLearningStyle: firstRow.PreferredLearningStyle,
+                        CreatedAt:              firstRow.SCreatedAt,
+                }
+        }</span>
+
+        <span class="cov8" title="1">teachingSkillsMap := make(map[string]domain.TeachingSkill)
+        for _, row := range rows </span><span class="cov8" title="1">{
+                if row.TsID != nil </span><span class="cov8" title="1">{
+                        skillID := *row.TsID
+                        if _, exists := teachingSkillsMap[skillID]; !exists </span><span class="cov8" title="1">{
+                                teachingSkillsMap[skillID] = domain.TeachingSkill{
+                                        Id:                *row.TsID,
+                                        UserId:            firstRow.ID,
+                                        SkillName:         *row.TsSkillName,
+                                        ProficiencyLevel:  *row.TsProficiencyLevel,
+                                        YearsOfExperience: *row.TsYears,
+                                        CreatedAt:         *row.TsCreatedAt,
+                                }
+                        }</span>
+                }
+        }
+
+        <span class="cov8" title="1">for _, skill := range teachingSkillsMap </span><span class="cov8" title="1">{
+                profile.TeachingSkills = append(profile.TeachingSkills, skill)
+        }</span>
+
+        <span class="cov8" title="1">learningSkillsMap := make(map[string]domain.LearningSkill)
+        for _, row := range rows </span><span class="cov8" title="1">{
+                if row.LsID != nil </span><span class="cov8" title="1">{
+                        skillID := *row.LsID
+                        if _, exists := learningSkillsMap[skillID]; !exists </span><span class="cov8" title="1">{
+                                learningSkillsMap[skillID] = domain.LearningSkill{
+                                        Id:               *row.LsID,
+                                        UserId:           firstRow.ID,
+                                        SkillName:        *row.LsSkillName,
+                                        ProficiencyLevel: *row.LsProficiencyLevel,
+                                        CreatedAt:        *row.LsCreatedAt,
+                                }
+                        }</span>
+                }
+        }
+
+        <span class="cov8" title="1">for _, skill := range learningSkillsMap </span><span class="cov8" title="1">{
+                profile.LearningSkills = append(profile.LearningSkills, skill)
+        }</span>
+
+        <span class="cov8" title="1">return profile</span>
+}
+
+func (r *UserRepositoryPostgres) UpdateProfile(ctx context.Context, profile *domain.UpdateProfile) error <span class="cov0" title="0">{
+        tx, err := r.db.BeginTx(ctx, nil)
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to start transaction: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">defer tx.Rollback()
+        err = r.UpdateProfileUser(ctx, profile.Id, profile.Email, profile.Name, profile.Surname, profile.AvatarURL)
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to update user part of profile: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">if profile.Mentor != nil </span><span class="cov0" title="0">{
+                if err := r.UpdateOrCreateProfileMentor(ctx, profile.Id, profile.Mentor); err != nil </span><span class="cov0" title="0">{
+                        return err
+                }</span>
+        }
+
+        <span class="cov0" title="0">if profile.Student != nil </span><span class="cov0" title="0">{
+                if err := r.UpdateOrCreateProfileStudent(ctx, profile.Id, profile.Student); err != nil </span><span class="cov0" title="0">{
+                        return err
+                }</span>
+        }
+
+        <span class="cov0" title="0">if profile.LearningSkill != nil </span><span class="cov0" title="0">{
+                if err := r.UpdateLearningSkills(ctx, profile.Id, profile.LearningSkill); err != nil </span><span class="cov0" title="0">{
+                        return err
+                }</span>
+        }
+
+        <span class="cov0" title="0">if profile.TeachingSkills != nil </span><span class="cov0" title="0">{
+                if err := r.UpdateTeachingSkills(ctx, profile.Id, profile.TeachingSkills); err != nil </span><span class="cov0" title="0">{
+                        return err
+                }</span>
+        }
+
+        <span class="cov0" title="0">return tx.Commit()</span>
+}
+
+func (r *UserRepositoryPostgres) UpdateProfileUser(ctx context.Context, id string, email *string, name *string, surname *string, avatarURL *string) error <span class="cov0" title="0">{
+        query := `UPDATE users SET `
+        args := []interface{}{}
+        argCount := 0
+        if email != nil </span><span class="cov0" title="0">{
+                argCount++
+                query += fmt.Sprintf("email=$%d, ", argCount)
+                args = append(args, *email)
+        }</span>
+
+        <span class="cov0" title="0">if name != nil </span><span class="cov0" title="0">{
+                argCount++
+                query += fmt.Sprintf("name=$%d, ", argCount)
+                args = append(args, *name)
+        }</span>
+
+        <span class="cov0" title="0">if surname != nil </span><span class="cov0" title="0">{
+                argCount++
+                query += fmt.Sprintf("surname=$%d, ", argCount)
+                args = append(args, *surname)
+        }</span>
+
+        <span class="cov0" title="0">if avatarURL != nil </span><span class="cov0" title="0">{
+                argCount++
+                query += fmt.Sprintf("avatar_url=$%d, ", argCount)
+                args = append(args, *avatarURL)
+        }</span>
+
+        <span class="cov0" title="0">if argCount == 0 </span><span class="cov0" title="0">{
+                return nil
+        }</span>
+
+        <span class="cov0" title="0">query = strings.TrimSuffix(query, ", ")
+
+        query += fmt.Sprintf(` WHERE id=$%d`, argCount+1)
+        args = append(args, id)
+
+        _, err := r.db.ExecContext(ctx, query, args...)
+
+        return err</span>
+}
+
+func (r *UserRepositoryPostgres) UpdateOrCreateProfileMentor(ctx context.Context, id string, mentorProfile *domain.MentorUpdate) error <span class="cov0" title="0">{
+        exists, err := r.ExistsMentorProfile(ctx, id)
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to check mentor exists: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">if !exists </span><span class="cov0" title="0">{
+                return r.CreateProfileMentor(ctx, id, mentorProfile)
+        }</span>
+
+        <span class="cov0" title="0">return r.UpdateProfileMentor(ctx, id, mentorProfile)</span>
+}
+
+func (r *UserRepositoryPostgres) ExistsMentorProfile(ctx context.Context, id string) (bool, error) <span class="cov0" title="0">{
+        var exists bool
+
+        query := `SELECT EXISTS (
+          SELECT 1 FROM mentors
+          WHERE user_id=$1
+      )`
+
+        err := r.db.GetContext(ctx, &amp;exists, query, id)
+        if err != nil </span><span class="cov0" title="0">{
+                return false, fmt.Errorf("failed to get mentor: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">return exists, nil</span>
+}
+
+func (r *UserRepositoryPostgres) CreateProfileMentor(ctx context.Context, id string, mentorProfile *domain.MentorUpdate) error <span class="cov0" title="0">{
+        query := `INSERT INTO mentors(user_id, withdrawal_address, description) VALUES ($1, $2, $3)`
+        _, err := r.db.ExecContext(ctx, query, id, mentorProfile.Withdrawal, mentorProfile.Description)
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to create mentor: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">return nil</span>
+}
+
+func (r *UserRepositoryPostgres) UpdateProfileMentor(ctx context.Context, id string, mentorProfile *domain.MentorUpdate) error <span class="cov0" title="0">{
+        query := `UPDATE mentors SET `
+        args := []interface{}{}
+        argCount := 0
+        if mentorProfile.Description != nil </span><span class="cov0" title="0">{
+                argCount++
+                query += fmt.Sprintf(`description=$%d, `, argCount)
+                args = append(args, *mentorProfile.Description)
+        }</span>
+
+        <span class="cov0" title="0">if mentorProfile.Withdrawal != nil </span><span class="cov0" title="0">{
+                argCount++
+                query += fmt.Sprintf(`withdrawal_address=$%d, `, argCount)
+                args = append(args, *mentorProfile.Withdrawal)
+        }</span>
+
+        <span class="cov0" title="0">if argCount == 0 </span><span class="cov0" title="0">{
+                return nil
+        }</span>
+
+        <span class="cov0" title="0">query = strings.TrimSuffix(query, ", ")
+
+        query += fmt.Sprintf(` WHERE user_id=$%d`, argCount+1)
+        args = append(args, id)
+
+        _, err := r.db.ExecContext(ctx, query, args...)
+
+        return err</span>
+}
+
+func (r *UserRepositoryPostgres) UpdateOrCreateProfileStudent(ctx context.Context, id string, studentProfile *domain.StudentUpdate) error <span class="cov0" title="0">{
+        exists, err := r.ExistsStudentProfile(ctx, id)
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to check mentor exists: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">if !exists </span><span class="cov0" title="0">{
+                return r.CreateProfileStudent(ctx, id, studentProfile)
+        }</span>
+
+        <span class="cov0" title="0">return r.UpdateProfileStudent(ctx, id, studentProfile)</span>
+}
+
+func (r *UserRepositoryPostgres) ExistsStudentProfile(ctx context.Context, id string) (bool, error) <span class="cov0" title="0">{
+        var exists bool
+
+        query := `SELECT EXISTS (
+          SELECT 1 FROM students
+          WHERE user_id=$1
+      )`
+
+        err := r.db.GetContext(ctx, &amp;exists, query, id)
+        if err != nil </span><span class="cov0" title="0">{
+                return false, fmt.Errorf("failed to get student: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">return exists, nil</span>
+}
+
+func (r *UserRepositoryPostgres) CreateProfileStudent(ctx context.Context, id string, studentProfile *domain.StudentUpdate) error <span class="cov0" title="0">{
+        query := `INSERT INTO students(user_id, learning_goals, preferred_learning_style) VALUES ($1, $2, $3)`
+        _, err := r.db.ExecContext(ctx, query, id, studentProfile.LearningGoals, studentProfile.PreferredLearningStyle)
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to create students: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">return nil</span>
+}
+
+func (r *UserRepositoryPostgres) UpdateProfileStudent(ctx context.Context, id string, studentProfile *domain.StudentUpdate) error <span class="cov0" title="0">{
+        query := `UPDATE students SET `
+        args := []interface{}{}
+        argCount := 0
+        if studentProfile.PreferredLearningStyle != nil </span><span class="cov0" title="0">{
+                argCount++
+                query += fmt.Sprintf(`preferred_learning_style=$%d, `, argCount)
+                args = append(args, *studentProfile.PreferredLearningStyle)
+        }</span>
+
+        <span class="cov0" title="0">if studentProfile.LearningGoals != nil </span><span class="cov0" title="0">{
+                argCount++
+                query += fmt.Sprintf(`learning_goals=$%d, `, argCount)
+                args = append(args, *studentProfile.LearningGoals)
+        }</span>
+
+        <span class="cov0" title="0">if argCount == 0 </span><span class="cov0" title="0">{
+                return nil
+        }</span>
+
+        <span class="cov0" title="0">query = strings.TrimSuffix(query, ", ")
+
+        query += fmt.Sprintf(` WHERE user_id=$%d`, argCount+1)
+        args = append(args, id)
+
+        _, err := r.db.ExecContext(ctx, query, args...)
+
+        return err</span>
+}
+
+func (r *UserRepositoryPostgres) UpdateLearningSkills(ctx context.Context, id string, learningSkills *[]*domain.LearningSkillUpdate) error <span class="cov0" title="0">{
+        exists, err := r.ExistsStudentProfile(ctx, id)
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to check user exists: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">if !exists </span><span class="cov0" title="0">{
+                err := r.CreateProfileStudent(ctx, id, &amp;domain.StudentUpdate{})
+                if err != nil </span><span class="cov0" title="0">{
+                        return fmt.Errorf("failed to create mentor profile: %w", err)
+                }</span>
+        }
+
+        <span class="cov0" title="0">query := `DELETE FROM learning_skills WHERE user_id=$1`
+        _, err = r.db.ExecContext(ctx, query, id)
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to delete learning skills: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">queryInsert := `INSERT INTO learning_skills (user_id, skill_name, proficiency_level) VALUES ($1, $2, $3)`
+        for _, skill := range *learningSkills </span><span class="cov0" title="0">{
+                _, err := r.db.ExecContext(ctx, queryInsert, id, skill.SkillName, skill.ProficiencyLevel)
+                if err != nil </span><span class="cov0" title="0">{
+                        return fmt.Errorf("failed to save learning skill: %w", err)
+                }</span>
+        }
+
+        <span class="cov0" title="0">return nil</span>
+}
+
+func (r *UserRepositoryPostgres) UpdateTeachingSkills(ctx context.Context, id string, teachingSkills *[]*domain.TeachingSkillUpdate) error <span class="cov0" title="0">{
+        exists, err := r.ExistsMentorProfile(ctx, id)
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to check user exists: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">if !exists </span><span class="cov0" title="0">{
+                err := r.CreateProfileMentor(ctx, id, &amp;domain.MentorUpdate{})
+                if err != nil </span><span class="cov0" title="0">{
+                        return fmt.Errorf("failed to create mentor profile: %w", err)
+                }</span>
+        }
+
+        <span class="cov0" title="0">query := `DELETE FROM teaching_skills WHERE user_id=$1`
+        _, err = r.db.ExecContext(ctx, query, id)
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to delete teaching skills: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">queryInsert := `INSERT INTO teaching_skills (user_id, skill_name, proficiency_level, years_of_experience) VALUES ($1, $2, $3, $4)`
+        for _, skill := range *teachingSkills </span><span class="cov0" title="0">{
+                _, err := r.db.ExecContext(ctx, queryInsert, id, skill.SkillName, skill.ProficiencyLevel, skill.YearsOfExperience)
+                if err != nil </span><span class="cov0" title="0">{
+                        return fmt.Errorf("failed to save teaching skill: %w", err)
+                }</span>
+        }
+
+        <span class="cov0" title="0">return nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file7" style="display: none">package service
+
+import (
+        "context"
+
+        "github.com/hohlayder/Mentor_Platform/user_service/internal/domain"
+        "github.com/hohlayder/Mentor_Platform/user_service/internal/repository"
+)
+
+type UserProfileService struct {
+        repo repository.UserProfileRepo
+}
+
+func NewUserService(repo repository.UserProfileRepo) *UserProfileService<span class="cov0" title="0">{
+        return &amp;UserProfileService{repo: repo}
+}</span>
+
+func (s *UserProfileService) CreateUser(ctx context.Context, name string, surname string, email string) (string, error) <span class="cov0" title="0">{        
+        return s.repo.CreateUser(ctx, name, surname, email)
+}</span>
+
+func (s *UserProfileService) GetUserById(ctx context.Context, id string) (*domain.User, error) <span class="cov0" title="0">{
+        return s.repo.GetUserByID(ctx, id)
+}</span>
+
+func (s *UserProfileService) GetUserByEmail(ctx context.Context, email string) (*domain.User, error) <span class="cov0" title="0">{
+        return s.repo.GetUserByEmail(ctx, email)
+}</span>
+
+func (s *UserProfileService) DeleteUser(ctx context.Context, id string) error <span class="cov0" title="0">{
+        return s.repo.DeleteUser(ctx, id)
+}</span>
+
+func (s *UserProfileService) GetProfileById(ctx context.Context, id string) (*domain.UserProfile, error)<span class="cov0" title="0">{
+        return s.repo.GetProfileByID(ctx, id)
+}</span>
+
+func (s *UserProfileService) UpdateProfile(ctx context.Context, profile *domain.UpdateProfile) error <span class="cov0" title="0">{
+        return s.repo.UpdateProfile(ctx, profile)
+}</span>
+
+</pre>
+		
+		</div>
+	</body>
+	<script>
+	(function() {
+		var files = document.getElementById('files');
+		var visible;
+		files.addEventListener('change', onChange, false);
+		function select(part) {
+			if (visible)
+				visible.style.display = 'none';
+			visible = document.getElementById(part);
+			if (!visible)
+				return;
+			files.value = part;
+			visible.style.display = 'block';
+			location.hash = part;
+		}
+		function onChange() {
+			select(files.value);
+			window.scrollTo(0, 0);
+		}
+		if (location.hash != "") {
+			select(location.hash.substr(1));
+		}
+		if (!visible) {
+			select("file0");
+		}
+	})();
+	</script>
+</html>
