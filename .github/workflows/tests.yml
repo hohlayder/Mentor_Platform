@@ -1,0 +1,59 @@
+name: Run User Service Tests
+
+on:
+  push:
+    branches: [ "main", "master", "dev" ]
+  pull_request:
+    branches: [ "main", "master", "dev" ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: user_service
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+
+      - name: Install migrate CLI
+        run: |
+          sudo apt-get update && sudo apt-get install -y wget
+          wget -q https://github.com/golang-migrate/migrate/releases/download/v4.16.2/migrate.linux-amd64.tar.gz
+          tar -xzf migrate.linux-amd64.tar.gz
+          sudo mv migrate /usr/local/bin
+
+      - name: Apply database migrations
+        working-directory: ./user_service
+        run: |
+          migrate -path migrations \
+            -database "postgres://postgres:postgres@localhost:5432/user_service?sslmode=disable" up
+
+      - name: Run tests with verbose output
+        working-directory: ./user_service
+        run: |
+          go test ./... -v -coverprofile cover.out
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: user_service/cover.out
