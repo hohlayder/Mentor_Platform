@@ -183,37 +183,37 @@ func (r *UserRepositoryPostgres) buildUserProfileFromRows(rows []domain.UserProf
 }
 
 func (r *UserRepositoryPostgres) UpdateProfile(ctx context.Context, profile *domain.UpdateProfile) error {
-	tx, err := r.db.BeginTx(ctx, nil)
+	tx, err := r.db.BeginTxx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("failed to start transaction: %w", err)
 	}
 
 	defer tx.Rollback()
-	err = r.UpdateProfileUser(ctx, profile.Id, profile.Email, profile.Name, profile.Surname, profile.AvatarURL)
+	err = r.UpdateProfileUser(ctx, tx, profile.Id, profile.Email, profile.Name, profile.Surname, profile.AvatarURL)
 	if err != nil {
 		return fmt.Errorf("failed to update user part of profile: %w", err)
 	}
 
 	if profile.Mentor != nil {
-		if err := r.UpdateOrCreateProfileMentor(ctx, profile.Id, profile.Mentor); err != nil {
+		if err := r.UpdateOrCreateProfileMentor(ctx, tx, profile.Id, profile.Mentor); err != nil {
 			return err
 		}
 	}
 
 	if profile.Student != nil {
-		if err := r.UpdateOrCreateProfileStudent(ctx, profile.Id, profile.Student); err != nil {
+		if err := r.UpdateOrCreateProfileStudent(ctx, tx, profile.Id, profile.Student); err != nil {
 			return err
 		}
 	}
 
 	if profile.LearningSkill != nil {
-		if err := r.UpdateLearningSkills(ctx, profile.Id, profile.LearningSkill); err != nil {
+		if err := r.UpdateLearningSkills(ctx, tx, profile.Id, profile.LearningSkill); err != nil {
 			return err
 		}
 	}
 
 	if profile.TeachingSkills != nil {
-		if err := r.UpdateTeachingSkills(ctx, profile.Id, profile.TeachingSkills); err != nil {
+		if err := r.UpdateTeachingSkills(ctx, tx, profile.Id, profile.TeachingSkills); err != nil {
 			return err
 		}
 	}
@@ -221,7 +221,7 @@ func (r *UserRepositoryPostgres) UpdateProfile(ctx context.Context, profile *dom
 	return tx.Commit()
 }
 
-func (r *UserRepositoryPostgres) UpdateProfileUser(ctx context.Context, id string, email *string, name *string, surname *string, avatarURL *string) error {
+func (r *UserRepositoryPostgres) UpdateProfileUser(ctx context.Context, tx *sqlx.Tx, id string, email *string, name *string, surname *string, avatarURL *string) error {
 	query := `UPDATE users SET `
 	args := []interface{}{}
 	argCount := 0
@@ -258,33 +258,33 @@ func (r *UserRepositoryPostgres) UpdateProfileUser(ctx context.Context, id strin
 	query += fmt.Sprintf(` WHERE id=$%d`, argCount+1)
 	args = append(args, id)
 
-	_, err := r.db.ExecContext(ctx, query, args...)
+	_, err := tx.ExecContext(ctx, query, args...)
 
 	return err
 }
 
-func (r *UserRepositoryPostgres) UpdateOrCreateProfileMentor(ctx context.Context, id string, mentorProfile *domain.MentorUpdate) error {
-	exists, err := r.ExistsMentorProfile(ctx, id)
+func (r *UserRepositoryPostgres) UpdateOrCreateProfileMentor(ctx context.Context, tx *sqlx.Tx, id string, mentorProfile *domain.MentorUpdate) error {
+	exists, err := r.ExistsMentorProfile(ctx, tx, id)
 	if err != nil {
 		return fmt.Errorf("failed to check mentor exists: %w", err)
 	}
 
 	if !exists {
-		return r.CreateProfileMentor(ctx, id, mentorProfile)
+		return r.CreateProfileMentor(ctx, tx, id, mentorProfile)
 	}
 
-	return r.UpdateProfileMentor(ctx, id, mentorProfile)
+	return r.UpdateProfileMentor(ctx, tx, id, mentorProfile)
 }
 
-func (r *UserRepositoryPostgres) ExistsMentorProfile(ctx context.Context, id string) (bool, error) {
+func (r *UserRepositoryPostgres) ExistsMentorProfile(ctx context.Context, tx *sqlx.Tx, id string) (bool, error) {
 	var exists bool
 
 	query := `SELECT EXISTS (
-          SELECT 1 FROM mentors
-          WHERE user_id=$1
-      )`
+        SELECT 1 FROM mentors
+        WHERE user_id=$1
+    )`
 
-	err := r.db.GetContext(ctx, &exists, query, id)
+	err := tx.GetContext(ctx, &exists, query, id)
 	if err != nil {
 		return false, fmt.Errorf("failed to get mentor: %w", err)
 	}
@@ -292,9 +292,9 @@ func (r *UserRepositoryPostgres) ExistsMentorProfile(ctx context.Context, id str
 	return exists, nil
 }
 
-func (r *UserRepositoryPostgres) CreateProfileMentor(ctx context.Context, id string, mentorProfile *domain.MentorUpdate) error {
+func (r *UserRepositoryPostgres) CreateProfileMentor(ctx context.Context, tx *sqlx.Tx, id string, mentorProfile *domain.MentorUpdate) error {
 	query := `INSERT INTO mentors(user_id, withdrawal_address, description) VALUES ($1, $2, $3)`
-	_, err := r.db.ExecContext(ctx, query, id, mentorProfile.Withdrawal, mentorProfile.Description)
+	_, err := tx.ExecContext(ctx, query, id, mentorProfile.Withdrawal, mentorProfile.Description)
 	if err != nil {
 		return fmt.Errorf("failed to create mentor: %w", err)
 	}
@@ -302,7 +302,7 @@ func (r *UserRepositoryPostgres) CreateProfileMentor(ctx context.Context, id str
 	return nil
 }
 
-func (r *UserRepositoryPostgres) UpdateProfileMentor(ctx context.Context, id string, mentorProfile *domain.MentorUpdate) error {
+func (r *UserRepositoryPostgres) UpdateProfileMentor(ctx context.Context, tx *sqlx.Tx, id string, mentorProfile *domain.MentorUpdate) error {
 	query := `UPDATE mentors SET `
 	args := []interface{}{}
 	argCount := 0
@@ -327,33 +327,33 @@ func (r *UserRepositoryPostgres) UpdateProfileMentor(ctx context.Context, id str
 	query += fmt.Sprintf(` WHERE user_id=$%d`, argCount+1)
 	args = append(args, id)
 
-	_, err := r.db.ExecContext(ctx, query, args...)
+	_, err := tx.ExecContext(ctx, query, args...)
 
 	return err
 }
 
-func (r *UserRepositoryPostgres) UpdateOrCreateProfileStudent(ctx context.Context, id string, studentProfile *domain.StudentUpdate) error {
-	exists, err := r.ExistsStudentProfile(ctx, id)
+func (r *UserRepositoryPostgres) UpdateOrCreateProfileStudent(ctx context.Context, tx *sqlx.Tx, id string, studentProfile *domain.StudentUpdate) error {
+	exists, err := r.ExistsStudentProfile(ctx, tx, id)
 	if err != nil {
-		return fmt.Errorf("failed to check mentor exists: %w", err)
+		return fmt.Errorf("failed to check student exists: %w", err)
 	}
 
 	if !exists {
-		return r.CreateProfileStudent(ctx, id, studentProfile)
+		return r.CreateProfileStudent(ctx, tx, id, studentProfile)
 	}
 
-	return r.UpdateProfileStudent(ctx, id, studentProfile)
+	return r.UpdateProfileStudent(ctx, tx, id, studentProfile)
 }
 
-func (r *UserRepositoryPostgres) ExistsStudentProfile(ctx context.Context, id string) (bool, error) {
+func (r *UserRepositoryPostgres) ExistsStudentProfile(ctx context.Context, tx *sqlx.Tx, id string) (bool, error) {
 	var exists bool
 
 	query := `SELECT EXISTS (
-          SELECT 1 FROM students
-          WHERE user_id=$1
-      )`
+        SELECT 1 FROM students
+        WHERE user_id=$1
+    )`
 
-	err := r.db.GetContext(ctx, &exists, query, id)
+	err := tx.GetContext(ctx, &exists, query, id)
 	if err != nil {
 		return false, fmt.Errorf("failed to get student: %w", err)
 	}
@@ -361,9 +361,9 @@ func (r *UserRepositoryPostgres) ExistsStudentProfile(ctx context.Context, id st
 	return exists, nil
 }
 
-func (r *UserRepositoryPostgres) CreateProfileStudent(ctx context.Context, id string, studentProfile *domain.StudentUpdate) error {
+func (r *UserRepositoryPostgres) CreateProfileStudent(ctx context.Context, tx *sqlx.Tx, id string, studentProfile *domain.StudentUpdate) error {
 	query := `INSERT INTO students(user_id, learning_goals, preferred_learning_style) VALUES ($1, $2, $3)`
-	_, err := r.db.ExecContext(ctx, query, id, studentProfile.LearningGoals, studentProfile.PreferredLearningStyle)
+	_, err := tx.ExecContext(ctx, query, id, studentProfile.LearningGoals, studentProfile.PreferredLearningStyle)
 	if err != nil {
 		return fmt.Errorf("failed to create students: %w", err)
 	}
@@ -371,7 +371,7 @@ func (r *UserRepositoryPostgres) CreateProfileStudent(ctx context.Context, id st
 	return nil
 }
 
-func (r *UserRepositoryPostgres) UpdateProfileStudent(ctx context.Context, id string, studentProfile *domain.StudentUpdate) error {
+func (r *UserRepositoryPostgres) UpdateProfileStudent(ctx context.Context, tx *sqlx.Tx, id string, studentProfile *domain.StudentUpdate) error {
 	query := `UPDATE students SET `
 	args := []interface{}{}
 	argCount := 0
@@ -396,33 +396,27 @@ func (r *UserRepositoryPostgres) UpdateProfileStudent(ctx context.Context, id st
 	query += fmt.Sprintf(` WHERE user_id=$%d`, argCount+1)
 	args = append(args, id)
 
-	_, err := r.db.ExecContext(ctx, query, args...)
+	_, err := tx.ExecContext(ctx, query, args...)
 
 	return err
 }
 
-func (r *UserRepositoryPostgres) UpdateLearningSkills(ctx context.Context, id string, learningSkills *[]*domain.LearningSkillUpdate) error {
-	exists, err := r.ExistsStudentProfile(ctx, id)
-	if err != nil {
-		return fmt.Errorf("failed to check user exists: %w", err)
-	}
-
-	if !exists {
-		err := r.CreateProfileStudent(ctx, id, &domain.StudentUpdate{})
-		if err != nil {
-			return fmt.Errorf("failed to create mentor profile: %w", err)
-		}
-	}
-
+func (r *UserRepositoryPostgres) UpdateLearningSkills(ctx context.Context, tx *sqlx.Tx, id string, learningSkills *[]*domain.LearningSkillUpdate) error {
 	query := `DELETE FROM learning_skills WHERE user_id=$1`
-	_, err = r.db.ExecContext(ctx, query, id)
+	_, err := tx.ExecContext(ctx, query, id)
 	if err != nil {
 		return fmt.Errorf("failed to delete learning skills: %w", err)
 	}
 
 	queryInsert := `INSERT INTO learning_skills (user_id, skill_name, proficiency_level) VALUES ($1, $2, $3)`
+	stmt, err := tx.PrepareContext(ctx, queryInsert)
+    if err != nil {
+        return fmt.Errorf("failed to prepare statement: %w", err)
+    }
+    defer stmt.Close()
+
 	for _, skill := range *learningSkills {
-		_, err := r.db.ExecContext(ctx, queryInsert, id, skill.SkillName, skill.ProficiencyLevel)
+		_, err := stmt.ExecContext(ctx, id, skill.SkillName, skill.ProficiencyLevel)
 		if err != nil {
 			return fmt.Errorf("failed to save learning skill: %w", err)
 		}
@@ -431,28 +425,22 @@ func (r *UserRepositoryPostgres) UpdateLearningSkills(ctx context.Context, id st
 	return nil
 }
 
-func (r *UserRepositoryPostgres) UpdateTeachingSkills(ctx context.Context, id string, teachingSkills *[]*domain.TeachingSkillUpdate) error {
-	exists, err := r.ExistsMentorProfile(ctx, id)
-	if err != nil {
-		return fmt.Errorf("failed to check user exists: %w", err)
-	}
-
-	if !exists {
-		err := r.CreateProfileMentor(ctx, id, &domain.MentorUpdate{})
-		if err != nil {
-			return fmt.Errorf("failed to create mentor profile: %w", err)
-		}
-	}
-
+func (r *UserRepositoryPostgres) UpdateTeachingSkills(ctx context.Context, tx *sqlx.Tx,id string, teachingSkills *[]*domain.TeachingSkillUpdate) error {
 	query := `DELETE FROM teaching_skills WHERE user_id=$1`
-	_, err = r.db.ExecContext(ctx, query, id)
+	_, err := tx.ExecContext(ctx, query, id)
 	if err != nil {
 		return fmt.Errorf("failed to delete teaching skills: %w", err)
 	}
 
 	queryInsert := `INSERT INTO teaching_skills (user_id, skill_name, proficiency_level, years_of_experience) VALUES ($1, $2, $3, $4)`
+	stmt, err := tx.PrepareContext(ctx, queryInsert)
+    if err != nil {
+        return fmt.Errorf("failed to prepare statement: %w", err)
+    }
+    defer stmt.Close()
+
 	for _, skill := range *teachingSkills {
-		_, err := r.db.ExecContext(ctx, queryInsert, id, skill.SkillName, skill.ProficiencyLevel, skill.YearsOfExperience)
+		_, err := stmt.ExecContext(ctx, id, skill.SkillName, skill.ProficiencyLevel, skill.YearsOfExperience)
 		if err != nil {
 			return fmt.Errorf("failed to save teaching skill: %w", err)
 		}
