@@ -78,58 +78,6 @@ services:
     networks:
       - ${NETWORK_NAME}
     restart: unless-stopped
-
-  notification-db:
-    image: postgres:15-alpine
-    container_name: notification-db
-    environment:
-      POSTGRES_DB: ${NOTIFICATION_DB_NAME}
-      POSTGRES_USER: ${DB_USER}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
-    ports:
-      - "${NOTIFICATION_DB_PORT}:5432"
-    volumes:
-      - notification_data:/var/lib/postgresql/data
-    networks:
-      - ${NETWORK_NAME}
-    restart: unless-stopped
-
-  zookeeper:
-    image: confluentinc/cp-zookeeper:7.4.0
-    container_name: zookeeper
-    environment:
-      ZOOKEEPER_CLIENT_PORT: 2181
-      ZOOKEEPER_TICK_TIME: 2000
-    ports:
-      - "2181:2181"
-    networks:
-      - ${NETWORK_NAME}
-
-  kafka:
-    image: confluentinc/cp-kafka:7.4.0
-    container_name: kafka
-    depends_on:
-      - zookeeper
-    ports:
-      - "9092:9092"
-      - "29092:29092"
-    environment:
-      KAFKA_BROKER_ID: 1
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
-      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
-    healthcheck:
-      test: ["CMD", "kafka-topics", "--list", "--bootstrap-server", "localhost:9092"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 40s
-    networks:
-      - ${NETWORK_NAME}
-    restart: unless-stopped
   user-service:
     build:
       context: ./user_service
@@ -196,40 +144,12 @@ services:
       - redis
     networks:
       - ${NETWORK_NAME}
-  notification-service:
-    build:
-      context: ./notification_service
-      dockerfile: Dockerfile
-    container_name: notification-service
-    environment:
-      - DB_HOST=notification-db
-      - DB_PORT=5432
-      - DB_NAME=${NOTIFICATION_DB_NAME}
-      - DB_USERNAME=${DB_USER}
-      - DB_PASSWORD=${DB_PASSWORD}
-      - KAFKA_BROKERS=kafka:9092
-      - KAFKA_GROUP_ID=notification-service-dev
-      - KAFKA_TOPICS=chat_messages,auth_events
-      - GMAIL_EMAIL=${GMAIL_EMAIL}
-      - GMAIL_APP_PASSWORD=${GMAIL_APP_PASSWORD}
-      - GMAIL_FROM_NAME=${GMAIL_FROM_NAME}
-      - HTTP_PORT=8080
-      - ENV=development
-    ports:
-      - "${NOTIFICATION_SERVICE_PORT}:8080"
-      - "50054:50054"
-    depends_on:
-      - notification-db
-      - kafka
-    networks:
-      - ${NETWORK_NAME}
-
+  
 volumes:
   redis_data:
   user_data:
   auth_data:
   chat_data:
-  notification_data:
 
 networks:
   my-app-network:
