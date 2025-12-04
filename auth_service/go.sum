@@ -3,6 +3,8 @@ github.com/DATA-DOG/go-sqlmock v1.5.2 h1:OcvFkGmslmlZibjAjaHm3L//6LiuBgolP7Oputl
 github.com/DATA-DOG/go-sqlmock v1.5.2/go.mod h1:88MAG/4G7SMwSE3CeA0ZKzrT5CiOU3OJ+JlNzwDqpNU=
 github.com/Sergey-1214/contracts_mentors v0.0.11 h1:lB5nFWRhk20BZGS9H6SkbgFoE6jEVdDGM/MM+0N4UpE=
 github.com/Sergey-1214/contracts_mentors v0.0.11/go.mod h1:Xx9OdLITeP+igwFuzoAgss5haM3sG538DEpUi/AnQf8=
+github.com/Sergey-1214/contracts_mentors v0.0.20 h1:smdRg6YyZCuMkcxzS290TAIXLG0zriMcetPjSIkmKRc=
+github.com/Sergey-1214/contracts_mentors v0.0.20/go.mod h1:pJLGjbbXDo4mJC6FxRpC055xzZBEQnCCCFOCR2z8nsE=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/go-sql-driver/mysql v1.8.1/go.mod h1:wEBSXgmK//2ZFJyE+qWnIsVGmvmEKlqwuVSjsCm7DZg=
