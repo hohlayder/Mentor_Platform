@@ -5,6 +5,8 @@ github.com/Sergey-1214/contracts_mentors v0.0.9 h1:tRNL2rAC8YcwX1jJtUN8iiCm58b6h
 github.com/Sergey-1214/contracts_mentors v0.0.9/go.mod h1:Xx9OdLITeP+igwFuzoAgss5haM3sG538DEpUi/AnQf8=
 github.com/Sergey-1214/contracts_mentors v0.0.13 h1:/ObKlZ2j/yEbjoi2v5IQOh1wc/CF3aZ/2N2QdAYqUXM=
 github.com/Sergey-1214/contracts_mentors v0.0.13/go.mod h1:Xx9OdLITeP+igwFuzoAgss5haM3sG538DEpUi/AnQf8=
+github.com/Sergey-1214/contracts_mentors v0.0.20 h1:smdRg6YyZCuMkcxzS290TAIXLG0zriMcetPjSIkmKRc=
+github.com/Sergey-1214/contracts_mentors v0.0.20/go.mod h1:pJLGjbbXDo4mJC6FxRpC055xzZBEQnCCCFOCR2z8nsE=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/go-sql-driver/mysql v1.8.1/go.mod h1:wEBSXgmK//2ZFJyE+qWnIsVGmvmEKlqwuVSjsCm7DZg=
