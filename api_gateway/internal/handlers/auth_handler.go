@@ -128,6 +128,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param request body domain.RefreshRequest true "Refresh token"
+// @Security BearerAuth
 // @Success 200 {object} domain.RefreshResponse
 // @Failure 400 {object} utils.ErrorResponse
 // @Failure 401 {object} utils.ErrorResponse
@@ -203,6 +204,7 @@ func (h *AuthHandler) RefreshToken(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param request body domain.LogoutRequest true "Refresh token"
+// @Security BearerAuth
 // @Success 200 {object} domain.LogoutResponse
 // @Failure 400 {object} utils.ErrorResponse
 // @Failure 401 {object} utils.ErrorResponse
