@@ -37,6 +37,7 @@ func NewChatHandler(service ChatService) *ChatHandler {
 // @Security BearerAuth
 // @Success 201 {object} domain.CreateChatResponse
 // @Failure 400 {object} utils.ErrorResponse
+// @Failure 401 {object} utils.ErrorResponse
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /chats [post]
 func (h *ChatHandler) CreateChat(c *gin.Context) {
@@ -242,6 +243,7 @@ func (h *ChatHandler) GetChatById(c *gin.Context) {
 // @Security BearerAuth
 // @Success 200 {object} domain.GetChatMessagesResponse
 // @Failure 400 {object} utils.ErrorResponse
+// @Failure 401 {object} utils.ErrorResponse
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /chats/messages [get]
 func (h *ChatHandler) GetChatMessages(c *gin.Context) {
@@ -326,6 +328,7 @@ func (h *ChatHandler) GetChatMessages(c *gin.Context) {
 // @Security BearerAuth
 // @Success 200 {object} domain.MarkMessagesReadResponse
 // @Failure 400 {object} utils.ErrorResponse
+// @Failure 401 {object} utils.ErrorResponse
 // @Failure 403 {object} utils.ErrorResponse
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /chats/messages/read [post]
