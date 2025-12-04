@@ -400,6 +400,8 @@ definitions:
     properties:
       message:
         type: string
+      success:
+        type: boolean
     type: object
 host: localhost:8080
 info:
@@ -645,10 +647,6 @@ paths:
           description: Forbidden
           schema:
             $ref: '#/definitions/utils.ErrorResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/utils.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
@@ -689,6 +687,10 @@ paths:
             $ref: '#/definitions/utils.ErrorResponse'
         "401":
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "403":
+          description: Forbidden
           schema:
             $ref: '#/definitions/utils.ErrorResponse'
         "500":
@@ -766,8 +768,6 @@ paths:
           description: Internal Server Error
           schema:
             $ref: '#/definitions/utils.ErrorResponse'
-      security:
-      - BearerAuth: []
       summary: Получить профиль
       tags:
       - profiles
@@ -799,6 +799,18 @@ paths:
           description: Bad Request
           schema:
             $ref: '#/definitions/utils.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
@@ -822,6 +834,10 @@ paths:
           description: No Content
         "401":
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "403":
+          description: Forbidden
           schema:
             $ref: '#/definitions/utils.ErrorResponse'
         "404":
@@ -860,8 +876,6 @@ paths:
           description: Internal Server Error
           schema:
             $ref: '#/definitions/utils.ErrorResponse'
-      security:
-      - BearerAuth: []
       summary: Получить пользователя по ID
       tags:
       - users
@@ -889,8 +903,6 @@ paths:
           description: Internal Server Error
           schema:
             $ref: '#/definitions/utils.ErrorResponse'
-      security:
-      - BearerAuth: []
       summary: Получить пользователя по email
       tags:
       - users
