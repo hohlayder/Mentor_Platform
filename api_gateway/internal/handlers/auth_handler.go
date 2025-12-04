@@ -43,16 +43,18 @@ func (h *AuthHandler) Register(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil {
 		slog.Error("Failed to bind register request", "error", err)
 		c.JSON(400, utils.ErrorResponse{
-			Error:   "Bad Request",
+			Error:   "VALIDATION_ERROR",
 			Message: "Invalid request body",
+			Details: err.Error(),
 		})
 		return
 	}
 
 	if err := validateRegisterRequest(&req); err != nil {
 		c.JSON(400, utils.ErrorResponse{
-			Error:   "Bad Request",
-			Message: err.Error(),
+			Error:   "VALIDATION_ERROR",
+			Message: "Invalid request body",
+			Details: err.Error(),
 		})
 		return
 	}
@@ -61,8 +63,9 @@ func (h *AuthHandler) Register(c *gin.Context) {
 	if err != nil {
 		slog.Error("Failed to register user", "error", err)
 		c.JSON(500, utils.ErrorResponse{
-			Error:   "Internal Server Error",
+			Error:   "INTERNAL_ERROR",
 			Message: "Failed to register user",
+			Details: "Internal server error",
 		})
 		return
 	}
@@ -91,8 +94,9 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil {
 		slog.Error("Failed to bind login request", "error", err)
 		c.JSON(400, utils.ErrorResponse{
-			Error:   "Bad Request",
+			Error:   "VALIDATION_ERROR",
 			Message: "Invalid request body",
+			Details: err.Error(),
 		})
 		return
 	}
@@ -101,8 +105,9 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	if err != nil {
 		slog.Error("Failed to login", "error", err)
 		c.JSON(401, utils.ErrorResponse{
-			Error:   "Unauthorized",
+			Error:   "UNAUTHORIZED",
 			Message: "Invalid credentials",
+			Details: "Internal server error",
 		})
 		return
 	}
@@ -133,16 +138,18 @@ func (h *AuthHandler) RefreshToken(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil {
 		slog.Error("Failed to bind refresh request", "error", err)
 		c.JSON(400, utils.ErrorResponse{
-			Error:   "Bad Request",
+			Error:   "VALIDATION_ERROR",
 			Message: "Invalid request body",
+			Details: err.Error(),
 		})
 		return
 	}
 
 	if req.RefreshToken == "" {
 		c.JSON(400, utils.ErrorResponse{
-			Error:   "Bad Request",
+			Error:   "VALIDATION_ERROR",
 			Message: "Refresh token is required",
+			Details: "",
 		})
 		return
 	}
@@ -155,23 +162,26 @@ func (h *AuthHandler) RefreshToken(c *gin.Context) {
 		switch {
 		case strings.Contains(errorMsg, "invalid"):
 			c.JSON(401, utils.ErrorResponse{
-				Error:   "Unauthorized",
+				Error:   "UNAUTHORIZED",
 				Message: "Invalid token",
 			})
 		case strings.Contains(errorMsg, "expired"):
 			c.JSON(401, utils.ErrorResponse{
-				Error:   "Unauthorized",
+				Error:   "UNAUTHORIZED",
 				Message: "Token expired",
+				Details: "Internal server error",
 			})
 		case strings.Contains(errorMsg, "empty"):
 			c.JSON(400, utils.ErrorResponse{
-				Error:   "Bad Request",
+				Error:   "VALIDATION_ERROR",
 				Message: "Empty token",
+				Details: "Internal server error",
 			})
 		default:
 			c.JSON(500, utils.ErrorResponse{
-				Error:   "Internal Server Error",
+				Error:   "INTERNAL_ERROR",
 				Message: "Failed to refresh token",
+				Details: "Internal server error",
 			})
 		}
 		return
@@ -203,16 +213,18 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil {
 		slog.Error("Failed to bind logout request", "error", err)
 		c.JSON(400, utils.ErrorResponse{
-			Error:   "Bad Request",
+			Error:   "VALIDATION_ERROR",
 			Message: "Invalid request body",
+			Details: err.Error(),
 		})
 		return
 	}
 
 	if req.RefreshToken == "" {
 		c.JSON(400, utils.ErrorResponse{
-			Error:   "Bad Request",
+			Error:   "VALIDATION_ERROR",
 			Message: "Refresh token is required",
+			Details: "",
 		})
 		return
 	}
@@ -221,8 +233,9 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 	if err != nil {
 		slog.Error("Failed to logout", "error", err)
 		c.JSON(500, utils.ErrorResponse{
-			Error:   "Internal Server Error",
+			Error:   "INTERNAL_ERROR",
 			Message: "Failed to logout",
+			Details: "Internal server error",
 		})
 		return
 	}
