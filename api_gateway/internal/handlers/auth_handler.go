@@ -195,6 +195,7 @@ func (h *AuthHandler) RefreshToken(c *gin.Context) {
 // @Param request body domain.LogoutRequest true "Refresh token"
 // @Success 200 {object} domain.LogoutResponse
 // @Failure 400 {object} utils.ErrorResponse
+// @Failure 401 {object} utils.ErrorResponse
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /auth/logout [post]
 func (h *AuthHandler) Logout(c *gin.Context) {
