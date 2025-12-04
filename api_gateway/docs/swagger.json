@@ -29,7 +29,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.LoginRequest"
+                            "$ref": "#/definitions/domain.LoginRequest"
                         }
                     }
                 ],
@@ -37,25 +37,25 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.LoginResponse"
+                            "$ref": "#/definitions/domain.LoginResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse"
+                            "$ref": "#/definitions/utils.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse"
+                            "$ref": "#/definitions/utils.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse"
+                            "$ref": "#/definitions/utils.ErrorResponse"
                         }
                     }
                 }
@@ -81,7 +81,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.LogoutRequest"
+                            "$ref": "#/definitions/domain.LogoutRequest"
                         }
                     }
                 ],
@@ -89,19 +89,25 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.LogoutResponse"
+                            "$ref": "#/definitions/domain.LogoutResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse"
+                            "$ref": "#/definitions/utils.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse"
+                            "$ref": "#/definitions/utils.ErrorResponse"
                         }
                     }
                 }
@@ -127,7 +133,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.RefreshRequest"
+                            "$ref": "#/definitions/domain.RefreshRequest"
                         }
                     }
                 ],
@@ -135,25 +141,25 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.RefreshResponse"
+                            "$ref": "#/definitions/domain.RefreshResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse"
+                            "$ref": "#/definitions/utils.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse"
+                            "$ref": "#/definitions/utils.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse"
+                            "$ref": "#/definitions/utils.ErrorResponse"
                         }
                     }
                 }
@@ -179,7 +185,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.RegisterRequest"
+                            "$ref": "#/definitions/domain.RegisterRequest"
                         }
                     }
                 ],
@@ -187,19 +193,19 @@
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.RegisterResponse"
+                            "$ref": "#/definitions/domain.RegisterResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse"
+                            "$ref": "#/definitions/utils.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse"
+                            "$ref": "#/definitions/utils.ErrorResponse"
                         }
                     }
                 }
@@ -240,31 +246,31 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.GetUserChatsResponse"
+                            "$ref": "#/definitions/domain.GetUserChatsResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse"
+                            "$ref": "#/definitions/utils.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse"
+                            "$ref": "#/definitions/utils.ErrorResponse"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse"
+                            "$ref": "#/definitions/utils.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse"
+                            "$ref": "#/definitions/utils.ErrorResponse"
                         }
                     }
                 }
@@ -293,7 +299,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.CreateChatRequest"
+                            "$ref": "#/definitions/domain.CreateChatRequest"
                         }
                     }
                 ],
@@ -301,19 +307,25 @@
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.CreateChatResponse"
+                            "$ref": "#/definitions/domain.CreateChatResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse"
+                            "$ref": "#/definitions/utils.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse"
+                            "$ref": "#/definitions/utils.ErrorResponse"
                         }
                     }
                 }
@@ -360,19 +372,25 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.GetChatMessagesResponse"
+                            "$ref": "#/definitions/domain.GetChatMessagesResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse"
+                            "$ref": "#/definitions/utils.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse"
+                            "$ref": "#/definitions/utils.ErrorResponse"
                         }
                     }
                 }
@@ -398,12 +416,12 @@
                 "summary": "Пометить сообщения как прочитанные",
                 "parameters": [
                     {
-                        "description": "ID сообщений",
+                        "description": "Запрос содержит ID чата и список ID сообщений для отметки как прочитанные",
                         "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.MarkMessagesReadRequest"
+                            "$ref": "#/definitions/domain.MarkMessagesReadRequest"
                         }
                     }
                 ],
@@ -411,19 +429,31 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.MarkMessagesReadResponse"
+                            "$ref": "#/definitions/domain.MarkMessagesReadResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse"
+                            "$ref": "#/definitions/utils.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse"
+                            "$ref": "#/definitions/utils.ErrorResponse"
                         }
                     }
                 }
@@ -457,19 +487,37 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.GetChatByIdResponse"
+                            "$ref": "#/definitions/domain.GetChatByIdResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse"
+                            "$ref": "#/definitions/utils.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse"
+                            "$ref": "#/definitions/utils.ErrorResponse"
                         }
                     }
                 }
@@ -477,6 +525,11 @@
         },
         "/profiles/{id}": {
             "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Возвращает полную информацию о профиле пользователя включая менторские/студенческие данные",
                 "produces": [
                     "application/json"
@@ -498,24 +551,29 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.ProfileResponse"
+                            "$ref": "#/definitions/domain.ProfileResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse"
+                            "$ref": "#/definitions/utils.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse"
+                            "$ref": "#/definitions/utils.ErrorResponse"
                         }
                     }
                 }
             },
             "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Обновляет данные профиля пользователя. Автоматически создает mentor/student записи при необходимости.",
                 "consumes": [
                     "application/json"
@@ -541,7 +599,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.UpdateProfileRequest"
+                            "$ref": "#/definitions/domain.UpdateProfileRequest"
                         }
                     }
                 ],
@@ -549,65 +607,19 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.SuccessResponse"
+                            "$ref": "#/definitions/utils.SuccessResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse"
+                            "$ref": "#/definitions/utils.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/users": {
-            "post": {
-                "description": "Создает нового пользователя в системе",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "users"
-                ],
-                "summary": "Создать пользователя",
-                "parameters": [
-                    {
-                        "description": "Данные пользователя",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.CreateUserRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Created",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.CreateUserResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse"
+                            "$ref": "#/definitions/utils.ErrorResponse"
                         }
                     }
                 }
@@ -615,6 +627,11 @@
         },
         "/users/email/{email}": {
             "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Возвращает информацию о пользователе по его email",
                 "produces": [
                     "application/json"
@@ -636,19 +653,19 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.User"
+                            "$ref": "#/definitions/domain.User"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse"
+                            "$ref": "#/definitions/utils.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse"
+                            "$ref": "#/definitions/utils.ErrorResponse"
                         }
                     }
                 }
@@ -656,6 +673,11 @@
         },
         "/users/{id}": {
             "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Возвращает информацию о пользователе по его идентификатору",
                 "produces": [
                     "application/json"
@@ -677,24 +699,29 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.User"
+                            "$ref": "#/definitions/domain.User"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse"
+                            "$ref": "#/definitions/utils.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse"
+                            "$ref": "#/definitions/utils.ErrorResponse"
                         }
                     }
                 }
             },
             "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Удаляет пользователя и все связанные данные",
                 "tags": [
                     "users"
@@ -713,16 +740,22 @@
                     "204": {
                         "description": "No Content"
                     },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponse"
+                        }
+                    },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse"
+                            "$ref": "#/definitions/utils.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse"
+                            "$ref": "#/definitions/utils.ErrorResponse"
                         }
                     }
                 }
@@ -730,7 +763,7 @@
         }
     },
     "definitions": {
-        "github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.Attachment": {
+        "domain.Attachment": {
             "type": "object",
             "properties": {
                 "created_at": {
@@ -762,7 +795,7 @@
                 }
             }
         },
-        "github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.ChatResponse": {
+        "domain.ChatResponse": {
             "type": "object",
             "properties": {
                 "created_at": {
@@ -773,7 +806,7 @@
                     "example": "123e4567-e89b-12d3-a456-426614174002"
                 },
                 "last_message": {
-                    "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.Message"
+                    "$ref": "#/definitions/domain.Message"
                 },
                 "unread_count": {
                     "type": "integer",
@@ -792,7 +825,7 @@
                 }
             }
         },
-        "github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.CreateChatRequest": {
+        "domain.CreateChatRequest": {
             "type": "object",
             "required": [
                 "other_user_id"
@@ -804,7 +837,7 @@
                 }
             }
         },
-        "github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.CreateChatResponse": {
+        "domain.CreateChatResponse": {
             "type": "object",
             "properties": {
                 "chat_id": {
@@ -813,34 +846,7 @@
                 }
             }
         },
-        "github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.CreateUserRequest": {
-            "type": "object",
-            "required": [
-                "email",
-                "first_name",
-                "last_name"
-            ],
-            "properties": {
-                "email": {
-                    "type": "string"
-                },
-                "first_name": {
-                    "type": "string"
-                },
-                "last_name": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.CreateUserResponse": {
-            "type": "object",
-            "properties": {
-                "user_id": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.Cursor": {
+        "domain.Cursor": {
             "type": "object",
             "properties": {
                 "created_at": {
@@ -852,15 +858,15 @@
                 }
             }
         },
-        "github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.GetChatByIdResponse": {
+        "domain.GetChatByIdResponse": {
             "type": "object",
             "properties": {
                 "chat": {
-                    "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.ChatResponse"
+                    "$ref": "#/definitions/domain.ChatResponse"
                 }
             }
         },
-        "github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.GetChatMessagesResponse": {
+        "domain.GetChatMessagesResponse": {
             "type": "object",
             "properties": {
                 "has_more": {
@@ -870,26 +876,26 @@
                 "messages": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.Message"
+                        "$ref": "#/definitions/domain.Message"
                     }
                 },
                 "next_cursor": {
-                    "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.Cursor"
+                    "$ref": "#/definitions/domain.Cursor"
                 }
             }
         },
-        "github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.GetUserChatsResponse": {
+        "domain.GetUserChatsResponse": {
             "type": "object",
             "properties": {
                 "chats": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.ChatResponse"
+                        "$ref": "#/definitions/domain.ChatResponse"
                     }
                 }
             }
         },
-        "github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.LearningSkill": {
+        "domain.LearningSkill": {
             "type": "object",
             "properties": {
                 "created_at": {
@@ -909,7 +915,7 @@
                 }
             }
         },
-        "github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.LearningSkillUpdate": {
+        "domain.LearningSkillUpdate": {
             "type": "object",
             "required": [
                 "proficiency_level",
@@ -924,18 +930,18 @@
                 }
             }
         },
-        "github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.LearningSkillsUpdate": {
+        "domain.LearningSkillsUpdate": {
             "type": "object",
             "properties": {
                 "learning_skills": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.LearningSkillUpdate"
+                        "$ref": "#/definitions/domain.LearningSkillUpdate"
                     }
                 }
             }
         },
-        "github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.LoginRequest": {
+        "domain.LoginRequest": {
             "type": "object",
             "required": [
                 "email",
@@ -952,7 +958,7 @@
                 }
             }
         },
-        "github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.LoginResponse": {
+        "domain.LoginResponse": {
             "type": "object",
             "properties": {
                 "access_token": {
@@ -968,7 +974,7 @@
                 }
             }
         },
-        "github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.LogoutRequest": {
+        "domain.LogoutRequest": {
             "type": "object",
             "required": [
                 "refresh_token"
@@ -980,7 +986,7 @@
                 }
             }
         },
-        "github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.LogoutResponse": {
+        "domain.LogoutResponse": {
             "type": "object",
             "properties": {
                 "success": {
@@ -989,12 +995,15 @@
                 }
             }
         },
-        "github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.MarkMessagesReadRequest": {
+        "domain.MarkMessagesReadRequest": {
             "type": "object",
             "required": [
                 "message_ids"
             ],
             "properties": {
+                "chat_id": {
+                    "type": "string"
+                },
                 "message_ids": {
                     "type": "array",
                     "items": {
@@ -1007,7 +1016,7 @@
                 }
             }
         },
-        "github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.MarkMessagesReadResponse": {
+        "domain.MarkMessagesReadResponse": {
             "type": "object",
             "properties": {
                 "success": {
@@ -1016,7 +1025,7 @@
                 }
             }
         },
-        "github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.MentorProfile": {
+        "domain.MentorProfile": {
             "type": "object",
             "properties": {
                 "created_at": {
@@ -1036,7 +1045,7 @@
                 }
             }
         },
-        "github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.MentorUpdate": {
+        "domain.MentorUpdate": {
             "type": "object",
             "properties": {
                 "description": {
@@ -1047,13 +1056,13 @@
                 }
             }
         },
-        "github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.Message": {
+        "domain.Message": {
             "type": "object",
             "properties": {
                 "attachments": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.Attachment"
+                        "$ref": "#/definitions/domain.Attachment"
                     }
                 },
                 "chat_id": {
@@ -1078,7 +1087,7 @@
                     "type": "boolean"
                 },
                 "message_type": {
-                    "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.MessageType"
+                    "$ref": "#/definitions/domain.MessageType"
                 },
                 "read_at": {
                     "type": "string"
@@ -1094,7 +1103,7 @@
                 }
             }
         },
-        "github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.MessageType": {
+        "domain.MessageType": {
             "type": "string",
             "enum": [
                 "text",
@@ -1109,33 +1118,33 @@
                 "MessageTypeVoice"
             ]
         },
-        "github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.ProfileResponse": {
+        "domain.ProfileResponse": {
             "type": "object",
             "properties": {
                 "learning_skills": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.LearningSkill"
+                        "$ref": "#/definitions/domain.LearningSkill"
                     }
                 },
                 "mentor": {
-                    "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.MentorProfile"
+                    "$ref": "#/definitions/domain.MentorProfile"
                 },
                 "student": {
-                    "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.StudentProfile"
+                    "$ref": "#/definitions/domain.StudentProfile"
                 },
                 "teaching_skills": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.TeachingSkill"
+                        "$ref": "#/definitions/domain.TeachingSkill"
                     }
                 },
                 "user": {
-                    "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.User"
+                    "$ref": "#/definitions/domain.User"
                 }
             }
         },
-        "github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.RefreshRequest": {
+        "domain.RefreshRequest": {
             "type": "object",
             "required": [
                 "refresh_token"
@@ -1147,7 +1156,7 @@
                 }
             }
         },
-        "github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.RefreshResponse": {
+        "domain.RefreshResponse": {
             "type": "object",
             "properties": {
                 "access_token": {
@@ -1163,7 +1172,7 @@
                 }
             }
         },
-        "github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.RegisterRequest": {
+        "domain.RegisterRequest": {
             "type": "object",
             "required": [
                 "email",
@@ -1191,7 +1200,7 @@
                 }
             }
         },
-        "github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.RegisterResponse": {
+        "domain.RegisterResponse": {
             "type": "object",
             "properties": {
                 "id": {
@@ -1200,7 +1209,7 @@
                 }
             }
         },
-        "github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.StudentProfile": {
+        "domain.StudentProfile": {
             "type": "object",
             "properties": {
                 "created_at": {
@@ -1217,7 +1226,7 @@
                 }
             }
         },
-        "github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.StudentUpdate": {
+        "domain.StudentUpdate": {
             "type": "object",
             "properties": {
                 "learning_goals": {
@@ -1228,7 +1237,7 @@
                 }
             }
         },
-        "github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.TeachingSkill": {
+        "domain.TeachingSkill": {
             "type": "object",
             "properties": {
                 "created_at": {
@@ -1251,7 +1260,7 @@
                 }
             }
         },
-        "github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.TeachingSkillUpdate": {
+        "domain.TeachingSkillUpdate": {
             "type": "object",
             "required": [
                 "proficiency_level",
@@ -1269,18 +1278,18 @@
                 }
             }
         },
-        "github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.TeachingSkillsUpdate": {
+        "domain.TeachingSkillsUpdate": {
             "type": "object",
             "properties": {
                 "teaching_skills": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.TeachingSkillUpdate"
+                        "$ref": "#/definitions/domain.TeachingSkillUpdate"
                     }
                 }
             }
         },
-        "github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.UpdateProfileRequest": {
+        "domain.UpdateProfileRequest": {
             "type": "object",
             "properties": {
                 "avatar_url": {
@@ -1296,20 +1305,20 @@
                     "type": "string"
                 },
                 "learning_skills": {
-                    "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.LearningSkillsUpdate"
+                    "$ref": "#/definitions/domain.LearningSkillsUpdate"
                 },
                 "mentor_data": {
-                    "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.MentorUpdate"
+                    "$ref": "#/definitions/domain.MentorUpdate"
                 },
                 "student_data": {
-                    "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.StudentUpdate"
+                    "$ref": "#/definitions/domain.StudentUpdate"
                 },
                 "teaching_skills": {
-                    "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.TeachingSkillsUpdate"
+                    "$ref": "#/definitions/domain.TeachingSkillsUpdate"
                 }
             }
         },
-        "github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.User": {
+        "domain.User": {
             "type": "object",
             "properties": {
                 "avatar_url": {
@@ -1332,7 +1341,7 @@
                 }
             }
         },
-        "github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse": {
+        "utils.ErrorResponse": {
             "type": "object",
             "properties": {
                 "details": {
@@ -1346,7 +1355,7 @@
                 }
             }
         },
-        "github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.SuccessResponse": {
+        "utils.SuccessResponse": {
             "type": "object",
             "properties": {
                 "message": {
