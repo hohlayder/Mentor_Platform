@@ -83,6 +83,7 @@ func (h *UserHandler) GetUserByEmail(c *gin.Context) {
 // @Param id path string true "User ID"
 // @Security BearerAuth
 // @Success 204
+// @Failure 401 {object} utils.ErrorResponse
 // @Failure 404 {object} utils.ErrorResponse
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /users/{id} [delete]
