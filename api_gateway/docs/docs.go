@@ -69,6 +69,11 @@ const docTemplate = `{
         },
         "/auth/logout": {
             "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Инвалидация refresh токена",
                 "consumes": [
                     "application/json"
@@ -121,6 +126,11 @@ const docTemplate = `{
         },
         "/auth/refresh": {
             "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Получение новой пары access/refresh токенов",
                 "consumes": [
                     "application/json"
