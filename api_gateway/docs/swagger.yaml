@@ -56,6 +56,46 @@ definitions:
         example: 123e4567-e89b-12d3-a456-426614174002
         type: string
     type: object
+  domain.CreateSessionRequest:
+    properties:
+      payment_status:
+        description: '"pending", "paid", "failed"'
+        type: string
+      slot_id:
+        type: string
+      student_id:
+        type: string
+    required:
+    - slot_id
+    - student_id
+    type: object
+  domain.CreateSlotRequest:
+    properties:
+      currency:
+        type: string
+      description:
+        type: string
+      duration_minutes:
+        minimum: 1
+        type: integer
+      mentor_id:
+        type: string
+      price:
+        minimum: 0
+        type: integer
+      start_time:
+        type: string
+      status:
+        description: '"available", "booked", "closed"'
+        type: string
+      title:
+        type: string
+    required:
+    - duration_minutes
+    - mentor_id
+    - start_time
+    - title
+    type: object
   domain.Cursor:
     properties:
       created_at:
@@ -117,6 +157,15 @@ definitions:
         items:
           $ref: '#/definitions/domain.LearningSkillUpdate'
         type: array
+    type: object
+  domain.ListSessionsResponse:
+    properties:
+      sessions:
+        items:
+          $ref: '#/definitions/domain.SessionResponse'
+        type: array
+      total:
+        type: integer
     type: object
   domain.LoginRequest:
     properties:
@@ -255,6 +304,17 @@ definitions:
       user:
         $ref: '#/definitions/domain.User'
     type: object
+  domain.RateSessionRequest:
+    properties:
+      rating:
+        maximum: 5
+        minimum: 1
+        type: integer
+      review:
+        type: string
+    required:
+    - rating
+    type: object
   domain.RefreshRequest:
     properties:
       refresh_token:
@@ -299,6 +359,50 @@ definitions:
     properties:
       id:
         example: 123e4567-e89b-12d3-a456-426614174000
+        type: string
+    type: object
+  domain.SessionResponse:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: string
+      payment_status:
+        type: string
+      rating:
+        type: integer
+      review:
+        type: string
+      slot_id:
+        type: string
+      student_id:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  domain.SlotResponse:
+    properties:
+      created_at:
+        type: string
+      currency:
+        type: string
+      description:
+        type: string
+      duration_minutes:
+        type: integer
+      id:
+        type: string
+      mentor_id:
+        type: string
+      price:
+        type: integer
+      start_time:
+        type: string
+      status:
+        type: string
+      title:
+        type: string
+      updated_at:
         type: string
     type: object
   domain.StudentProfile:
@@ -371,6 +475,47 @@ definitions:
         $ref: '#/definitions/domain.StudentUpdate'
       teaching_skills:
         $ref: '#/definitions/domain.TeachingSkillsUpdate'
+    type: object
+  domain.UpdateSessionRequest:
+    properties:
+      payment_status:
+        type: string
+      rating:
+        maximum: 5
+        minimum: 1
+        type: integer
+      review:
+        type: string
+      student_id:
+        type: string
+    type: object
+  domain.UpdateSlotRequest:
+    properties:
+      currency:
+        type: string
+      description:
+        type: string
+      duration_minutes:
+        type: integer
+      price:
+        type: integer
+      start_time:
+        type: string
+      status:
+        type: string
+      title:
+        type: string
+    type: object
+  domain.UpdateSlotStatusRequest:
+    properties:
+      status:
+        enum:
+        - available
+        - booked
+        - closed
+        type: string
+    required:
+    - status
     type: object
   domain.User:
     properties:
@@ -747,6 +892,46 @@ paths:
       summary: Пометить сообщения как прочитанные
       tags:
       - chats
+  /mentors/{mentor_id}/sessions:
+    get:
+      consumes:
+      - application/json
+      description: Возвращает список всех сессий для конкретного ментора. Только сам
+        ментор может просматривать свои сессии.
+      parameters:
+      - description: ID ментора (UUID)
+        in: path
+        name: mentor_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Список сессий и общее количество
+          schema:
+            $ref: '#/definitions/domain.ListSessionsResponse'
+        "400":
+          description: Неверный ID ментора
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "401":
+          description: Не авторизован
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "403":
+          description: Нет прав доступа (не тот ментор)
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Список сессий ментора
+      tags:
+      - sessions
   /profiles/{id}:
     get:
       description: Возвращает полную информацию о профиле пользователя включая менторские/студенческие
@@ -824,6 +1009,507 @@ paths:
       summary: Обновить профиль
       tags:
       - profiles
+  /sessions:
+    post:
+      consumes:
+      - application/json
+      description: Создает новую сессию (бронирование временного слота студентом).
+        Студент может создавать сессии только для себя.
+      parameters:
+      - description: Данные для создания сессии
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/domain.CreateSessionRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: session_id и success
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Неверные входные данные
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "401":
+          description: Не авторизован
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "403":
+          description: Нет прав доступа (не студент или слот недоступен)
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "404":
+          description: Слот не найден
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "409":
+          description: Конфликт (сессия уже существует)
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Создать сессию
+      tags:
+      - sessions
+  /sessions/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Удаляет существующую сессию. Только ментор слота может удалить
+        сессию.
+      parameters:
+      - description: ID сессии (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Успешное удаление
+          schema:
+            $ref: '#/definitions/utils.SuccessResponse'
+        "400":
+          description: Неверный ID сессии
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "401":
+          description: Не авторизован
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "403":
+          description: Нет прав доступа
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "404":
+          description: Сессия не найден
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Удалить сессию
+      tags:
+      - sessions
+    get:
+      consumes:
+      - application/json
+      description: Возвращает детальную информацию о сессии по ID
+      parameters:
+      - description: ID сессии (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Информация о сессии
+          schema:
+            $ref: '#/definitions/domain.SessionResponse'
+        "400":
+          description: Неверный ID сессии
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "401":
+          description: Не авторизован
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "404":
+          description: Сессия не найден
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Получить информацию о сессии
+      tags:
+      - sessions
+    put:
+      consumes:
+      - application/json
+      description: 'Обновляет информацию о существующей сессии. Доступ имеют: ментор
+        слота ИЛИ студент сессии.'
+      parameters:
+      - description: ID сессии (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Данные для обновления
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/domain.UpdateSessionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Успешное обновление
+          schema:
+            $ref: '#/definitions/utils.SuccessResponse'
+        "400":
+          description: Неверные входные данные
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "401":
+          description: Не авторизован
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "403":
+          description: Нет прав доступа
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "404":
+          description: Сессия не найден
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Обновить сессию
+      tags:
+      - sessions
+  /sessions/{id}/rate:
+    post:
+      consumes:
+      - application/json
+      description: Добавляет оценку и отзыв к завершенной и оплаченной сессии. Только
+        студент сессии может оценить свою сессию.
+      parameters:
+      - description: ID сессии (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Оценка (1-5) и отзыв
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/domain.RateSessionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Успешная оценка
+          schema:
+            $ref: '#/definitions/utils.SuccessResponse'
+        "400":
+          description: Неверные входные данные (оценка вне диапазона 1-5)
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "401":
+          description: Не авторизован
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "403":
+          description: Нет прав доступа
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "404":
+          description: Сессия не найден
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Оценить сессию
+      tags:
+      - sessions
+  /slots:
+    post:
+      consumes:
+      - application/json
+      description: Создает новый временной слот для ментора
+      parameters:
+      - description: Данные для создания слота
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/domain.CreateSlotRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: slot_id и success
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Неверные входные данные
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "401":
+          description: Не авторизован
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "403":
+          description: Нет прав доступа
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "404":
+          description: Ресурс не найден
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "409":
+          description: Конфликт (уже существует)
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Создать слот
+      tags:
+      - slots
+  /slots/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Удаляет существующий временной слот. Только владелец слота может
+        его удалить.
+      parameters:
+      - description: ID слота (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Успешное удаление
+          schema:
+            $ref: '#/definitions/utils.SuccessResponse'
+        "400":
+          description: Неверный ID слота
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "401":
+          description: Не авторизован
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "403":
+          description: Нет прав доступа (не владелец)
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "404":
+          description: Слот не найден
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Удалить слот
+      tags:
+      - slots
+    get:
+      consumes:
+      - application/json
+      description: Возвращает детальную информацию о временном слоте по ID
+      parameters:
+      - description: ID слота (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Информация о слоте
+          schema:
+            $ref: '#/definitions/domain.SlotResponse'
+        "400":
+          description: Неверный ID слота
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "401":
+          description: Не авторизован
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "404":
+          description: Слот не найден
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Получить информацию о слоте
+      tags:
+      - slots
+    put:
+      consumes:
+      - application/json
+      description: Обновляет информацию о существующем временном слоте. Только владелец
+        слота может его обновить.
+      parameters:
+      - description: ID слота (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Данные для обновления
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/domain.UpdateSlotRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Успешное обновление
+          schema:
+            $ref: '#/definitions/utils.SuccessResponse'
+        "400":
+          description: Неверные входные данные
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "401":
+          description: Не авторизован
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "403":
+          description: Нет прав доступа (не владелец)
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "404":
+          description: Слот не найден
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Обновить слот
+      tags:
+      - slots
+  /slots/{id}/status:
+    patch:
+      consumes:
+      - application/json
+      description: 'Обновляет статус существующего временного слота. Допустимые статусы:
+        "available", "booked", "closed". Только владелец слота может изменить статус.'
+      parameters:
+      - description: ID слота (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Новый статус
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/domain.UpdateSlotStatusRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Успешное обновление статуса
+          schema:
+            $ref: '#/definitions/utils.SuccessResponse'
+        "400":
+          description: Неверные входные данные или недопустимый статус
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "401":
+          description: Не авторизован
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "403":
+          description: Нет прав доступа (не владелец)
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "404":
+          description: Слот не найден
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Обновить статус слота
+      tags:
+      - slots
+  /students/{student_id}/sessions:
+    get:
+      consumes:
+      - application/json
+      description: Возвращает список всех сессий для конкретного студента. Только
+        сам студент может просматривать свои сессии.
+      parameters:
+      - description: ID студента (UUID)
+        in: path
+        name: student_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Список сессий и общее количество
+          schema:
+            $ref: '#/definitions/domain.ListSessionsResponse'
+        "400":
+          description: Неверный ID студента
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "401":
+          description: Не авторизован
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "403":
+          description: Нет прав доступа (не тот студент)
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Список сессий студента
+      tags:
+      - sessions
   /users/{id}:
     delete:
       description: Удаляет пользователя и все связанные данные

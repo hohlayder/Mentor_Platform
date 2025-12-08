@@ -52,7 +52,3 @@ type LogoutResponse struct {
 	Success bool `json:"success" example:"true"`
 }
 
-type ErrorResponse struct {
-	Error   string `json:"error" example:"Bad Request"`
-	Message string `json:"message" example:"Invalid request body"`
-}
