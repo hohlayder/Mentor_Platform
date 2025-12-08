@@ -5,15 +5,17 @@ import (
 )
 
 type Slot struct {
-	SlotId          string    `db:"slot_id"`
+	SlotId          string    `db:"id"`
 	MentorId        string    `db:"mentor_id"`
 	Title           string    `db:"title"`
-	Description     string    `db:"description"`
+	Description     *string   `db:"description"`
 	StartTime       time.Time `db:"start_time"`
 	DurationMinutes int32     `db:"duration_minutes"`
 	Price           int64     `db:"price"`
 	Currency        string    `db:"currency"`
 	Status          string    `db:"status"`
+	CreatedAt       time.Time `db:"created_at"`
+	UpdatedAt       time.Time `db:"updated_at"`
 }
 
 type Session struct {
@@ -21,23 +23,22 @@ type Session struct {
 	SlotId        string    `db:"slot_id"`
 	StudentId     string    `db:"student_id"`
 	PaymentStatus string    `db:"payment_status"`
-	Rating        int32     `db:"rating"`
-	Review        string    `db:"review"`
+	Rating        *int32    `db:"rating"`
+	Review        *string   `db:"review"`
 	CreatedAt     time.Time `db:"created_at"`
 	UpdatedAt     time.Time `db:"updated_at"`
 }
 
 type SessionUpdate struct {
-	Id            string    `db:"id"`
-	StudentId     *string    `db:"student_id"`
-	PaymentStatus *string    `db:"payment_status"`
-	Rating        *int32     `db:"rating"`
-	Review        *string    `db:"review"`
+	Id            string  `db:"id"`
+	StudentId     *string `db:"student_id"`
+	PaymentStatus *string `db:"payment_status"`
+	Rating        *int32  `db:"rating"`
+	Review        *string `db:"review"`
 }
 
 type SlotUpdate struct {
 	SlotId          string     `db:"slot_id"`
-	MentorId        *string    `db:"mentor_id"`
 	Title           *string    `db:"title"`
 	Description     *string    `db:"description"`
 	StartTime       *time.Time `db:"start_time"`
@@ -45,4 +46,15 @@ type SlotUpdate struct {
 	Price           *int64     `db:"price"`
 	Currency        *string    `db:"currency"`
 	Status          *string    `db:"status"`
+}
+
+type UpdateSessionRequest struct {
+	SessionID string
+	Status    string
+}
+
+type RateSessionRequest struct {
+	SessionID string
+	Rating    int32
+	Review    string
 }
