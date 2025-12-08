@@ -2,7 +2,9 @@ package postgres
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
+	"strings"
 
 	"github.com/hohlayder/Mentor_Platform/session_service/internal/domain"
 	"github.com/jmoiron/sqlx"
@@ -17,91 +19,126 @@ func NewSlotRepository(db *sqlx.DB) *SlotRepository {
 }
 
 func (r *SlotRepository) CreateSlot(ctx context.Context, slot *domain.Slot) (string, error) {
-	query := `INSERT INTO slots (mentor_id, title, description, start_time, duration_minutes, price, currency, status)
-              VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`
+	query := `
+		INSERT INTO slots (
+			mentor_id, title, description, start_time, 
+			duration_minutes, price, currency, status
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		RETURNING id
+	`
 
 	var slotID string
-	err := r.db.QueryRowContext(ctx, query, slot.MentorId, slot.Title, slot.Description, slot.StartTime,
-		slot.DurationMinutes, slot.Price, slot.Currency, slot.Status).Scan(&slotID)
+	err := r.db.QueryRowContext(ctx, query,
+		slot.MentorId,
+		slot.Title,
+		slot.Description,
+		slot.StartTime,
+		slot.DurationMinutes,
+		slot.Price,
+		slot.Currency,
+		slot.Status,
+	).Scan(&slotID)
+
 	if err != nil {
-		return "", fmt.Errorf("error creating slot: %v", err)
+		if strings.Contains(err.Error(), "no_overlapping_slots") {
+			return "", fmt.Errorf("overlapping time slot")
+		}
+		if strings.Contains(err.Error(), "check constraint") {
+			return "", fmt.Errorf("invalid slot status")
+		}
+		return "", fmt.Errorf("failed to create slot: %w", err)
 	}
 
 	return slotID, nil
 }
 
 func (r *SlotRepository) GetSlot(ctx context.Context, slotId string) (*domain.Slot, error) {
-	query := `SELECT id, mentor_id, title, description, start_time, duration_minutes, price, currency, status 
-              FROM slots WHERE id = $1`
+	query := `
+		SELECT 
+			id, mentor_id, status, title, description, 
+			start_time, duration_minutes, price, currency,
+			created_at, updated_at
+		FROM slots 
+		WHERE id = $1
+	`
 
 	var slot domain.Slot
 	err := r.db.GetContext(ctx, &slot, query, slotId)
-
 	if err != nil {
-		return nil, fmt.Errorf("error getting slot: %v", err)
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("slot not found")
+		}
+		return nil, fmt.Errorf("failed to get slot: %w", err)
 	}
 
 	return &slot, nil
 }
 
 func (r *SlotRepository) UpdateSlot(ctx context.Context, slot *domain.SlotUpdate) error {
+	updates := []string{}
 	args := []interface{}{}
-	countArgs := 0
-	query := `UPDATE slots SET `
-	if slot.MentorId != nil {
-		args = append(args, slot.MentorId)
-		countArgs++
-		query += fmt.Sprintf("mentor_id=$%d ", countArgs)
-	}
+	argIdx := 1
 
 	if slot.Title != nil {
-		args = append(args, slot.Title)
-		countArgs++
-		query += fmt.Sprintf("title=$%d ", countArgs)
+		updates = append(updates, fmt.Sprintf("title = $%d", argIdx))
+		args = append(args, *slot.Title)
+		argIdx++
 	}
-
 	if slot.Description != nil {
-		args = append(args, slot.Description)
-		countArgs++
-		query += fmt.Sprintf("description=$%d ", countArgs)
+		updates = append(updates, fmt.Sprintf("description = $%d", argIdx))
+		args = append(args, *slot.Description)
+		argIdx++
 	}
-
 	if slot.StartTime != nil {
-		args = append(args, slot.StartTime)
-		countArgs++
-		query += fmt.Sprintf("start_time$%d ", countArgs)
+		updates = append(updates, fmt.Sprintf("start_time = $%d", argIdx))
+		args = append(args, *slot.StartTime)
+		argIdx++
 	}
-
 	if slot.DurationMinutes != nil {
-		args = append(args, slot.DurationMinutes)
-		countArgs++
-		query += fmt.Sprintf("duration_minutes=$%d ", countArgs)
+		updates = append(updates, fmt.Sprintf("duration_minutes = $%d", argIdx))
+		args = append(args, *slot.DurationMinutes)
+		argIdx++
 	}
-
 	if slot.Price != nil {
-		args = append(args, slot.Price)
-		countArgs++
-		query += fmt.Sprintf("price=$%d ", countArgs)
+		updates = append(updates, fmt.Sprintf("price = $%d", argIdx))
+		args = append(args, *slot.Price)
+		argIdx++
 	}
-
 	if slot.Currency != nil {
-		args = append(args, slot.Currency)
-		countArgs++
-		query += fmt.Sprintf("currency=$%d ", countArgs)
+		updates = append(updates, fmt.Sprintf("currency = $%d", argIdx))
+		args = append(args, *slot.Currency)
+		argIdx++
 	}
-
 	if slot.Status != nil {
-		args = append(args, slot.Status)
-		countArgs++
-		query += fmt.Sprintf("status=$%d ", countArgs)
+		updates = append(updates, fmt.Sprintf("status = $%d", argIdx))
+		args = append(args, *slot.Status)
+		argIdx++
 	}
 
-	query += fmt.Sprintf("WHERE id=$%d", countArgs+1)
-	args = append(args, slot.SlotId)
+	if len(updates) == 0 {
+		return fmt.Errorf("no fields to update")
+	}
 
-	_, err := r.db.ExecContext(ctx, query, args...)
+	updates = append(updates, "updated_at = NOW()")
+	args = append(args, slot.SlotId)
+	query := fmt.Sprintf("UPDATE slots SET %s WHERE id = $%d",
+		strings.Join(updates, ", "), argIdx)
+
+	result, err := r.db.ExecContext(ctx, query, args...)
 	if err != nil {
-		return fmt.Errorf("error updating slot: %v", err)
+		if strings.Contains(err.Error(), "no_overlapping_slots") {
+			return fmt.Errorf("overlapping time slot")
+		}
+		return fmt.Errorf("failed to update slot: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get rows affected: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		return fmt.Errorf("slot not found")
 	}
 
 	return nil
@@ -110,10 +147,18 @@ func (r *SlotRepository) UpdateSlot(ctx context.Context, slot *domain.SlotUpdate
 func (r *SlotRepository) DeleteSlot(ctx context.Context, slotId string) error {
 	query := `DELETE FROM slots WHERE id = $1`
 
-	_, err := r.db.ExecContext(ctx, query, slotId)
-
+	result, err := r.db.ExecContext(ctx, query, slotId)
 	if err != nil {
-		return fmt.Errorf("error deleting slot: %v", err)
+		return fmt.Errorf("failed to delete slot: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get rows affected: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		return fmt.Errorf("slot not found")
 	}
 
 	return nil
@@ -122,16 +167,40 @@ func (r *SlotRepository) DeleteSlot(ctx context.Context, slotId string) error {
 func (r *SlotRepository) CheckSlotExists(ctx context.Context, slotId string) (bool, error) {
 	var exists bool
 	
-	query := `
-		SELECT EXISTS(
-			SELECT 1 FROM slots
-			WHERE id = $1
-		)`
+	query := `SELECT EXISTS(SELECT 1 FROM slots WHERE id = $1)`
 	
 	err := r.db.GetContext(ctx, &exists, query, slotId)
 	if err != nil {
-		return false, fmt.Errorf("failed to check chat exists: %w", err)
+		return false, fmt.Errorf("failed to check slot exists: %w", err)
 	}
 	
 	return exists, nil
+}
+
+func (r *SlotRepository) UpdateSlotStatus(ctx context.Context, slotID string, status string) error {
+    query := `
+        UPDATE slots 
+        SET status = $1, 
+            updated_at = NOW()
+        WHERE id = $2
+    `
+    
+    result, err := r.db.ExecContext(ctx, query, status, slotID)
+    if err != nil {
+        if strings.Contains(err.Error(), "check constraint") {
+            return fmt.Errorf("invalid status value")
+        }
+        return fmt.Errorf("failed to update slot status: %w", err)
+    }
+    
+    rowsAffected, err := result.RowsAffected()
+    if err != nil {
+        return fmt.Errorf("failed to get rows affected: %w", err)
+    }
+    
+    if rowsAffected == 0 {
+        return fmt.Errorf("slot not found")
+    }
+    
+    return nil
 }
