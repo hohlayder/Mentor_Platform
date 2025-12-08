@@ -12,6 +12,7 @@ type Client struct {
 	User *UserClient
 	Auth *AuthClient
 	Chat *ChatClient
+	Session *SessionClient
 }
 
 func NewClient() (*Client, error) {	
@@ -30,10 +31,16 @@ func NewClient() (*Client, error) {
 		return nil, err
 	}
 
+	sessionConn, err := grpc.NewClient(os.Getenv("SESSION_SERVICE_URL"), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		return nil, err
+	}
+
 	return &Client{
 		User: NewUserClient(userConn),
 		Auth: NewAuthClient(authConn),
 		Chat: NewChatClient(chatConn),
+		Session: NewSessionClient(sessionConn),
 	}, nil
 }
 
@@ -56,6 +63,13 @@ func (c *Client) Close() error {
 	if c.Chat != nil {
 		if closeErr := c.Chat.Close(); closeErr != nil {
 			slog.Error("failed to close chat client", "err", closeErr)
+			err = closeErr
+		}
+	}
+
+	if c.Session != nil {
+		if closeErr := c.Session.Close(); closeErr != nil {
+			slog.Error("failed to close session client", "err", closeErr)
 			err = closeErr
 		}
 	}
