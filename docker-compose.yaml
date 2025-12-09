@@ -34,6 +34,22 @@ services:
       - redis_data:/data
     networks:
       - ${NETWORK_NAME}
+  post_service_db:
+    image: postgres:16
+    container_name: post_service_db
+    environment:
+      POSTGRES_DB: post_service_db
+      POSTGRES_USER: post_service
+      POSTGRES_PASSWORD: post_service
+    ports:
+      - "5434:5432"
+    volumes:
+      - post_service_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U post_service -d post_service_db" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
   user-db:
     image: postgres:15-alpine
     container_name: user-db
@@ -144,12 +160,14 @@ services:
       - redis
     networks:
       - ${NETWORK_NAME}
-  
+
 volumes:
   redis_data:
   user_data:
   auth_data:
   chat_data:
+  post_service_db_data:
+
 
 networks:
   my-app-network:
