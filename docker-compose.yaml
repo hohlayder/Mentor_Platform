@@ -194,6 +194,54 @@ services:
       - api-gateway
     networks:
       - ${NETWORK_NAME}
+  user-migrate:
+    image: migrate/migrate:v4.16.2
+    depends_on:
+      - user-db
+    volumes:
+      - ./user_service/migrations:/migrations
+    command:
+      - "-path=/migrations"
+      - "-database=postgres://${DB_USER}:${DB_PASSWORD}@user-db:5432/${USER_DB_NAME}?sslmode=disable"
+      - "up"
+    networks:
+      - ${NETWORK_NAME}
+  auth-migrate:
+    image: migrate/migrate:v4.16.2
+    depends_on:
+      - auth-db
+    volumes:
+      - ./auth_service/migrations:/migrations
+    command:
+      - "-path=/migrations"
+      - "-database=postgres://${DB_USER}:${DB_PASSWORD}@auth-db:5432/${AUTH_DB_NAME}?sslmode=disable"
+      - "up"
+    networks:
+      - ${NETWORK_NAME}
+  chat-migrate:
+    image: migrate/migrate:v4.16.2
+    depends_on:
+      - chat-db
+    volumes:
+      - ./chat_service/migrations:/migrations
+    command:
+      - "-path=/migrations"
+      - "-database=postgres://${DB_USER}:${DB_PASSWORD}@chat-db:5432/${CHAT_DB_NAME}?sslmode=disable"
+      - "up"
+    networks:
+      - ${NETWORK_NAME}
+  session-migrate:
+    image: migrate/migrate:v4.16.2
+    depends_on:
+      - session-db
+    volumes:
+      - ./session_service/migrations:/migrations
+    command:
+      - "-path=/migrations"
+      - "-database=postgres://${DB_USER}:${DB_PASSWORD}@session-db:5432/${SESSION_DB_NAME}?sslmode=disable"
+      - "up"
+    networks:
+      - ${NETWORK_NAME}
 
 volumes:
   redis_data:
