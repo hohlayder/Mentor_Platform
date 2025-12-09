@@ -36,7 +36,6 @@ func NewUserHandler(userService UserService) *UserHandler {
 // @Tags users
 // @Produce json
 // @Param id path string true "User ID"
-// @Security BearerAuth
 // @Success 200 {object} domain.User
 // @Failure 404 {object} utils.ErrorResponse
 // @Failure 500 {object} utils.ErrorResponse
@@ -59,7 +58,6 @@ func (h *UserHandler) GetUserByID(c *gin.Context) {
 // @Tags users
 // @Produce json
 // @Param email path string true "Email пользователя"
-// @Security BearerAuth
 // @Success 200 {object} domain.User
 // @Failure 404 {object} utils.ErrorResponse
 // @Failure 500 {object} utils.ErrorResponse
@@ -83,6 +81,8 @@ func (h *UserHandler) GetUserByEmail(c *gin.Context) {
 // @Param id path string true "User ID"
 // @Security BearerAuth
 // @Success 204
+// @Failure 401 {object} utils.ErrorResponse
+// @Failure 403 {object} utils.ErrorResponse
 // @Failure 404 {object} utils.ErrorResponse
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /users/{id} [delete]
@@ -107,7 +107,14 @@ func (h *UserHandler) DeleteUser(c *gin.Context) {
         return
     }
     
-    c.JSON(http.StatusOK, success)
+    if success {
+        c.Status(http.StatusNoContent)
+    } else {
+        c.JSON(http.StatusInternalServerError, utils.ErrorResponse{
+            Error:   "INTERNAL_ERROR",
+            Message: "Failed to delete user",
+        })
+    }
 }
 
 // GetProfile возвращает полный профиль пользователя
@@ -116,7 +123,6 @@ func (h *UserHandler) DeleteUser(c *gin.Context) {
 // @Tags profiles
 // @Produce json
 // @Param id path string true "User ID"
-// @Security BearerAuth
 // @Success 200 {object} domain.ProfileResponse
 // @Failure 404 {object} utils.ErrorResponse
 // @Failure 500 {object} utils.ErrorResponse
@@ -144,6 +150,9 @@ func (h *UserHandler) GetProfile(c *gin.Context) {
 // @Security BearerAuth
 // @Success 200 {object} utils.SuccessResponse
 // @Failure 400 {object} utils.ErrorResponse
+// @Failure 401 {object} utils.ErrorResponse
+// @Failure 403 {object} utils.ErrorResponse
+// @Failure 404 {object} utils.ErrorResponse
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /profiles/{id} [put]
 func (h *UserHandler) UpdateProfile(c *gin.Context) {
@@ -177,7 +186,9 @@ func (h *UserHandler) UpdateProfile(c *gin.Context) {
         return
     }
     
-    c.JSON(http.StatusOK, success)
+    c.JSON(http.StatusOK, utils.SuccessResponse{
+        Success: success,
+    })
 }
 
 
