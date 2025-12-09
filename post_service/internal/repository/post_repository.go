@@ -14,14 +14,14 @@ import (
 
 // Post — доменная модель поста в слое репозитория.
 type Post struct {
-	ID        string    `db:"id"`
-	AuthorId  string    `db:"author_id"`
-	Title     string    `db:"title"`
-	Content   string    `db:"content"`
-	Tags      []string  `db:"tags"`
-	Status    string    `db:"status"`
-	CreatedAt time.Time `db:"created_at"`
-	UpdatedAt time.Time `db:"updated_at"`
+	ID        string         `db:"id"`
+	AuthorId  string         `db:"author_id"`
+	Title     string         `db:"title"`
+	Content   string         `db:"content"`
+	Tags      pq.StringArray `db:"tags"` // ВАЖНО: pq.StringArray для TEXT[]
+	Status    string         `db:"status"`
+	CreatedAt time.Time      `db:"created_at"`
+	UpdatedAt time.Time      `db:"updated_at"`
 }
 
 // ErrNotFound — доменная ошибка "пост не найден".
@@ -87,7 +87,7 @@ func (r *postRepository) Save(ctx context.Context, post *Post) error {
 		post.AuthorId,
 		post.Title,
 		post.Content,
-		pq.StringArray(post.Tags),
+		post.Tags, // pq.StringArray
 		post.Status,
 		post.CreatedAt,
 		post.UpdatedAt,
@@ -243,7 +243,7 @@ func (r *postRepository) Update(ctx context.Context, post *Post, fields []string
 			args = append(args, post.Content)
 		case "tags":
 			setParts = append(setParts, fmt.Sprintf("%s = $%d", col, argIndex))
-			args = append(args, pq.StringArray(post.Tags))
+			args = append(args, post.Tags) // pq.StringArray
 		case "status":
 			setParts = append(setParts, fmt.Sprintf("%s = $%d", col, argIndex))
 			args = append(args, post.Status)

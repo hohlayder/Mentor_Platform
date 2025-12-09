@@ -7,6 +7,7 @@ import (
 
 	postsv1 "github.com/Sergey-1214/contracts_mentors/post/v1"
 	"github.com/hohlayder/Mentor_Platform/post_service/internal/repository"
+	"github.com/lib/pq"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -37,8 +38,8 @@ func (s *PostService) CreatePost(ctx context.Context, req *postsv1.CreatePostReq
 		AuthorId: req.GetAuthorId(),
 		Title:    req.GetTitle(),
 		Content:  req.GetContent(),
-		Tags:     req.GetTags(),
-		Status:   req.GetStatus().String(), // enum -> string
+		Tags:     pq.StringArray(req.GetTags()), // []string -> pq.StringArray
+		Status:   req.GetStatus().String(),
 	}
 
 	if err := s.postRepository.Save(ctx, post); err != nil {
@@ -209,8 +210,6 @@ func (s *PostService) UpdatePost(ctx context.Context, req *postsv1.UpdatePostReq
 			switch p {
 			case "title", "content", "tags", "status":
 				fieldsToUpdate = append(fieldsToUpdate, p)
-			default:
-				// неизвестные поля игнорируем
 			}
 		}
 	}
@@ -223,7 +222,7 @@ func (s *PostService) UpdatePost(ctx context.Context, req *postsv1.UpdatePostReq
 		case "content":
 			current.Content = reqPost.GetContent()
 		case "tags":
-			current.Tags = reqPost.GetTags()
+			current.Tags = pq.StringArray(reqPost.GetTags())
 		case "status":
 			current.Status = reqPost.GetStatus().String()
 		}
@@ -269,7 +268,6 @@ func (s *PostService) DeletePost(ctx context.Context, req *postsv1.DeletePostReq
 		return nil, status.Errorf(codes.Internal, "failed to delete post: %v", err)
 	}
 
-	// По задумке DeletePostResponse пустой — ок.
 	return &postsv1.DeletePostResponse{}, nil
 }
 
@@ -323,7 +321,6 @@ func (s *PostService) RatePost(ctx context.Context, req *postsv1.RatePostRequest
 // Helpers
 // -----------------------------------------------------------------------------
 
-// postToProto - преобразование доменной модели Post в gRPC-модель posts.v1.Post.
 func postToProto(post *repository.Post) *postsv1.Post {
 	var statusEnum postsv1.PostStatus
 	if post.Status != "" {
@@ -339,7 +336,7 @@ func postToProto(post *repository.Post) *postsv1.Post {
 		AuthorId:  post.AuthorId,
 		Title:     post.Title,
 		Content:   post.Content,
-		Tags:      post.Tags,
+		Tags:      []string(post.Tags), // pq.StringArray -> []string
 		Status:    statusEnum,
 		CreatedAt: timestamppb.New(post.CreatedAt),
 		UpdatedAt: timestamppb.New(post.UpdatedAt),
