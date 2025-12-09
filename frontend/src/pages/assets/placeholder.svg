@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800">
+  <rect width="1200" height="800" fill="#e6eef8"/>
+  <g font-family="Arial, Helvetica, sans-serif" fill="#7b8aa3" font-size="36">
+    <text x="50%" y="46%" dominant-baseline="middle" text-anchor="middle">Placeholder Image</text>
+    <text x="50%" y="56%" dominant-baseline="middle" text-anchor="middle" font-size="20">replace with your assets</text>
+  </g>
+</svg>

@@ -1,0 +1,132 @@
+/* full consolidated stylesheet (same base used earlier) */
+/* I'll paste the full CSS block here — it is the same comprehensive stylesheet previously provided,
+   with added rules for dashboard tables, forms and accordion panels. */
+
+/* --- palette & base --- */
+:root{
+  --accent: #4F46E5;
+  --accent-2: #06B6D4;
+  --accent-light: #EEF2FF;
+  --accent-lightest: #F5F5FF;
+  --accent-dark: #312E81;
+  --muted: #6B7280;
+  --glass-light: rgba(10,15,30,0.04);
+
+  --max-w:1200px; --radius:12px; --gap-sm:8px; --gap-md:16px; --gap-lg:24px;
+  --shadow-sm:0 6px 18px rgba(10,15,30,0.06); --transition:180ms cubic-bezier(.2,.9,.2,1);
+}
+
+/* Theme */
+body[data-theme="light"]{--bg:#F9FAFB;--surface:#FFFFFF;--text:#0F172A;--muted:#6B7280;--glass:var(--glass-light);background:var(--bg);color:var(--text)}
+body[data-theme="dark"]{--bg:#0B1220;--surface:#0F1724;--text:#E6EEF3;--muted:#94A3B8;--glass:rgba(255,255,255,0.03);background:var(--bg);color:var(--text)}
+
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;font-family:Inter,ui-sans-serif,system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+.container{max-width:var(--max-w);margin:0 auto;padding:var(--gap-lg)}
+
+/* Header */
+.header{display:flex;align-items:center;justify-content:space-between;gap:var(--gap-md);padding:12px 0;position:sticky;top:0;background:transparent;backdrop-filter:blur(4px);z-index:60;border-bottom:1px solid var(--glass)}
+.brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--text);font-weight:700}
+.logo{width:44px;height:44px;border-radius:10px;background:linear-gradient(135deg,var(--accent),var(--accent-2));color:#fff;display:grid;place-content:center;font-weight:800;box-shadow:var(--shadow-sm)}
+.search{flex:1;display:flex;align-items:center;gap:8px;min-width:160px}
+.search input{flex:1;padding:10px 12px;border-radius:10px;border:1px solid var(--glass);background:transparent;color:var(--text);outline:none}
+.header-nav{display:flex;align-items:center;gap:8px}
+
+/* Buttons */
+.btn{padding:8px 12px;border-radius:10px;border:0;cursor:pointer;font-weight:600;transition:all var(--transition);background:transparent;color:var(--text)}
+.btn-ghost{border:1px solid rgba(0,0,0,0.04);background:transparent}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-outline{background:transparent;border:1px solid rgba(0,0,0,0.06)}
+
+/* Hero / Sections */
+.hero{display:flex;gap:24px;align-items:center;margin:20px 0;padding:18px;border-radius:var(--radius);background:linear-gradient(180deg, rgba(255,255,255,0.6), transparent);box-shadow:var(--shadow-sm)}
+.hero-left{flex:1}
+.lead{color:var(--muted);margin:6px 0}
+
+/* Card */
+.card{background:var(--surface);border-radius:var(--radius);padding:12px;box-shadow:var(--shadow-sm)}
+
+/* Courses container */
+.courses-container{display:flex;gap:var(--gap-md);align-items:flex-start}
+.sidebar{flex:0 0 240px;background:var(--surface);border-radius:var(--radius);padding:16px;border:1px solid var(--glass);box-shadow:var(--shadow-sm)}
+.filter-group{margin-bottom:12px}
+.filter-group .heading{display:flex;justify-content:space-between;align-items:center;cursor:pointer;font-weight:700;padding:6px 0}
+.filter-group .chips{display:none;margin-top:8px;gap:8px;flex-wrap:wrap}
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chip{padding:6px 10px;border-radius:999px;background:transparent;border:1px solid rgba(0,0,0,0.06);cursor:pointer;transition:all var(--transition)}
+.chip:hover{transform:translateY(-2px)}
+.chip.active{background:var(--accent);color:#fff;border-color:transparent}
+
+/* Courses grid */
+.courses-grid{flex:1;display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px}
+.course{display:flex;flex-direction:column;border-radius:12px;overflow:hidden;background:var(--surface);border:1px solid var(--glass);transition:transform var(--transition)}
+.course:hover{transform:translateY(-6px)}
+.course .thumb{height:140px;width:100%;object-fit:cover}
+.course .c-body{padding:12px}
+.title{font-weight:700}
+.meta{font-size:13px;color:var(--muted)}
+
+/* Teachers grid */
+.teachers-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:12px}
+.teacher{display:flex;align-items:center;gap:8px}
+
+/* Chat */
+.chat-layout{display:flex;gap:16px}
+.chat-list{flex:0 0 260px;background:var(--surface);border-radius:12px;padding:8px;border:1px solid var(--glass);box-shadow:var(--shadow-sm);height:560px;overflow:auto}
+.chat-window{flex:1;display:flex;flex-direction:column;gap:12px;background:var(--surface);border-radius:12px;padding:12px;border:1px solid var(--glass);box-shadow:var(--shadow-sm)}
+.chat-header{display:flex;justify-content:space-between;align-items:center;padding-bottom:8px;border-bottom:1px solid var(--glass);font-weight:700}
+.messages{flex:1;overflow:auto;display:flex;flex-direction:column;gap:10px;padding:8px}
+.msg{max-width:70%;padding:10px;border-radius:12px}
+.msg.sent{align-self:flex-end;background:linear-gradient(90deg,var(--accent),var(--accent-2));color:#042230}
+.msg.received{align-self:flex-start;background:linear-gradient(180deg,rgba(255,255,255,0.04),transparent);border:1px solid var(--glass)}
+
+/* Booking grid */
+.booking-grid{display:flex;gap:12px;overflow:auto;padding:8px 0}
+.booking-column{flex:0 0 140px;background:var(--surface);border-radius:12px;padding:10px;border:1px solid var(--glass)}
+.booking-date{text-align:center;font-weight:700;margin-bottom:8px}
+.slot{margin:6px 0;padding:8px;border-radius:10px;text-align:center;cursor:pointer;border:1px solid transparent;transition:all var(--transition)}
+.slot.available{background:var(--accent-light);color:var(--accent-dark)}
+.slot.available:hover{background:var(--accent);color:#fff}
+.slot.selected{background:var(--accent);color:#fff;font-weight:700;border-color:transparent}
+.slot.unavailable{background:rgba(0,0,0,0.03);color:var(--muted);cursor:not-allowed}
+
+/* Notifications */
+.notifications-list{display:flex;flex-direction:column;gap:12px}
+.notification{padding:12px;border-radius:10px;background:var(--surface);border:1px solid var(--glass)}
+.notification.unread{border-left:4px solid var(--accent);background:var(--accent-lightest)}
+.notification.read{opacity:0.8}
+.notification .time{font-size:12px;color:var(--muted);margin-top:8px}
+
+/* Footer */
+.footer{margin-top:28px;background:var(--surface);border-radius:12px;padding:20px;border:1px solid var(--glass)}
+.footer-stats{display:flex;gap:12px;justify-content:space-around;margin-bottom:18px;flex-wrap:wrap}
+.footer-stats > div{flex:1;min-width:160px;background:var(--accent);color:#fff;padding:14px;border-radius:10px;box-shadow:var(--shadow-sm);text-align:center;font-weight:700}
+.footer-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px}
+.footer a{display:block;color:var(--muted);text-decoration:none;margin-bottom:8px}
+.footer a:hover{text-decoration:underline;color:var(--accent)}
+.footer .socials{display:flex;gap:10px;align-items:center}
+.footer .socials div{width:36px;height:36px;border-radius:50%;background:var(--accent);color:#fff;display:grid;place-content:center;cursor:pointer;transition:transform var(--transition)}
+.footer .socials div:hover{transform:scale(1.08)}
+
+/* Dashboard table small tweaks */
+table{width:100%;border-collapse:collapse}
+thead th{padding:12px;text-align:left}
+tbody td{padding:12px;border-bottom:1px solid var(--glass)}
+
+/* Form basics */
+input[type="text"],input[type="email"],input[type="password"],input[type="number"],select,textarea{
+  font:inherit;
+  border:1px solid var(--glass);
+  background:transparent;
+  color:inherit;
+  padding:10px;border-radius:8px;outline:none;
+}
+
+/* Accordion (FAQ) */
+.accordion .acc-toggle{width:100%;text-align:left;padding:12px;border-radius:8px;border:1px solid var(--glass);background:transparent;cursor:pointer;display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.accordion .acc-panel{padding:8px 12px;background:transparent;border-left:3px solid rgba(0,0,0,0.02);border-radius:6px}
+
+/* Responsive */
+@media(max-width:1100px){.chat-list{flex:0 0 220px}.booking-column{flex:0 0 120px}}
+@media(max-width:900px){.courses-container{flex-direction:column}.sidebar{width:100%}.courses-grid{grid-template-columns:repeat(auto-fill,minmax(200px,1fr))}}
+@media(max-width:520px){.courses-grid{grid-template-columns:1fr}.footer-stats{flex-direction:column;gap:10px}.header .search{display:none}}
