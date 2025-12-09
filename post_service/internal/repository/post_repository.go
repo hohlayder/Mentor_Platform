@@ -1,321 +1,330 @@
-package service
+package repository
 
 import (
 	"context"
+	"database/sql"
 	"errors"
-	"strconv"
+	"fmt"
+	"time"
 
-	postsv1 "github.com/Sergey-1214/contracts_mentors/post/v1"
-	"github.com/hohlayder/Mentor_Platform/post_service/internal/repository"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
-	"google.golang.org/protobuf/types/known/timestamppb"
+	"github.com/google/uuid"
+	"github.com/jmoiron/sqlx"
+	"github.com/lib/pq"
 )
 
-// PostService - структура для обработки логики работы с постами.
-type PostService struct {
-	postsv1.UnimplementedPostServiceServer
-	postRepository   repository.PostRepository
-	ratingRepository repository.RatingRepository
+// Post — доменная модель поста в слое репозитория.
+type Post struct {
+	ID        string    `db:"id"`
+	AuthorId  string    `db:"author_id"`
+	Title     string    `db:"title"`
+	Content   string    `db:"content"`
+	Tags      []string  `db:"tags"`
+	Status    string    `db:"status"`
+	CreatedAt time.Time `db:"created_at"`
+	UpdatedAt time.Time `db:"updated_at"`
 }
 
-// NewPostService - конструктор для PostService.
-func NewPostService(postRepo repository.PostRepository, ratingRepo repository.RatingRepository) *PostService {
-	return &PostService{
-		postRepository:   postRepo,
-		ratingRepository: ratingRepo,
-	}
+// ErrNotFound — доменная ошибка "пост не найден".
+var ErrNotFound = errors.New("post not found")
+
+// ListParams — параметры для выборки списка постов.
+type ListParams struct {
+	Limit       int
+	Offset      int
+	AuthorID    string
+	Status      string
+	Tags        []string
+	SearchQuery string
+	SortField   string // "created_at", "updated_at", "title"
+	SortOrder   string // "ASC" или "DESC"
 }
 
-// CreatePost - метод для создания поста.
-func (s *PostService) CreatePost(ctx context.Context, req *postsv1.CreatePostRequest) (*postsv1.CreatePostResponse, error) {
-	post := &repository.Post{
-		AuthorId: req.GetAuthorId(),
-		Title:    req.GetTitle(),
-		Content:  req.GetContent(),
-		Tags:     req.GetTags(),
-		Status:   req.GetStatus().String(), // enum -> string
-	}
-
-	if err := s.postRepository.Save(ctx, post); err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to create post: %v", err)
-	}
-
-	respPost := postToProto(post)
-	respPost.AverageRating = 0
-	respPost.RatingsCount = 0
-
-	return &postsv1.CreatePostResponse{
-		Post: respPost,
-	}, nil
+// PostRepository — интерфейс репозитория постов.
+type PostRepository interface {
+	Save(ctx context.Context, post *Post) error
+	GetByID(ctx context.Context, id string) (*Post, error)
+	List(ctx context.Context, params ListParams) ([]Post, int32, error)
+	Update(ctx context.Context, post *Post, fields []string) (*Post, error)
+	DeleteByID(ctx context.Context, id string) error
 }
 
-// GetPost - метод для получения поста по ID.
-func (s *PostService) GetPost(ctx context.Context, req *postsv1.GetPostRequest) (*postsv1.GetPostResponse, error) {
-	id := req.GetId()
-	if id == "" {
-		return nil, status.Error(codes.InvalidArgument, "id is required")
+// postRepository — реализация репозитория на sqlx.
+type postRepository struct {
+	db *sqlx.DB
+}
+
+// NewPostRepository — конструктор репозитория.
+func NewPostRepository(db *sqlx.DB) PostRepository {
+	return &postRepository{db: db}
+}
+
+// Save — сохраняет пост в базу данных (создание).
+func (r *postRepository) Save(ctx context.Context, post *Post) error {
+	if r.db == nil {
+		return nil
 	}
 
-	post, err := s.postRepository.GetByID(ctx, id)
+	if post.ID == "" {
+		post.ID = uuid.NewString()
+	}
+
+	now := time.Now().UTC()
+
+	if post.CreatedAt.IsZero() {
+		post.CreatedAt = now
+	}
+	post.UpdatedAt = now
+
+	const query = `
+		INSERT INTO posts (id, author_id, title, content, tags, status, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+	`
+
+	_, err := r.db.ExecContext(
+		ctx,
+		query,
+		post.ID,
+		post.AuthorId,
+		post.Title,
+		post.Content,
+		pq.StringArray(post.Tags),
+		post.Status,
+		post.CreatedAt,
+		post.UpdatedAt,
+	)
+
+	return err
+}
+
+// GetByID — получает пост по ID.
+func (r *postRepository) GetByID(ctx context.Context, id string) (*Post, error) {
+	if r.db == nil {
+		return nil, ErrNotFound
+	}
+
+	const query = `
+		SELECT id, author_id, title, content, tags, status, created_at, updated_at
+		FROM posts
+		WHERE id = $1
+	`
+
+	var post Post
+	err := r.db.GetContext(ctx, &post, query, id)
 	if err != nil {
-		if errors.Is(err, repository.ErrNotFound) {
-			return nil, status.Error(codes.NotFound, "post not found")
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrNotFound
 		}
-		return nil, status.Errorf(codes.Internal, "failed to get post: %v", err)
+		return nil, err
 	}
 
-	avg, count, err := s.ratingRepository.GetAggregatedRating(ctx, id)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to get rating: %v", err)
-	}
-
-	respPost := postToProto(post)
-	respPost.AverageRating = avg
-	respPost.RatingsCount = count
-
-	return &postsv1.GetPostResponse{
-		Post: respPost,
-	}, nil
+	return &post, nil
 }
 
-// ListPosts - метод для получения списка постов с фильтрами и пагинацией.
-func (s *PostService) ListPosts(ctx context.Context, req *postsv1.ListPostsRequest) (*postsv1.ListPostsResponse, error) {
-	pageSize := req.GetPageSize()
-	if pageSize <= 0 {
-		pageSize = 10
-	}
-	if pageSize > 100 {
-		pageSize = 100
+// List — возвращает список постов + total_count по тем же фильтрам.
+func (r *postRepository) List(ctx context.Context, params ListParams) ([]Post, int32, error) {
+	if r.db == nil {
+		return nil, 0, nil
 	}
 
-	var offset int
-	if token := req.GetPageToken(); token != "" {
-		val, err := strconv.Atoi(token)
-		if err != nil || val < 0 {
-			return nil, status.Error(codes.InvalidArgument, "invalid page_token")
-		}
-		offset = val
+	whereClauses := make([]string, 0)
+	args := make([]any, 0)
+	argIdx := 1
+
+	if params.AuthorID != "" {
+		whereClauses = append(whereClauses, fmt.Sprintf("author_id = $%d", argIdx))
+		args = append(args, params.AuthorID)
+		argIdx++
 	}
 
-	sortField := ""
-	switch req.GetSortField() {
-	case postsv1.SortField_CREATED_AT:
-		sortField = "created_at"
-	case postsv1.SortField_UPDATED_AT:
+	if params.Status != "" {
+		whereClauses = append(whereClauses, fmt.Sprintf("status = $%d", argIdx))
+		args = append(args, params.Status)
+		argIdx++
+	}
+
+	if len(params.Tags) > 0 {
+		whereClauses = append(whereClauses, fmt.Sprintf("tags && $%d", argIdx))
+		args = append(args, pq.StringArray(params.Tags))
+		argIdx++
+	}
+
+	if params.SearchQuery != "" {
+		q := "%" + params.SearchQuery + "%"
+		whereClauses = append(whereClauses,
+			fmt.Sprintf("(title ILIKE $%d OR content ILIKE $%d)", argIdx, argIdx+1))
+		args = append(args, q, q)
+		argIdx += 2
+	}
+
+	whereSQL := ""
+	if len(whereClauses) > 0 {
+		whereSQL = "WHERE " + joinWithAnd(whereClauses)
+	}
+
+	countQuery := fmt.Sprintf(`
+		SELECT COUNT(*)
+		FROM posts
+		%s
+	`, whereSQL)
+
+	var total int64
+	if err := r.db.GetContext(ctx, &total, countQuery, args...); err != nil {
+		return nil, 0, err
+	}
+
+	sortField := "created_at"
+	switch params.SortField {
+	case "updated_at":
 		sortField = "updated_at"
-	case postsv1.SortField_TITLE:
+	case "title":
 		sortField = "title"
-	default:
-		sortField = "created_at"
 	}
 
 	sortOrder := "DESC"
-	if req.GetSortOrder() == postsv1.SortOrder_ASC {
+	if params.SortOrder == "ASC" {
 		sortOrder = "ASC"
 	}
 
-	var statusStr string
-	if req.GetStatus() != postsv1.PostStatus(0) {
-		statusStr = req.GetStatus().String()
+	argsWithLimit := append(args, params.Limit, params.Offset)
+	limitIdx := argIdx
+	offsetIdx := argIdx + 1
+
+	query := fmt.Sprintf(`
+		SELECT id, author_id, title, content, tags, status, created_at, updated_at
+		FROM posts
+		%s
+		ORDER BY %s %s
+		LIMIT $%d OFFSET $%d
+	`, whereSQL, sortField, sortOrder, limitIdx, offsetIdx)
+
+	var posts []Post
+	if err := r.db.SelectContext(ctx, &posts, query, argsWithLimit...); err != nil {
+		return nil, 0, err
 	}
 
-	params := repository.ListParams{
-		Limit:       int(pageSize),
-		Offset:      offset,
-		AuthorID:    req.GetAuthorId(),
-		Status:      statusStr,
-		Tags:        req.GetTags(),
-		SearchQuery: req.GetSearchQuery(),
-		SortField:   sortField,
-		SortOrder:   sortOrder,
-	}
-
-	posts, total, err := s.postRepository.List(ctx, params)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to list posts: %v", err)
-	}
-
-	postIDs := make([]string, 0, len(posts))
-	for i := range posts {
-		postIDs = append(postIDs, posts[i].ID)
-	}
-
-	ratingMap, err := s.ratingRepository.GetAggregatedRatingsForPosts(ctx, postIDs)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to get ratings: %v", err)
-	}
-
-	resp := &postsv1.ListPostsResponse{
-		Posts:         make([]*postsv1.Post, 0, len(posts)),
-		NextPageToken: "",
-		TotalCount:    total,
-	}
-
-	for i := range posts {
-		p := postToProto(&posts[i])
-		if agg, ok := ratingMap[posts[i].ID]; ok {
-			p.AverageRating = agg.AverageRating
-			p.RatingsCount = agg.RatingsCount
-		}
-		resp.Posts = append(resp.Posts, p)
-	}
-
-	if len(posts) == int(pageSize) {
-		resp.NextPageToken = strconv.Itoa(offset + int(pageSize))
-	}
-
-	return resp, nil
+	return posts, int32(total), nil
 }
 
-// UpdatePost - частичное обновление поста через FieldMask.
-func (s *PostService) UpdatePost(ctx context.Context, req *postsv1.UpdatePostRequest) (*postsv1.UpdatePostResponse, error) {
-	if req.GetPost() == nil {
-		return nil, status.Error(codes.InvalidArgument, "post is required")
-	}
-	id := req.GetPost().GetId()
-	if id == "" {
-		return nil, status.Error(codes.InvalidArgument, "post.id is required")
+// Update — частичное обновление полей поста по ID.
+func (r *postRepository) Update(ctx context.Context, post *Post, fields []string) (*Post, error) {
+	if r.db == nil {
+		return nil, ErrNotFound
 	}
 
-	current, err := s.postRepository.GetByID(ctx, id)
-	if err != nil {
-		if errors.Is(err, repository.ErrNotFound) {
-			return nil, status.Error(codes.NotFound, "post not found")
+	if post.ID == "" {
+		return nil, ErrNotFound
+	}
+
+	columnByField := map[string]string{
+		"title":   "title",
+		"content": "content",
+		"tags":    "tags",
+		"status":  "status",
+	}
+
+	setParts := make([]string, 0, len(fields)+1)
+	args := make([]any, 0, len(fields)+2)
+
+	args = append(args, post.ID)
+	argIndex := 2
+
+	for _, f := range fields {
+		col, ok := columnByField[f]
+		if !ok {
+			continue
 		}
-		return nil, status.Errorf(codes.Internal, "failed to get post: %v", err)
-	}
 
-	mask := req.GetUpdateMask()
-	fieldsToUpdate := make([]string, 0)
-
-	if mask == nil || len(mask.Paths) == 0 {
-		fieldsToUpdate = []string{"title", "content", "tags", "status"}
-	} else {
-		for _, p := range mask.Paths {
-			switch p {
-			case "title", "content", "tags", "status":
-				fieldsToUpdate = append(fieldsToUpdate, p)
-			}
-		}
-	}
-
-	reqPost := req.GetPost()
-	for _, f := range fieldsToUpdate {
 		switch f {
 		case "title":
-			current.Title = reqPost.GetTitle()
+			setParts = append(setParts, fmt.Sprintf("%s = $%d", col, argIndex))
+			args = append(args, post.Title)
 		case "content":
-			current.Content = reqPost.GetContent()
+			setParts = append(setParts, fmt.Sprintf("%s = $%d", col, argIndex))
+			args = append(args, post.Content)
 		case "tags":
-			current.Tags = reqPost.GetTags()
+			setParts = append(setParts, fmt.Sprintf("%s = $%d", col, argIndex))
+			args = append(args, pq.StringArray(post.Tags))
 		case "status":
-			current.Status = reqPost.GetStatus().String()
+			setParts = append(setParts, fmt.Sprintf("%s = $%d", col, argIndex))
+			args = append(args, post.Status)
 		}
+
+		argIndex++
 	}
 
-	updated, err := s.postRepository.Update(ctx, current, fieldsToUpdate)
+	now := time.Now().UTC()
+	setParts = append(setParts, fmt.Sprintf("updated_at = $%d", argIndex))
+	args = append(args, now)
+
+	if len(setParts) == 1 {
+		return r.GetByID(ctx, post.ID)
+	}
+
+	query := fmt.Sprintf(`
+		UPDATE posts
+		SET %s
+		WHERE id = $1
+		RETURNING id, author_id, title, content, tags, status, created_at, updated_at
+	`, joinWithComma(setParts))
+
+	var updated Post
+	err := r.db.GetContext(ctx, &updated, query, args...)
 	if err != nil {
-		if errors.Is(err, repository.ErrNotFound) {
-			return nil, status.Error(codes.NotFound, "post not found")
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrNotFound
 		}
-		return nil, status.Errorf(codes.Internal, "failed to update post: %v", err)
+		return nil, err
 	}
 
-	avg, count, err := s.ratingRepository.GetAggregatedRating(ctx, updated.ID)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to get rating: %v", err)
-	}
-
-	respPost := postToProto(updated)
-	respPost.AverageRating = avg
-	respPost.RatingsCount = count
-
-	return &postsv1.UpdatePostResponse{
-		Post: respPost,
-	}, nil
+	return &updated, nil
 }
 
-// DeletePost - удаление поста.
-func (s *PostService) DeletePost(ctx context.Context, req *postsv1.DeletePostRequest) (*postsv1.DeletePostResponse, error) {
-	id := req.GetId()
-	if id == "" {
-		return nil, status.Error(codes.InvalidArgument, "id is required")
+// DeleteByID — удаляет пост по ID.
+func (r *postRepository) DeleteByID(ctx context.Context, id string) error {
+	if r.db == nil {
+		return ErrNotFound
 	}
 
-	err := s.postRepository.DeleteByID(ctx, id)
+	const query = `
+		DELETE FROM posts
+		WHERE id = $1
+	`
+
+	res, err := r.db.ExecContext(ctx, query, id)
 	if err != nil {
-		if errors.Is(err, repository.ErrNotFound) {
-			return nil, status.Error(codes.NotFound, "post not found")
-		}
-		return nil, status.Errorf(codes.Internal, "failed to delete post: %v", err)
+		return err
 	}
 
-	return &postsv1.DeletePostResponse{}, nil
+	affected, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if affected == 0 {
+		return ErrNotFound
+	}
+
+	return nil
 }
 
-// RatePost - сохранение/обновление рейтинга и возврат поста с обновлёнными average_rating/ratings_count.
-func (s *PostService) RatePost(ctx context.Context, req *postsv1.RatePostRequest) (*postsv1.RatePostResponse, error) {
-	postID := req.GetPostId()
-	if postID == "" {
-		return nil, status.Error(codes.InvalidArgument, "post_id is required")
+func joinWithAnd(parts []string) string {
+	if len(parts) == 0 {
+		return ""
 	}
-
-	userID := req.GetUserId()
-	if userID == "" {
-		return nil, status.Error(codes.InvalidArgument, "user_id is required")
+	res := parts[0]
+	for i := 1; i < len(parts); i++ {
+		res += " AND " + parts[i]
 	}
-
-	rate := req.GetRate()
-	if rate < 1 || rate > 5 {
-		return nil, status.Error(codes.InvalidArgument, "rate must be between 1 and 5")
-	}
-
-	post, err := s.postRepository.GetByID(ctx, postID)
-	if err != nil {
-		if errors.Is(err, repository.ErrNotFound) {
-			return nil, status.Error(codes.NotFound, "post not found")
-		}
-		return nil, status.Errorf(codes.Internal, "failed to get post: %v", err)
-	}
-
-	if err := s.ratingRepository.UpsertRating(ctx, postID, userID, rate, req.GetComment()); err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to save rating: %v", err)
-	}
-
-	avg, count, err := s.ratingRepository.GetAggregatedRating(ctx, postID)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to get rating: %v", err)
-	}
-
-	respPost := postToProto(post)
-	respPost.AverageRating = avg
-	respPost.RatingsCount = count
-
-	return &postsv1.RatePostResponse{
-		Post: respPost,
-	}, nil
+	return res
 }
 
-// postToProto - базовое преобразование доменной модели Post в gRPC-модель posts.v1.Post.
-func postToProto(post *repository.Post) *postsv1.Post {
-	var statusEnum postsv1.PostStatus
-	if post.Status != "" {
-		if val, ok := postsv1.PostStatus_value[post.Status]; ok {
-			statusEnum = postsv1.PostStatus(val)
-		} else {
-			statusEnum = postsv1.PostStatus_DRAFT
-		}
+func joinWithComma(parts []string) string {
+	if len(parts) == 0 {
+		return ""
 	}
-
-	return &postsv1.Post{
-		Id:       post.ID,
-		AuthorId: post.AuthorId,
-		Title:    post.Title,
-		Content:  post.Content,
-		Tags:     post.Tags,
-		Status:   statusEnum,
-		CreatedAt: timestamppb.New(post.CreatedAt),
-		UpdatedAt: timestamppb.New(post.UpdatedAt),
+	res := parts[0]
+	for i := 1; i < len(parts); i++ {
+		res += ", " + parts[i]
 	}
+	return res
 }
