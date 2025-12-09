@@ -182,18 +182,18 @@ services:
   
   frontend:
     build: ./frontend
+    container_name: frontend-app
     ports:
       - "5173:5173"
-    volumes:
-      - ./frontend:/app 
     environment:
       - VITE_API_URL=http://api-gateway:8080/api
-      - CHOKIDAR_USEPOLLING=true 
+      - CHOKIDAR_USEPOLLING=true
+      - VITE_HOST=0.0.0.0
     command: npm run dev -- --host 0.0.0.0
     depends_on:
       - api-gateway
     networks:
-        - ${NETWORK_NAME}
+      - ${NETWORK_NAME}
 
 volumes:
   redis_data:
