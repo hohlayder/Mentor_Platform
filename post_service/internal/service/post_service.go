@@ -12,9 +12,10 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-// PostService - структура для обработки логики работы с постами.
+// PostService - реализация gRPC-сервиса PostService.
 type PostService struct {
 	postsv1.UnimplementedPostServiceServer
+
 	postRepository   repository.PostRepository
 	ratingRepository repository.RatingRepository
 }
@@ -27,9 +28,10 @@ func NewPostService(postRepo repository.PostRepository, ratingRepo repository.Ra
 	}
 }
 
-// ----------------- Реальные методы -----------------
+// -----------------------------------------------------------------------------
+// CreatePost
+// -----------------------------------------------------------------------------
 
-// CreatePost - метод для создания поста.
 func (s *PostService) CreatePost(ctx context.Context, req *postsv1.CreatePostRequest) (*postsv1.CreatePostResponse, error) {
 	post := &repository.Post{
 		AuthorId: req.GetAuthorId(),
@@ -44,7 +46,6 @@ func (s *PostService) CreatePost(ctx context.Context, req *postsv1.CreatePostReq
 	}
 
 	respPost := postToProto(post)
-	// Новый пост ещё не имеет рейтингов.
 	respPost.AverageRating = 0
 	respPost.RatingsCount = 0
 
@@ -53,7 +54,10 @@ func (s *PostService) CreatePost(ctx context.Context, req *postsv1.CreatePostReq
 	}, nil
 }
 
-// GetPost - метод для получения поста по ID.
+// -----------------------------------------------------------------------------
+// GetPost
+// -----------------------------------------------------------------------------
+
 func (s *PostService) GetPost(ctx context.Context, req *postsv1.GetPostRequest) (*postsv1.GetPostResponse, error) {
 	id := req.GetId()
 	if id == "" {
@@ -82,7 +86,10 @@ func (s *PostService) GetPost(ctx context.Context, req *postsv1.GetPostRequest) 
 	}, nil
 }
 
-// ListPosts - метод для получения списка постов с фильтрами и пагинацией.
+// -----------------------------------------------------------------------------
+// ListPosts
+// -----------------------------------------------------------------------------
+
 func (s *PostService) ListPosts(ctx context.Context, req *postsv1.ListPostsRequest) (*postsv1.ListPostsResponse, error) {
 	pageSize := req.GetPageSize()
 	if pageSize <= 0 {
@@ -101,7 +108,6 @@ func (s *PostService) ListPosts(ctx context.Context, req *postsv1.ListPostsReque
 		offset = val
 	}
 
-	// Маппинг enums в строки, понятные репозиторию.
 	sortField := ""
 	switch req.GetSortField() {
 	case postsv1.SortField_CREATED_AT:
@@ -140,7 +146,6 @@ func (s *PostService) ListPosts(ctx context.Context, req *postsv1.ListPostsReque
 		return nil, status.Errorf(codes.Internal, "failed to list posts: %v", err)
 	}
 
-	// Готовим список ID для агрегатов рейтинга.
 	postIDs := make([]string, 0, len(posts))
 	for i := range posts {
 		postIDs = append(postIDs, posts[i].ID)
@@ -173,7 +178,10 @@ func (s *PostService) ListPosts(ctx context.Context, req *postsv1.ListPostsReque
 	return resp, nil
 }
 
-// UpdatePost - частичное обновление поста через FieldMask.
+// -----------------------------------------------------------------------------
+// UpdatePost
+// -----------------------------------------------------------------------------
+
 func (s *PostService) UpdatePost(ctx context.Context, req *postsv1.UpdatePostRequest) (*postsv1.UpdatePostResponse, error) {
 	if req.GetPost() == nil {
 		return nil, status.Error(codes.InvalidArgument, "post is required")
@@ -183,7 +191,6 @@ func (s *PostService) UpdatePost(ctx context.Context, req *postsv1.UpdatePostReq
 		return nil, status.Error(codes.InvalidArgument, "post.id is required")
 	}
 
-	// Получаем текущую версию поста.
 	current, err := s.postRepository.GetByID(ctx, id)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
@@ -192,7 +199,6 @@ func (s *PostService) UpdatePost(ctx context.Context, req *postsv1.UpdatePostReq
 		return nil, status.Errorf(codes.Internal, "failed to get post: %v", err)
 	}
 
-	// Определяем, какие поля обновлять.
 	mask := req.GetUpdateMask()
 	fieldsToUpdate := make([]string, 0)
 
@@ -245,7 +251,10 @@ func (s *PostService) UpdatePost(ctx context.Context, req *postsv1.UpdatePostReq
 	}, nil
 }
 
-// DeletePost - метод для удаления поста по ID (пустой успешный ответ).
+// -----------------------------------------------------------------------------
+// DeletePost
+// -----------------------------------------------------------------------------
+
 func (s *PostService) DeletePost(ctx context.Context, req *postsv1.DeletePostRequest) (*postsv1.DeletePostResponse, error) {
 	id := req.GetId()
 	if id == "" {
@@ -260,10 +269,14 @@ func (s *PostService) DeletePost(ctx context.Context, req *postsv1.DeletePostReq
 		return nil, status.Errorf(codes.Internal, "failed to delete post: %v", err)
 	}
 
+	// По задумке DeletePostResponse пустой — ок.
 	return &postsv1.DeletePostResponse{}, nil
 }
 
-// RatePost - сохранение/обновление рейтинга и возврат поста с обновлёнными полями average_rating/ratings_count.
+// -----------------------------------------------------------------------------
+// RatePost
+// -----------------------------------------------------------------------------
+
 func (s *PostService) RatePost(ctx context.Context, req *postsv1.RatePostRequest) (*postsv1.RatePostResponse, error) {
 	postID := req.GetPostId()
 	if postID == "" {
@@ -280,7 +293,6 @@ func (s *PostService) RatePost(ctx context.Context, req *postsv1.RatePostRequest
 		return nil, status.Error(codes.InvalidArgument, "rate must be between 1 and 5")
 	}
 
-	// Проверяем, что пост существует.
 	post, err := s.postRepository.GetByID(ctx, postID)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
@@ -289,7 +301,6 @@ func (s *PostService) RatePost(ctx context.Context, req *postsv1.RatePostRequest
 		return nil, status.Errorf(codes.Internal, "failed to get post: %v", err)
 	}
 
-	// Сохраняем/обновляем рейтинг.
 	if err := s.ratingRepository.UpsertRating(ctx, postID, userID, rate, req.GetComment()); err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to save rating: %v", err)
 	}
@@ -308,8 +319,11 @@ func (s *PostService) RatePost(ctx context.Context, req *postsv1.RatePostRequest
 	}, nil
 }
 
-// postToProto - базовое преобразование доменной модели Post в gRPC-модель posts.v1.Post
-// (без рейтингов — они добавляются в вызывающем коде).
+// -----------------------------------------------------------------------------
+// Helpers
+// -----------------------------------------------------------------------------
+
+// postToProto - преобразование доменной модели Post в gRPC-модель posts.v1.Post.
 func postToProto(post *repository.Post) *postsv1.Post {
 	var statusEnum postsv1.PostStatus
 	if post.Status != "" {
@@ -321,14 +335,13 @@ func postToProto(post *repository.Post) *postsv1.Post {
 	}
 
 	return &postsv1.Post{
-		Id:       post.ID,
-		AuthorId: post.AuthorId,
-		Title:    post.Title,
-		Content:  post.Content,
-		Tags:     post.Tags,
-		Status:   statusEnum,
+		Id:        post.ID,
+		AuthorId:  post.AuthorId,
+		Title:     post.Title,
+		Content:   post.Content,
+		Tags:      post.Tags,
+		Status:    statusEnum,
 		CreatedAt: timestamppb.New(post.CreatedAt),
 		UpdatedAt: timestamppb.New(post.UpdatedAt),
-		// average_rating и ratings_count заполняются отдельно
 	}
 }
