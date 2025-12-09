@@ -12,6 +12,7 @@ services:
       - USER_SERVICE_URL=user-service:${USER_SERVICE_PORT}
       - CHAT_SERVICE_URL=chat-service:${CHAT_SERVICE_PORT}
       - AUTH_SERVICE_URL=auth-service:${AUTH_SERVICE_PORT}
+      - SESSION_SERVICE_URL=session-service:${SESSION_SERVICE_PORT}
       - JWT_SECRET=${JWT_SECRET}
     ports:
       - "${API_GATEWAY_PORT}:${API_GATEWAY_PORT}"
@@ -20,6 +21,7 @@ services:
       - user-service
       - chat-service
       - auth-service
+      - session-service
     networks:
       - ${NETWORK_NAME}
   redis:
@@ -34,22 +36,6 @@ services:
       - redis_data:/data
     networks:
       - ${NETWORK_NAME}
-  post_service_db:
-    image: postgres:16
-    container_name: post_service_db
-    environment:
-      POSTGRES_DB: post_service_db
-      POSTGRES_USER: post_service
-      POSTGRES_PASSWORD: post_service
-    ports:
-      - "5434:5432"
-    volumes:
-      - post_service_db_data:/var/lib/postgresql/data
-    healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U post_service -d post_service_db" ]
-      interval: 10s
-      timeout: 5s
-      retries: 5
   user-db:
     image: postgres:15-alpine
     container_name: user-db
@@ -91,6 +77,20 @@ services:
       - "${CHAT_DB_PORT}:5432"
     volumes:
       - chat_data:/var/lib/postgresql/data
+    networks:
+      - ${NETWORK_NAME}
+    restart: unless-stopped
+  session-db:
+    image: postgres:15-alpine
+    container_name: session-db
+    environment:
+      POSTGRES_DB: ${SESSION_DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "${SESSION_DB_PORT}:5432"
+    volumes:
+      - session_data:/var/lib/postgresql/data
     networks:
       - ${NETWORK_NAME}
     restart: unless-stopped
@@ -160,13 +160,47 @@ services:
       - redis
     networks:
       - ${NETWORK_NAME}
+  session-service:
+    build:
+      context: ./session_service
+      dockerfile: Dockerfile
+    container_name: session-service
+    environment:
+      - DB_HOST=session-db
+      - DB_PORT=5432
+      - DB_NAME=${SESSION_DB_NAME}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - GRPC_PORT=${SESSION_SERVICE_PORT}
+      - SESSION_SERVICE_ADDR=session-service:${SESSION_SERVICE_PORT}
+    ports:
+      - "${SESSION_SERVICE_PORT}:${SESSION_SERVICE_PORT}"
+    depends_on:
+      - session-db
+    networks:
+      - ${NETWORK_NAME}
+  
+  frontend:
+    build: ./frontend
+    container_name: frontend-app
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_URL=http://api-gateway:8080/api/v1
+      - CHOKIDAR_USEPOLLING=true
+      - VITE_HOST=0.0.0.0
+    command: npm run dev -- --host 0.0.0.0
+    depends_on:
+      - api-gateway
+    networks:
+      - ${NETWORK_NAME}
 
 volumes:
   redis_data:
   user_data:
   auth_data:
   chat_data:
-  post_service_db_data:
+  session_data:
 
 
 networks:
