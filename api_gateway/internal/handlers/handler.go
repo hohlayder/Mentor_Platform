@@ -29,7 +29,7 @@ func NewHandler(websocketHandler websocket.WebSocketHandler, userHandler UserHan
 
 func InitRoutes(handlers Handlers) *gin.Engine {
 	router := gin.Default()
-
+	router.Use(middleware.CORS())
 	router.GET("/", func(c *gin.Context) {
 		c.JSON(200, gin.H{
 			"message": "Mentor Platform API Gateway",
