@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-const API_URL = "https://localhost:8080/api/v1";
+const API_URL = "http://localhost:8080/api/v1";
 
 export const Login = () => {
   const [email, setEmail] = useState("");

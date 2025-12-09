@@ -43,7 +43,7 @@ export const Home: React.FC = () => {
       return;
     }
 
-    fetch("https://localhost:8080/api/v1/auth/logout", {
+    fetch("http://localhost:8080/api/v1/auth/logout", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
