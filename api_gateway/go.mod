@@ -3,7 +3,7 @@ module github.com/hohlayder/Mentor_Platform/api_gateway
 go 1.24.3
 
 require (
-	github.com/Sergey-1214/contracts_mentors v0.0.16
+	github.com/Sergey-1214/contracts_mentors v0.0.20
 	github.com/gin-gonic/gin v1.11.0
 	github.com/golang-jwt/jwt/v5 v5.3.0
 	github.com/redis/go-redis/v9 v9.16.0
@@ -40,7 +40,7 @@ require (
 	github.com/gin-contrib/sse v1.1.0 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
-	github.com/go-playground/validator/v10 v10.27.0 // indirect
+	github.com/go-playground/validator/v10 v10.27.0 
 	github.com/goccy/go-json v0.10.2 // indirect
 	github.com/goccy/go-yaml v1.18.0 // indirect
 	github.com/google/uuid v1.6.0

@@ -29,7 +29,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.LoginRequest"
+                            "$ref": "#/definitions/domain.LoginRequest"
                         }
                     }
                 ],
@@ -37,25 +37,25 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.LoginResponse"
+                            "$ref": "#/definitions/domain.LoginResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse"
+                            "$ref": "#/definitions/utils.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse"
+                            "$ref": "#/definitions/utils.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse"
+                            "$ref": "#/definitions/utils.ErrorResponse"
                         }
                     }
                 }
@@ -63,6 +63,11 @@
         },
         "/auth/logout": {
             "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Инвалидация refresh токена",
                 "consumes": [
                     "application/json"
@@ -81,7 +86,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.LogoutRequest"
+                            "$ref": "#/definitions/domain.LogoutRequest"
                         }
                     }
                 ],
@@ -89,19 +94,25 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.LogoutResponse"
+                            "$ref": "#/definitions/domain.LogoutResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse"
+                            "$ref": "#/definitions/utils.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse"
+                            "$ref": "#/definitions/utils.ErrorResponse"
                         }
                     }
                 }
@@ -109,6 +120,11 @@
         },
         "/auth/refresh": {
             "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Получение новой пары access/refresh токенов",
                 "consumes": [
                     "application/json"
@@ -127,7 +143,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.RefreshRequest"
+                            "$ref": "#/definitions/domain.RefreshRequest"
                         }
                     }
                 ],
@@ -135,25 +151,25 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.RefreshResponse"
+                            "$ref": "#/definitions/domain.RefreshResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse"
+                            "$ref": "#/definitions/utils.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse"
+                            "$ref": "#/definitions/utils.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse"
+                            "$ref": "#/definitions/utils.ErrorResponse"
                         }
                     }
                 }
@@ -179,7 +195,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.RegisterRequest"
+                            "$ref": "#/definitions/domain.RegisterRequest"
                         }
                     }
                 ],
@@ -187,19 +203,19 @@
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.RegisterResponse"
+                            "$ref": "#/definitions/domain.RegisterResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse"
+                            "$ref": "#/definitions/utils.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse"
+                            "$ref": "#/definitions/utils.ErrorResponse"
                         }
                     }
                 }
@@ -240,31 +256,31 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.GetUserChatsResponse"
+                            "$ref": "#/definitions/domain.GetUserChatsResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse"
+                            "$ref": "#/definitions/utils.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse"
+                            "$ref": "#/definitions/utils.ErrorResponse"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse"
+                            "$ref": "#/definitions/utils.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse"
+                            "$ref": "#/definitions/utils.ErrorResponse"
                         }
                     }
                 }
@@ -293,7 +309,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.CreateChatRequest"
+                            "$ref": "#/definitions/domain.CreateChatRequest"
                         }
                     }
                 ],
@@ -301,19 +317,25 @@
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.CreateChatResponse"
+                            "$ref": "#/definitions/domain.CreateChatResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse"
+                            "$ref": "#/definitions/utils.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse"
+                            "$ref": "#/definitions/utils.ErrorResponse"
                         }
                     }
                 }
@@ -360,19 +382,31 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.GetChatMessagesResponse"
+                            "$ref": "#/definitions/domain.GetChatMessagesResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse"
+                            "$ref": "#/definitions/utils.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse"
+                            "$ref": "#/definitions/utils.ErrorResponse"
                         }
                     }
                 }
@@ -398,12 +432,12 @@
                 "summary": "Пометить сообщения как прочитанные",
                 "parameters": [
                     {
-                        "description": "ID сообщений",
+                        "description": "Запрос содержит ID чата и список ID сообщений для отметки как прочитанные",
                         "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.MarkMessagesReadRequest"
+                            "$ref": "#/definitions/domain.MarkMessagesReadRequest"
                         }
                     }
                 ],
@@ -411,19 +445,31 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.MarkMessagesReadResponse"
+                            "$ref": "#/definitions/domain.MarkMessagesReadResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse"
+                            "$ref": "#/definitions/utils.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse"
+                            "$ref": "#/definitions/utils.ErrorResponse"
                         }
                     }
                 }
@@ -457,19 +503,92 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.GetChatByIdResponse"
+                            "$ref": "#/definitions/domain.GetChatByIdResponse"
                         }
                     },
-                    "404": {
-                        "description": "Not Found",
+                    "400": {
+                        "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse"
+                            "$ref": "#/definitions/utils.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse"
+                            "$ref": "#/definitions/utils.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/mentors/{mentor_id}/sessions": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Возвращает список всех сессий для конкретного ментора. Только сам ментор может просматривать свои сессии.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "sessions"
+                ],
+                "summary": "Список сессий ментора",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID ментора (UUID)",
+                        "name": "mentor_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Список сессий и общее количество",
+                        "schema": {
+                            "$ref": "#/definitions/domain.ListSessionsResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Неверный ID ментора",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Не авторизован",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Нет прав доступа (не тот ментор)",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка сервера",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponse"
                         }
                     }
                 }
@@ -498,24 +617,29 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.ProfileResponse"
+                            "$ref": "#/definitions/domain.ProfileResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse"
+                            "$ref": "#/definitions/utils.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse"
+                            "$ref": "#/definitions/utils.ErrorResponse"
                         }
                     }
                 }
             },
             "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Обновляет данные профиля пользователя. Автоматически создает mentor/student записи при необходимости.",
                 "consumes": [
                     "application/json"
@@ -541,7 +665,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.UpdateProfileRequest"
+                            "$ref": "#/definitions/domain.UpdateProfileRequest"
                         }
                     }
                 ],
@@ -549,27 +673,50 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.SuccessResponse"
+                            "$ref": "#/definitions/utils.SuccessResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse"
+                            "$ref": "#/definitions/utils.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse"
+                            "$ref": "#/definitions/utils.ErrorResponse"
                         }
                     }
                 }
             }
         },
-        "/users": {
+        "/sessions": {
             "post": {
-                "description": "Создает нового пользователя в системе",
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Создает новую сессию (бронирование временного слота студентом). Студент может создавать сессии только для себя.",
                 "consumes": [
                     "application/json"
                 ],
@@ -577,37 +724,751 @@
                     "application/json"
                 ],
                 "tags": [
-                    "users"
+                    "sessions"
                 ],
-                "summary": "Создать пользователя",
+                "summary": "Создать сессию",
                 "parameters": [
                     {
-                        "description": "Данные пользователя",
+                        "description": "Данные для создания сессии",
                         "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.CreateUserRequest"
+                            "$ref": "#/definitions/domain.CreateSessionRequest"
                         }
                     }
                 ],
                 "responses": {
                     "201": {
-                        "description": "Created",
+                        "description": "session_id и success",
                         "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.CreateUserResponse"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "400": {
-                        "description": "Bad Request",
+                        "description": "Неверные входные данные",
                         "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse"
+                            "$ref": "#/definitions/utils.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Не авторизован",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Нет прав доступа (не студент или слот недоступен)",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Слот не найден",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Конфликт (сессия уже существует)",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponse"
                         }
                     },
                     "500": {
-                        "description": "Internal Server Error",
+                        "description": "Внутренняя ошибка сервера",
                         "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse"
+                            "$ref": "#/definitions/utils.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/sessions/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Возвращает детальную информацию о сессии по ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "sessions"
+                ],
+                "summary": "Получить информацию о сессии",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID сессии (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Информация о сессии",
+                        "schema": {
+                            "$ref": "#/definitions/domain.SessionResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Неверный ID сессии",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Не авторизован",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Сессия не найден",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка сервера",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Обновляет информацию о существующей сессии. Доступ имеют: ментор слота ИЛИ студент сессии.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "sessions"
+                ],
+                "summary": "Обновить сессию",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID сессии (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Данные для обновления",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/domain.UpdateSessionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Успешное обновление",
+                        "schema": {
+                            "$ref": "#/definitions/utils.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Неверные входные данные",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Не авторизован",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Нет прав доступа",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Сессия не найден",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка сервера",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Удаляет существующую сессию. Только ментор слота может удалить сессию.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "sessions"
+                ],
+                "summary": "Удалить сессию",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID сессии (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Успешное удаление",
+                        "schema": {
+                            "$ref": "#/definitions/utils.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Неверный ID сессии",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Не авторизован",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Нет прав доступа",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Сессия не найден",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка сервера",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/sessions/{id}/rate": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Добавляет оценку и отзыв к завершенной и оплаченной сессии. Только студент сессии может оценить свою сессию.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "sessions"
+                ],
+                "summary": "Оценить сессию",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID сессии (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Оценка (1-5) и отзыв",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/domain.RateSessionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Успешная оценка",
+                        "schema": {
+                            "$ref": "#/definitions/utils.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Неверные входные данные (оценка вне диапазона 1-5)",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Не авторизован",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Нет прав доступа",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Сессия не найден",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка сервера",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/slots": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Создает новый временной слот для ментора",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "slots"
+                ],
+                "summary": "Создать слот",
+                "parameters": [
+                    {
+                        "description": "Данные для создания слота",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/domain.CreateSlotRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "slot_id и success",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Неверные входные данные",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Не авторизован",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Нет прав доступа",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Ресурс не найден",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Конфликт (уже существует)",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка сервера",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/slots/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Возвращает детальную информацию о временном слоте по ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "slots"
+                ],
+                "summary": "Получить информацию о слоте",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID слота (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Информация о слоте",
+                        "schema": {
+                            "$ref": "#/definitions/domain.SlotResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Неверный ID слота",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Не авторизован",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Слот не найден",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка сервера",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Обновляет информацию о существующем временном слоте. Только владелец слота может его обновить.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "slots"
+                ],
+                "summary": "Обновить слот",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID слота (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Данные для обновления",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/domain.UpdateSlotRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Успешное обновление",
+                        "schema": {
+                            "$ref": "#/definitions/utils.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Неверные входные данные",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Не авторизован",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Нет прав доступа (не владелец)",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Слот не найден",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка сервера",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Удаляет существующий временной слот. Только владелец слота может его удалить.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "slots"
+                ],
+                "summary": "Удалить слот",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID слота (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Успешное удаление",
+                        "schema": {
+                            "$ref": "#/definitions/utils.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Неверный ID слота",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Не авторизован",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Нет прав доступа (не владелец)",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Слот не найден",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка сервера",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/slots/{id}/status": {
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Обновляет статус существующего временного слота. Допустимые статусы: \"available\", \"booked\", \"closed\". Только владелец слота может изменить статус.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "slots"
+                ],
+                "summary": "Обновить статус слота",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID слота (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Новый статус",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/domain.UpdateSlotStatusRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Успешное обновление статуса",
+                        "schema": {
+                            "$ref": "#/definitions/utils.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Неверные входные данные или недопустимый статус",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Не авторизован",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Нет прав доступа (не владелец)",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Слот не найден",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка сервера",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/students/{student_id}/sessions": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Возвращает список всех сессий для конкретного студента. Только сам студент может просматривать свои сессии.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "sessions"
+                ],
+                "summary": "Список сессий студента",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID студента (UUID)",
+                        "name": "student_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Список сессий и общее количество",
+                        "schema": {
+                            "$ref": "#/definitions/domain.ListSessionsResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Неверный ID студента",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Не авторизован",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Нет прав доступа (не тот студент)",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка сервера",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponse"
                         }
                     }
                 }
@@ -636,19 +1497,19 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.User"
+                            "$ref": "#/definitions/domain.User"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse"
+                            "$ref": "#/definitions/utils.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse"
+                            "$ref": "#/definitions/utils.ErrorResponse"
                         }
                     }
                 }
@@ -677,24 +1538,29 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.User"
+                            "$ref": "#/definitions/domain.User"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse"
+                            "$ref": "#/definitions/utils.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse"
+                            "$ref": "#/definitions/utils.ErrorResponse"
                         }
                     }
                 }
             },
             "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Удаляет пользователя и все связанные данные",
                 "tags": [
                     "users"
@@ -713,16 +1579,28 @@
                     "204": {
                         "description": "No Content"
                     },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/utils.ErrorResponse"
+                        }
+                    },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse"
+                            "$ref": "#/definitions/utils.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse"
+                            "$ref": "#/definitions/utils.ErrorResponse"
                         }
                     }
                 }
@@ -730,7 +1608,7 @@
         }
     },
     "definitions": {
-        "github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.Attachment": {
+        "domain.Attachment": {
             "type": "object",
             "properties": {
                 "created_at": {
@@ -762,7 +1640,7 @@
                 }
             }
         },
-        "github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.ChatResponse": {
+        "domain.ChatResponse": {
             "type": "object",
             "properties": {
                 "created_at": {
@@ -773,7 +1651,7 @@
                     "example": "123e4567-e89b-12d3-a456-426614174002"
                 },
                 "last_message": {
-                    "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.Message"
+                    "$ref": "#/definitions/domain.Message"
                 },
                 "unread_count": {
                     "type": "integer",
@@ -792,7 +1670,7 @@
                 }
             }
         },
-        "github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.CreateChatRequest": {
+        "domain.CreateChatRequest": {
             "type": "object",
             "required": [
                 "other_user_id"
@@ -804,7 +1682,7 @@
                 }
             }
         },
-        "github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.CreateChatResponse": {
+        "domain.CreateChatResponse": {
             "type": "object",
             "properties": {
                 "chat_id": {
@@ -813,34 +1691,64 @@
                 }
             }
         },
-        "github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.CreateUserRequest": {
+        "domain.CreateSessionRequest": {
             "type": "object",
             "required": [
-                "email",
-                "first_name",
-                "last_name"
+                "slot_id",
+                "student_id"
             ],
             "properties": {
-                "email": {
+                "payment_status": {
+                    "description": "\"pending\", \"paid\", \"failed\"",
                     "type": "string"
                 },
-                "first_name": {
+                "slot_id": {
                     "type": "string"
                 },
-                "last_name": {
+                "student_id": {
                     "type": "string"
                 }
             }
         },
-        "github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.CreateUserResponse": {
+        "domain.CreateSlotRequest": {
             "type": "object",
+            "required": [
+                "duration_minutes",
+                "mentor_id",
+                "start_time",
+                "title"
+            ],
             "properties": {
-                "user_id": {
+                "currency": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "duration_minutes": {
+                    "type": "integer",
+                    "minimum": 1
+                },
+                "mentor_id": {
+                    "type": "string"
+                },
+                "price": {
+                    "type": "integer",
+                    "minimum": 0
+                },
+                "start_time": {
+                    "type": "string"
+                },
+                "status": {
+                    "description": "\"available\", \"booked\", \"closed\"",
+                    "type": "string"
+                },
+                "title": {
                     "type": "string"
                 }
             }
         },
-        "github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.Cursor": {
+        "domain.Cursor": {
             "type": "object",
             "properties": {
                 "created_at": {
@@ -852,15 +1760,15 @@
                 }
             }
         },
-        "github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.GetChatByIdResponse": {
+        "domain.GetChatByIdResponse": {
             "type": "object",
             "properties": {
                 "chat": {
-                    "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.ChatResponse"
+                    "$ref": "#/definitions/domain.ChatResponse"
                 }
             }
         },
-        "github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.GetChatMessagesResponse": {
+        "domain.GetChatMessagesResponse": {
             "type": "object",
             "properties": {
                 "has_more": {
@@ -870,26 +1778,26 @@
                 "messages": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.Message"
+                        "$ref": "#/definitions/domain.Message"
                     }
                 },
                 "next_cursor": {
-                    "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.Cursor"
+                    "$ref": "#/definitions/domain.Cursor"
                 }
             }
         },
-        "github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.GetUserChatsResponse": {
+        "domain.GetUserChatsResponse": {
             "type": "object",
             "properties": {
                 "chats": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.ChatResponse"
+                        "$ref": "#/definitions/domain.ChatResponse"
                     }
                 }
             }
         },
-        "github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.LearningSkill": {
+        "domain.LearningSkill": {
             "type": "object",
             "properties": {
                 "created_at": {
@@ -909,7 +1817,7 @@
                 }
             }
         },
-        "github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.LearningSkillUpdate": {
+        "domain.LearningSkillUpdate": {
             "type": "object",
             "required": [
                 "proficiency_level",
@@ -924,18 +1832,32 @@
                 }
             }
         },
-        "github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.LearningSkillsUpdate": {
+        "domain.LearningSkillsUpdate": {
             "type": "object",
             "properties": {
                 "learning_skills": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.LearningSkillUpdate"
+                        "$ref": "#/definitions/domain.LearningSkillUpdate"
                     }
                 }
             }
         },
-        "github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.LoginRequest": {
+        "domain.ListSessionsResponse": {
+            "type": "object",
+            "properties": {
+                "sessions": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/domain.SessionResponse"
+                    }
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
+        "domain.LoginRequest": {
             "type": "object",
             "required": [
                 "email",
@@ -952,7 +1874,7 @@
                 }
             }
         },
-        "github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.LoginResponse": {
+        "domain.LoginResponse": {
             "type": "object",
             "properties": {
                 "access_token": {
@@ -968,7 +1890,7 @@
                 }
             }
         },
-        "github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.LogoutRequest": {
+        "domain.LogoutRequest": {
             "type": "object",
             "required": [
                 "refresh_token"
@@ -980,7 +1902,7 @@
                 }
             }
         },
-        "github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.LogoutResponse": {
+        "domain.LogoutResponse": {
             "type": "object",
             "properties": {
                 "success": {
@@ -989,12 +1911,15 @@
                 }
             }
         },
-        "github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.MarkMessagesReadRequest": {
+        "domain.MarkMessagesReadRequest": {
             "type": "object",
             "required": [
                 "message_ids"
             ],
             "properties": {
+                "chat_id": {
+                    "type": "string"
+                },
                 "message_ids": {
                     "type": "array",
                     "items": {
@@ -1007,7 +1932,7 @@
                 }
             }
         },
-        "github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.MarkMessagesReadResponse": {
+        "domain.MarkMessagesReadResponse": {
             "type": "object",
             "properties": {
                 "success": {
@@ -1016,7 +1941,7 @@
                 }
             }
         },
-        "github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.MentorProfile": {
+        "domain.MentorProfile": {
             "type": "object",
             "properties": {
                 "created_at": {
@@ -1036,7 +1961,7 @@
                 }
             }
         },
-        "github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.MentorUpdate": {
+        "domain.MentorUpdate": {
             "type": "object",
             "properties": {
                 "description": {
@@ -1047,13 +1972,13 @@
                 }
             }
         },
-        "github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.Message": {
+        "domain.Message": {
             "type": "object",
             "properties": {
                 "attachments": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.Attachment"
+                        "$ref": "#/definitions/domain.Attachment"
                     }
                 },
                 "chat_id": {
@@ -1078,7 +2003,7 @@
                     "type": "boolean"
                 },
                 "message_type": {
-                    "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.MessageType"
+                    "$ref": "#/definitions/domain.MessageType"
                 },
                 "read_at": {
                     "type": "string"
@@ -1094,7 +2019,7 @@
                 }
             }
         },
-        "github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.MessageType": {
+        "domain.MessageType": {
             "type": "string",
             "enum": [
                 "text",
@@ -1109,33 +2034,49 @@
                 "MessageTypeVoice"
             ]
         },
-        "github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.ProfileResponse": {
+        "domain.ProfileResponse": {
             "type": "object",
             "properties": {
                 "learning_skills": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.LearningSkill"
+                        "$ref": "#/definitions/domain.LearningSkill"
                     }
                 },
                 "mentor": {
-                    "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.MentorProfile"
+                    "$ref": "#/definitions/domain.MentorProfile"
                 },
                 "student": {
-                    "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.StudentProfile"
+                    "$ref": "#/definitions/domain.StudentProfile"
                 },
                 "teaching_skills": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.TeachingSkill"
+                        "$ref": "#/definitions/domain.TeachingSkill"
                     }
                 },
                 "user": {
-                    "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.User"
+                    "$ref": "#/definitions/domain.User"
                 }
             }
         },
-        "github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.RefreshRequest": {
+        "domain.RateSessionRequest": {
+            "type": "object",
+            "required": [
+                "rating"
+            ],
+            "properties": {
+                "rating": {
+                    "type": "integer",
+                    "maximum": 5,
+                    "minimum": 1
+                },
+                "review": {
+                    "type": "string"
+                }
+            }
+        },
+        "domain.RefreshRequest": {
             "type": "object",
             "required": [
                 "refresh_token"
@@ -1147,7 +2088,7 @@
                 }
             }
         },
-        "github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.RefreshResponse": {
+        "domain.RefreshResponse": {
             "type": "object",
             "properties": {
                 "access_token": {
@@ -1163,7 +2104,7 @@
                 }
             }
         },
-        "github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.RegisterRequest": {
+        "domain.RegisterRequest": {
             "type": "object",
             "required": [
                 "email",
@@ -1191,7 +2132,7 @@
                 }
             }
         },
-        "github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.RegisterResponse": {
+        "domain.RegisterResponse": {
             "type": "object",
             "properties": {
                 "id": {
@@ -1200,7 +2141,74 @@
                 }
             }
         },
-        "github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.StudentProfile": {
+        "domain.SessionResponse": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "payment_status": {
+                    "type": "string"
+                },
+                "rating": {
+                    "type": "integer"
+                },
+                "review": {
+                    "type": "string"
+                },
+                "slot_id": {
+                    "type": "string"
+                },
+                "student_id": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "domain.SlotResponse": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "currency": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "duration_minutes": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "mentor_id": {
+                    "type": "string"
+                },
+                "price": {
+                    "type": "integer"
+                },
+                "start_time": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "domain.StudentProfile": {
             "type": "object",
             "properties": {
                 "created_at": {
@@ -1217,7 +2225,7 @@
                 }
             }
         },
-        "github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.StudentUpdate": {
+        "domain.StudentUpdate": {
             "type": "object",
             "properties": {
                 "learning_goals": {
@@ -1228,7 +2236,7 @@
                 }
             }
         },
-        "github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.TeachingSkill": {
+        "domain.TeachingSkill": {
             "type": "object",
             "properties": {
                 "created_at": {
@@ -1251,7 +2259,7 @@
                 }
             }
         },
-        "github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.TeachingSkillUpdate": {
+        "domain.TeachingSkillUpdate": {
             "type": "object",
             "required": [
                 "proficiency_level",
@@ -1269,18 +2277,18 @@
                 }
             }
         },
-        "github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.TeachingSkillsUpdate": {
+        "domain.TeachingSkillsUpdate": {
             "type": "object",
             "properties": {
                 "teaching_skills": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.TeachingSkillUpdate"
+                        "$ref": "#/definitions/domain.TeachingSkillUpdate"
                     }
                 }
             }
         },
-        "github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.UpdateProfileRequest": {
+        "domain.UpdateProfileRequest": {
             "type": "object",
             "properties": {
                 "avatar_url": {
@@ -1296,20 +2304,81 @@
                     "type": "string"
                 },
                 "learning_skills": {
-                    "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.LearningSkillsUpdate"
+                    "$ref": "#/definitions/domain.LearningSkillsUpdate"
                 },
                 "mentor_data": {
-                    "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.MentorUpdate"
+                    "$ref": "#/definitions/domain.MentorUpdate"
                 },
                 "student_data": {
-                    "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.StudentUpdate"
+                    "$ref": "#/definitions/domain.StudentUpdate"
                 },
                 "teaching_skills": {
-                    "$ref": "#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.TeachingSkillsUpdate"
+                    "$ref": "#/definitions/domain.TeachingSkillsUpdate"
                 }
             }
         },
-        "github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.User": {
+        "domain.UpdateSessionRequest": {
+            "type": "object",
+            "properties": {
+                "payment_status": {
+                    "type": "string"
+                },
+                "rating": {
+                    "type": "integer",
+                    "maximum": 5,
+                    "minimum": 1
+                },
+                "review": {
+                    "type": "string"
+                },
+                "student_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "domain.UpdateSlotRequest": {
+            "type": "object",
+            "properties": {
+                "currency": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "duration_minutes": {
+                    "type": "integer"
+                },
+                "price": {
+                    "type": "integer"
+                },
+                "start_time": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                }
+            }
+        },
+        "domain.UpdateSlotStatusRequest": {
+            "type": "object",
+            "required": [
+                "status"
+            ],
+            "properties": {
+                "status": {
+                    "type": "string",
+                    "enum": [
+                        "available",
+                        "booked",
+                        "closed"
+                    ]
+                }
+            }
+        },
+        "domain.User": {
             "type": "object",
             "properties": {
                 "avatar_url": {
@@ -1332,7 +2401,7 @@
                 }
             }
         },
-        "github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse": {
+        "utils.ErrorResponse": {
             "type": "object",
             "properties": {
                 "details": {
@@ -1346,11 +2415,14 @@
                 }
             }
         },
-        "github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.SuccessResponse": {
+        "utils.SuccessResponse": {
             "type": "object",
             "properties": {
                 "message": {
                     "type": "string"
+                },
+                "success": {
+                    "type": "boolean"
                 }
             }
         }

@@ -15,6 +15,7 @@ import (
 	"github.com/hohlayder/Mentor_Platform/api_gateway/internal/infrastructure/redis"
 	"github.com/hohlayder/Mentor_Platform/api_gateway/internal/infrastructure/repositories"
 	"github.com/hohlayder/Mentor_Platform/api_gateway/internal/service"
+	"github.com/hohlayder/Mentor_Platform/api_gateway/internal/validators"
 )
 
 // @title Mentor Platform API
@@ -27,6 +28,8 @@ import (
 // @name Authorization
 // @description Введите: Bearer {jwt_token}
 func main() {
+	validators.RegisterValidators()
+	
 	client, err := client.NewClient()
 	if err != nil {
 		log.Fatal("failed to connect to services ", err)
@@ -44,7 +47,9 @@ func main() {
 	userHandler := handlers.NewUserHandler(userService)
 	chatService := service.NewChatService(client.Chat)
 	chatHandler := handlers.NewChatHandler(chatService)
-	handler := handlers.NewHandler(*webSocketHandler, *userHandler, *authHandler, *chatHandler)
+	sessionService := service.NewSessionService(client.Session)
+	sessionHandler := handlers.NewSessionHandler(sessionService)
+	handler := handlers.NewHandler(*webSocketHandler, *userHandler, *authHandler, *chatHandler, *sessionHandler)
 	router := handlers.InitRoutes(*handler)
 
 	
