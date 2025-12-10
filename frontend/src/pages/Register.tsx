@@ -1,84 +1,100 @@
 import React, { useState } from "react";
 
 export const Register: React.FC = () => {
-  const [form, setForm] = useState({
-    name: "",
-    surname: "",
-    email: "",
-    password: ""
-  });
+  const [name, setName] = useState("");
+  const [surname, setSurname] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  async function handleRegister(e: React.FormEvent) {
     e.preventDefault();
-    setLoading(true);
     setError(null);
     setSuccess(null);
+    setLoading(true);
 
     try {
-      const response = await fetch("http://localhost:8080/api/v1/auth/register", {
+      const res = await fetch("http://localhost:8080/api/v1/auth/register", {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
         },
-        body: JSON.stringify(form)
+        body: JSON.stringify({
+          name: name,
+          surname: surname,
+          email: email,
+          password: password
+        })
       });
 
-      if (response.status === 201) {
-        const data = await response.json();
-        setSuccess(`Регистрация прошла успешно! ID: ${data.id}`);
-        setForm({ name: "", surname: "", email: "", password: "" });
+      if (res.status === 201) {
+        const data = await res.json(); 
+        setSuccess("Аккаунт создан! Ваш ID: " + data.id);
+        sessionStorage.setItem("token", data.id);
+      } else if (res.status === 400) {
+        setError("Некорректные данные. Проверьте ввод.");
       } else {
-        const errData = await response.json();
-        setError(errData.message || "Ошибка при регистрации");
+        setError(`${res.status} Error`);
       }
-    } catch (err) {
-      setError("Сервер недоступен");
-    } finally {
-      setLoading(false);
+
+    } catch (e) {
+      setError("Не удалось подключиться к серверу.");
     }
-  };
+
+    setLoading(false);
+  }
 
   return (
-    <div className="container" style={{ maxWidth: "400px", marginTop: "50px" }}>
-      <h1>Регистрация</h1>
+    <div className="container" style={{ maxWidth: 400, marginTop: 40 }}>
+
       <form
-        onSubmit={handleSubmit}
-        style={{ display: "flex", flexDirection: "column", gap: "12px" }}
+        onSubmit={handleRegister}
+        className="card"
+        style={{ width: "100%", maxWidth: "360px", display: "flex", flexDirection: "column", gap: "16px" }}
       >
+        <h2 style={{ textAlign: "center" }}>Регистрация</h2>
         <input
+          className="input"
           type="text"
-          name="name"
           placeholder="Имя"
-          value={form.name}
-          onChange={handleChange}
+          value={name}
+          onChange={(e) => setName(e.target.value)}
         />
+
         <input
+          className="input"
+          type="text"
+          placeholder="Фамилия"
+          value={surname}
+          onChange={(e) => setSurname(e.target.value)}
+        />
+
+        <input
+          className="input"
           type="email"
-          name="email"
           placeholder="Email"
-          value={form.email}
-          onChange={handleChange}
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
         />
+
         <input
+          className="input"
           type="password"
-          name="password"
           placeholder="Пароль"
-          value={form.password}
-          onChange={handleChange}
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
         />
-        <button type="submit" className="btn btn-primary" disabled={loading}>
-          {loading ? "Отправка..." : "Зарегистрироваться"}
+
+        <button className="btn btn-primary" disabled={loading}>
+          {loading ? "Загрузка..." : "Зарегистрироваться"}
         </button>
       </form>
-      {error && <p style={{ color: "red", marginTop: "8px" }}>{error}</p>}
+
+      {error && <p style={{ color: "red", marginTop: 10 }}>{error}</p>}
+      {success && <p style={{ color: "green", marginTop: 10 }}>{success}</p>}
       <p style={{ marginTop: "12px" }}>
         Уже есть аккаунт? <a href="/login">Войти</a>
       </p>
