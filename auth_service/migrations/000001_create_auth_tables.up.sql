@@ -8,7 +8,7 @@ CREATE TABLE auth_credentials (
 
 CREATE TABLE refresh_tokens (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID REFERENCES auth_credentials(id) ON DELETE CASCADE,
+    user_id UUID REFERENCES auth_credentials(user_id) ON DELETE CASCADE,
     hash_token VARCHAR(255) NOT NULL,
     expires_at TIMESTAMP NOT NULL,
     revoked BOOLEAN NOT NULL DEFAULT FALSE,
