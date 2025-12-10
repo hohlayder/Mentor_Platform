@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 
-export const Register: React.FC = () => {
+export const Login: React.FC = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
