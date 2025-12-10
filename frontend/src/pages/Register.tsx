@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 export const Register: React.FC = () => {
   const [name, setName] = useState("");
@@ -9,6 +10,9 @@ export const Register: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  
+  const navigate = useNavigate();
+
 
   async function handleRegister(e: React.FormEvent) {
     e.preventDefault();
@@ -33,7 +37,31 @@ export const Register: React.FC = () => {
       if (res.status === 201) {
         const data = await res.json(); 
         setSuccess("Аккаунт создан! Ваш ID: " + data.id);
-        sessionStorage.setItem("token", data.id);
+        sessionStorage.setItem("id", data.id);
+        const reslog = await fetch("http://localhost:8080/api/v1/auth/login", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            name: name,
+            surname: surname,
+            email: email,
+            password: password
+          })
+        });
+
+        if(reslog.status==201){
+          const datalog = await reslog.json();
+          setSuccess("Успешный вход");
+          sessionStorage.setItem("access_token", data.access_token);
+          sessionStorage.setItem("refresh_token", data.refresh_token);
+          sessionStorage.setItem("expires_in", data.expires_in);
+          navigate("/");
+        } else {
+          setError("Give up lil bro");
+        }
+
       } else if (res.status === 400) {
         setError("Некорректные данные. Проверьте ввод.");
       } else {

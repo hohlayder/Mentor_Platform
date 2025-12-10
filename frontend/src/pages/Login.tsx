@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 export const Login: React.FC = () => {
   const [email, setEmail] = useState("");
@@ -7,6 +8,8 @@ export const Login: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+
+  const navigate = useNavigate();
 
   async function handleRegister(e: React.FormEvent) {
     e.preventDefault();
@@ -28,12 +31,16 @@ export const Login: React.FC = () => {
 
       if (res.status === 201) {
         const data = await res.json(); 
-        setSuccess("Аккаунт создан! Ваш ID: " + data.id);
-        sessionStorage.setItem("token", data.id);
+        setSuccess("Успешный вход");
+        sessionStorage.setItem("access_token", data.access_token);
+        sessionStorage.setItem("refresh_token", data.refresh_token);
+        sessionStorage.setItem("expires_in", data.expires_in);
+        navigate("/");
       } else if (res.status === 400) {
+        const data = await res.json(); 
         setError("Некорректные данные. Проверьте ввод.");
       } else if (res.status === 401) {
-        setError("Неверный логине или пароль");
+        setError("Неверный логин или пароль");
       } else {
         setError(`${res.status} Error`);
       }
