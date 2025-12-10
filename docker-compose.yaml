@@ -24,6 +24,7 @@ services:
       - session-service
     networks:
       - ${NETWORK_NAME}
+
   redis:
     image: redis:7-alpine
     container_name: redis
@@ -36,6 +37,7 @@ services:
       - redis_data:/data
     networks:
       - ${NETWORK_NAME}
+
   user-db:
     image: postgres:15-alpine
     container_name: user-db
@@ -80,6 +82,7 @@ services:
     networks:
       - ${NETWORK_NAME}
     restart: unless-stopped
+
   session-db:
     image: postgres:15-alpine
     container_name: session-db
@@ -94,6 +97,28 @@ services:
     networks:
       - ${NETWORK_NAME}
     restart: unless-stopped
+
+  # БД для post_service с миграциями
+  post_service_db:
+    image: postgres:16
+    container_name: post_service_db
+    environment:
+      POSTGRES_DB: post_service_db
+      POSTGRES_USER: post_service
+      POSTGRES_PASSWORD: post_service
+    ports:
+      - "${POST_DB_PORT}:5432"
+    volumes:
+      - post_service_db_data:/var/lib/postgresql/data
+      - ./post_service/migrations:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U post_service -d post_service_db" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ${NETWORK_NAME}
+
   user-service:
     build:
       context: ./user_service
@@ -160,6 +185,7 @@ services:
       - redis
     networks:
       - ${NETWORK_NAME}
+
   session-service:
     build:
       context: ./session_service
@@ -179,7 +205,27 @@ services:
       - session-db
     networks:
       - ${NETWORK_NAME}
-  
+
+  # gRPC сервис постов
+  post-service:
+    build:
+      context: ./post_service
+      dockerfile: Dockerfile
+    container_name: post-service
+    environment:
+      - DB_HOST=post_service_db
+      - DB_PORT=5432
+      - DB_NAME=post_service_db
+      - DB_USER=post_service
+      - DB_PASSWORD=post_service
+      - GRPC_PORT=${POST_Service_PORT}
+    ports:
+      - "${POST_Service_PORT}:${POST_Service_PORT}"
+    depends_on:
+      - post_service_db
+    networks:
+      - ${NETWORK_NAME}
+
   frontend:
     build: ./frontend
     container_name: frontend-app
@@ -201,7 +247,7 @@ volumes:
   auth_data:
   chat_data:
   session_data:
-
+  post_service_db_data:
 
 networks:
   my-app-network:

@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
+	"github.com/lib/pq"
 )
 
 // RatingAgg — агрегированные данные по рейтингу поста.
@@ -103,7 +104,8 @@ func (r *ratingRepository) GetAggregatedRatingsForPosts(ctx context.Context, pos
 	`
 
 	var aggs []RatingAgg
-	err := r.db.SelectContext(ctx, &aggs, query, postIDs)
+	// ВАЖНО: []string -> pq.StringArray(postIDs), чтобы PostgreSQL трактовал это как TEXT[]
+	err := r.db.SelectContext(ctx, &aggs, query, pq.StringArray(postIDs))
 	if err != nil {
 		return nil, err
 	}
