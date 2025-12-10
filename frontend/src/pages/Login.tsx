@@ -1,79 +1,86 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useState } from "react";
 
-const API_URL = "http://localhost:8080/api/v1";
-
-export const Login = () => {
+export const Register: React.FC = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-  const navigate = useNavigate();
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+
+  async function handleRegister(e: React.FormEvent) {
     e.preventDefault();
-    setError("");
+    setError(null);
+    setSuccess(null);
+    setLoading(true);
 
     try {
-      const res = await fetch(`${API_URL}/auth/login`, {
+      const res = await fetch("http://localhost:8080/api/v1/auth/login", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          email: email,
+          password: password
+        })
       });
 
-      const data = await res.json();
-
-      if (!res.ok) {
-        setError(data.message || "Ошибка авторизации");
-        return;
+      if (res.status === 201) {
+        const data = await res.json(); 
+        setSuccess("Аккаунт создан! Ваш ID: " + data.id);
+        sessionStorage.setItem("token", data.id);
+      } else if (res.status === 400) {
+        setError("Некорректные данные. Проверьте ввод.");
+      } else if (res.status === 401) {
+        setError("Неверный логине или пароль");
+      } else {
+        setError(`${res.status} Error`);
       }
 
-      // сохраняем токен в localStorage
-      localStorage.setItem("token", data.token);
-
-      // редирект на домашнюю страницу
-      navigate("/");
-    } catch (err) {
-      setError("Сетевая ошибка. Попробуйте позже.");
+    } catch (e) {
+      setError("Не удалось подключиться к серверу.");
     }
-  };
+
+    setLoading(false);
+  }
 
   return (
-    <div style={{ display: "grid", placeItems: "center", minHeight: "100vh", padding: "16px" }}>
+    <div className="container" style={{ maxWidth: 400, marginTop: 40 }}>
+
       <form
-        onSubmit={handleSubmit}
+        onSubmit={handleRegister}
         className="card"
         style={{ width: "100%", maxWidth: "360px", display: "flex", flexDirection: "column", gap: "16px" }}
       >
         <h2 style={{ textAlign: "center" }}>Вход</h2>
 
-        <label>
-          Email
-          <input
-            type="email"
-            placeholder="Введите email"
-            value={email}
-            onChange={e => setEmail(e.target.value)}
-            required
-          />
-        </label>
+        <input
+          className="input"
+          type="email"
+          placeholder="Email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
 
-        <label>
-          Пароль
-          <input
-            type="password"
-            placeholder="Введите пароль"
-            value={password}
-            onChange={e => setPassword(e.target.value)}
-            required
-          />
-        </label>
+        <input
+          className="input"
+          type="password"
+          placeholder="Пароль"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
 
-        <button type="submit" className="btn btn-primary">Войти</button>
-
-        <div style={{ textAlign: "center", fontSize: "14px" }}>
-          Нет аккаунта? <a href="/signup">Зарегистрироваться</a>
-        </div>
+        <button className="btn btn-primary" disabled={loading}>
+          {loading ? "Загрузка..." : "Войти"}
+        </button>
       </form>
+
+      {error && <p style={{ color: "red", marginTop: 10 }}>{error}</p>}
+      {success && <p style={{ color: "green", marginTop: 10 }}>{success}</p>}
+      <p style={{ marginTop: "12px" }}>
+        Нет аккаунта? <a href="/register">Зарегестрироваться</a>
+      </p>
     </div>
-  )
-}
+  );
+};
