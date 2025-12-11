@@ -51,7 +51,7 @@ export const Register: React.FC = () => {
           })
         });
 
-        if(reslog.status==201){
+        if(reslog.status==200){
           const datalog = await reslog.json();
           setSuccess("Успешный вход");
           sessionStorage.setItem("access_token", data.access_token);

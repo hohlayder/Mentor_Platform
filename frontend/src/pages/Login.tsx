@@ -29,7 +29,7 @@ export const Login: React.FC = () => {
         })
       });
 
-      if (res.status === 201) {
+      if (res.status === 200) {
         const data = await res.json(); 
         setSuccess("Успешный вход");
         sessionStorage.setItem("access_token", data.access_token);
