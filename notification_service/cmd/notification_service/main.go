@@ -34,13 +34,13 @@ func main() {
 	defer db.Close()
 
 	repo := postgres.NewNotifcationRepositoryPostgres(db)
-	emailAdapter := gmail.NewEmailGmailAdapter(cfg.GmailConfig.Email, cfg.GmailConfig.Password, cfg.FromName)
+	emailAdapter := gmail.NewEmailGmailAdapter(os.Getenv("GMAIL_EMAIL"), os.Getenv("GMAIL_APP_PASSWORD"), cfg.FromName)
 	emailService := service.NewEmailService(emailAdapter)
 	notificationService := service.NewNotificationService(repo, *emailService)
 	notificationHandler := handlers.NewNotificationHandlers(notificationService)
 
 	topics := []string{"chat_messages", "auth_events"}
-	kafkaConsumer := kafka.NewNotificationKafkaConsumer([]string{"kafka:9092"}, topics, "notification-service-dev", notificationHandler)
+	kafkaConsumer := kafka.NewNotificationKafkaConsumer([]string{"kafka:9092"}, topics, "notification-service-group", notificationHandler)
 	
 	ctx, cancel := context.WithCancel(context.Background())
     defer cancel()
