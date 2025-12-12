@@ -21,30 +21,31 @@ func NewNotificationHandlers(notificationService *service.NotificationService) *
 }
 
 func (h *NotificationHandler) HandleChatMessage(ctx context.Context, payload []byte) error {
-	var chatMsg domain.ChatMessagePayload
+	var chatMsg domain.KafkaMessage
+
 	if err := json.Unmarshal(payload, &chatMsg); err != nil {
 		return fmt.Errorf("failed to unmarshal chat message: %w", err)
 	}
 
-	if chatMsg.ToEmail == "" {
+	if chatMsg.Data.ToEmail == "" {
 		return fmt.Errorf("to_email is required")
 	}
-	if chatMsg.Message == "" {
+	if chatMsg.Data.Message == "" {
 		return fmt.Errorf("message is required")
 	}
 
 	notification := &domain.Notification{
 		FromAddress: "noreply@mentorplatform.com",
-		Subject:     fmt.Sprintf("New message from %s", chatMsg.FromUserName),
-		Body:        fmt.Sprintf("You have a new message: %s", chatMsg.Message),
+		Subject:     fmt.Sprintf("New message from %s", chatMsg.Data.FromUserName),
+		Body:        fmt.Sprintf("You have a new message: %s", chatMsg.Data.Message),
 		Status:      domain.NotificationStatusPending,
 		Type:        "email",
 		Category:    stringPtr("chat"),
 		EntityType:  stringPtr("message"),
 		Recipients: []domain.Recipient{
 			{
-				ToAddress: &chatMsg.ToEmail,
-				UserID:    &chatMsg.ToUserID,
+				ToAddress: &chatMsg.Data.ToEmail,
+				UserID:    &chatMsg.Data.ToUserID,
 				Status:    domain.NotificationStatusPending,
 				MaxAttempts: 3,
 			},
@@ -55,7 +56,7 @@ func (h *NotificationHandler) HandleChatMessage(ctx context.Context, payload []b
 		return fmt.Errorf("failed to create chat notification: %w", err)
 	}
 
-	log.Printf("Created chat notification for user %s", chatMsg.ToEmail)
+	log.Printf("Created chat notification for user %s", chatMsg.Data.ToEmail)
 	return nil
 }
 
