@@ -31,6 +31,9 @@ func NewNotificationKafkaConsumer(
 			Brokers: brokers,
 			Topic:   topic,
 			GroupID: groupID,
+			CommitInterval: 0,
+			MaxAttempts: 10,
+			MaxWait: 3 * time.Second,
 		})
 		readers[topic] = reader
 	}
