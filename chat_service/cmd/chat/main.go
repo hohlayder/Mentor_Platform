@@ -11,15 +11,17 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/hohlayder/Mentor_Platform/chat_service/internal/client"
 	"github.com/hohlayder/Mentor_Platform/chat_service/internal/config"
 	handler "github.com/hohlayder/Mentor_Platform/chat_service/internal/handler/grpc"
 	redis_handler "github.com/hohlayder/Mentor_Platform/chat_service/internal/handler/redis"
+	"github.com/hohlayder/Mentor_Platform/chat_service/internal/infrastructure/producer/kafka"
+	"github.com/hohlayder/Mentor_Platform/chat_service/internal/logger"
 	"github.com/hohlayder/Mentor_Platform/chat_service/internal/middleware"
 	"github.com/hohlayder/Mentor_Platform/chat_service/internal/repository/postgres"
 	redis_client "github.com/hohlayder/Mentor_Platform/chat_service/internal/repository/redis"
 	"github.com/hohlayder/Mentor_Platform/chat_service/internal/service"
-	"github.com/hohlayder/Mentor_Platform/chat_service/internal/logger"
-	
+
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 )
@@ -52,8 +54,15 @@ func main() {
 		os.Getenv("REDIS_PASSWORD"),
 		1,
     )
+	//chat_messages
+	client, err := client.NewClient()
+	if err != nil {
+		log.Fatal("failed to create grpc client: %w", err)
+	}
 
-	service := service.NewChatService(repository)
+	producer := kafka.NewKafkaNotificationProducer([]string{"kafka:9092"}, os.Getenv("GMAIL_EMAIL"))
+
+	service := service.NewChatService(repository, client.User, producer)
 	handler := handler.NewChatHandler(service)
 
 	redisConsumer := redis_handler.NewConsumer(redisClient, service)
