@@ -13,6 +13,7 @@ services:
       - CHAT_SERVICE_URL=chat-service:${CHAT_SERVICE_PORT}
       - AUTH_SERVICE_URL=auth-service:${AUTH_SERVICE_PORT}
       - SESSION_SERVICE_URL=session-service:${SESSION_SERVICE_PORT}
+      - POST_SERVICE_URL=post-service:${POST_SERVICE_PORT}
       - JWT_SECRET=${JWT_SECRET}
     ports:
       - "${API_GATEWAY_PORT}:${API_GATEWAY_PORT}"
@@ -22,6 +23,7 @@ services:
       - chat-service
       - auth-service
       - session-service
+      - post-service
     networks:
       - ${NETWORK_NAME}
 
