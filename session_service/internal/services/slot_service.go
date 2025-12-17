@@ -3,7 +3,10 @@ package services
 import (
 	"context"
 	"fmt"
+	"log/slog"
+	"time"
 
+	userv1 "github.com/Sergey-1214/contracts_mentors/user/v1"
 	"github.com/hohlayder/Mentor_Platform/session_service/internal/domain"
 )
 
@@ -14,14 +17,37 @@ type SlotRepository interface {
 	DeleteSlot(ctx context.Context, slotId string) error
 	CheckSlotExists(ctx context.Context, slotId string) (bool, error)
 	UpdateSlotStatus(ctx context.Context, slotID string, status string) error
+	GetSessionBySlotID(ctx context.Context, slotID string) (*domain.Session, error)
+}
+
+type UserClient interface {
+    CreateUser(ctx context.Context, in *userv1.CreateUserRequest) (*userv1.CreateUserResponse, error)
+    GetUserById(ctx context.Context, in *userv1.GetUserByIdRequest) (*userv1.GetUserByIdResponse, error)
+    GetUserByEmail(ctx context.Context, in *userv1.GetUserByEmailRequest) (*userv1.GetUserByEmailResponse, error)
+    DeleteUser(ctx context.Context, in *userv1.DeleteUserRequest) (*userv1.DeleteUserResponse, error)
+    GetProfileById(ctx context.Context, in *userv1.GetProfileByIdRequest) (*userv1.GetProfileByIdResponse, error)
+    UpdateProfile(ctx context.Context, in *userv1.UpdateProfileRequest) (*userv1.UpdateProfileResponse, error)
+    UploadAvatar(ctx context.Context, in *userv1.UploadAvatarRequest) (*userv1.UploadAvatarResponse, error)
+    DeleteAvatar(ctx context.Context, in *userv1.DeleteAvatarRequest) (*userv1.DeleteAvatarResponse, error)
+}
+
+type KafkaProducer interface {
+	SendSlotBookedEvent(ctx context.Context, slotID, mentorID, studentID, mentorEmail, 
+						mentorName string, startTime time.Time) error
 }
 
 type SlotService struct {
 	repo SlotRepository
+	client UserClient
+	producer KafkaProducer
 }
 
-func NewSlotService(repo SlotRepository) *SlotService {
-	return &SlotService{repo: repo}
+func NewSlotService(repo SlotRepository, userClient UserClient, producer KafkaProducer) *SlotService {
+	return &SlotService{
+		repo: repo,
+		client: userClient,
+		producer: producer,
+	}
 }
 
 func (s *SlotService) CreateSlot(ctx context.Context, slot *domain.Slot) (string, error) {
@@ -130,6 +156,52 @@ func (s *SlotService) UpdateSlotStatus(ctx context.Context, slotID string, statu
     if !validStatuses[status] {
         return fmt.Errorf("invalid status: %s", status)
     }
+
+	err := s.repo.UpdateSlotStatus(ctx, slotID, status)
+	if err != nil {
+		return fmt.Errorf("failed to update slot status: %w", err)
+	}
+
+	if status=="booked"{
+		go func() {
+			notificationCtx, cancel := context.WithTimeout(context.Background(), 5 * time.Second)
+			defer cancel()
+
+			err := s.SendNotification(notificationCtx, slotID)
+			if err != nil {
+				slog.Error("failed to send notification", "error", err)
+			}
+		}()	
+	}
     
-    return s.repo.UpdateSlotStatus(ctx, slotID, status)
+    return nil
+}
+
+func (s *SlotService) SendNotification(ctx context.Context, slotId string) error {
+	slot, err := s.repo.GetSlot(ctx, slotId)
+	if err != nil {
+		return fmt.Errorf("failed to get slot while send notification: %w", err)
+	}
+
+	mentor, err := s.client.GetUserById(ctx, toUserProtoRequest(slot.MentorId))
+	if err != nil {
+		return fmt.Errorf("failed to user while send notification: %w", err)
+	}
+	
+	session, err := s.repo.GetSessionBySlotID(ctx, slotId)
+	if err != nil {
+		return fmt.Errorf("failed to get session by slot id: %w", err)
+	}
+	
+	err = s.producer.SendSlotBookedEvent(ctx, slotId, slot.MentorId, session.StudentId, mentor.User.Email, mentor.User.FirstName, slot.StartTime)
+	if err != nil {
+		return fmt.Errorf("failed to send booked event")
+	}
+	return nil
+}
+
+func toUserProtoRequest(userId string) *userv1.GetUserByIdRequest {
+	return &userv1.GetUserByIdRequest{
+		UserId: userId,
+	}
 }

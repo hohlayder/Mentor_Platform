@@ -9,7 +9,9 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/hohlayder/Mentor_Platform/session_service/internal/client"
 	"github.com/hohlayder/Mentor_Platform/session_service/internal/config"
+	"github.com/hohlayder/Mentor_Platform/session_service/internal/infractructure/producer/kafka"
 	"github.com/hohlayder/Mentor_Platform/session_service/internal/logger"
 	"github.com/hohlayder/Mentor_Platform/session_service/internal/middleware"
 
@@ -36,12 +38,17 @@ func main() {
 	}
 
 	defer db.Close()
-
+	
+	producer := kafka.NewBookingProducer([]string{"kafka:9092"})
+	client, err := client.NewClient()
+	if err != nil {
+		log.Fatal("failed to create client", err)
+	}
 	sessionRepository := postgres.NewSessionRepository(db)
 	slotRepository := postgres.NewSlotRepository(db)
 
 	sessionService := services.NewSessionService(sessionRepository)
-	slotService := services.NewSlotService(slotRepository)
+	slotService := services.NewSlotService(slotRepository, client.User, producer)
 
 	handler := handler.NewSessionHandler(sessionService, slotService)
 
