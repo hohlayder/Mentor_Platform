@@ -204,3 +204,32 @@ func (r *SlotRepository) UpdateSlotStatus(ctx context.Context, slotID string, st
     
     return nil
 }
+
+func (r *SlotRepository) GetSessionBySlotID(ctx context.Context, slotID string) (*domain.Session, error) {
+	query := `
+		SELECT id, slot_id, student_id, payment_status, rating, review, created_at, updated_at
+		FROM sessions
+		WHERE slot_id = $1
+	`
+	
+	var session domain.Session
+	err := r.db.QueryRowContext(ctx, query, slotID).Scan(
+		&session.Id,
+		&session.SlotId,
+		&session.StudentId,
+		&session.PaymentStatus,
+		&session.Rating,
+		&session.Review,
+		&session.CreatedAt,
+		&session.UpdatedAt,
+	)
+	
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("session not found for slot %s", slotID)
+		}
+		return nil, fmt.Errorf("failed to get session by slot id: %w", err)
+	}
+	
+	return &session, nil
+}
