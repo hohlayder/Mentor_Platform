@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"time"
 
+	userv1 "github.com/Sergey-1214/contracts_mentors/user/v1"
 	"github.com/google/uuid"
 	"github.com/hohlayder/Mentor_Platform/chat_service/internal/domain"
 )
@@ -24,12 +26,36 @@ type ChatRepositrory interface {
 	ValidateMessagesInChat(ctx context.Context, chatID string, messageIDs []string) ([]string, error) 
 }
 
-type ChatService struct {
-	repo ChatRepositrory
+type UserClient interface {
+    CreateUser(ctx context.Context, in *userv1.CreateUserRequest) (*userv1.CreateUserResponse, error)
+    GetUserById(ctx context.Context, in *userv1.GetUserByIdRequest) (*userv1.GetUserByIdResponse, error)
+    GetUserByEmail(ctx context.Context, in *userv1.GetUserByEmailRequest) (*userv1.GetUserByEmailResponse, error)
+    DeleteUser(ctx context.Context, in *userv1.DeleteUserRequest) (*userv1.DeleteUserResponse, error)
+    GetProfileById(ctx context.Context, in *userv1.GetProfileByIdRequest) (*userv1.GetProfileByIdResponse, error)
+    UpdateProfile(ctx context.Context, in *userv1.UpdateProfileRequest) (*userv1.UpdateProfileResponse, error)
+    UploadAvatar(ctx context.Context, in *userv1.UploadAvatarRequest) (*userv1.UploadAvatarResponse, error)
+    DeleteAvatar(ctx context.Context, in *userv1.DeleteAvatarRequest) (*userv1.DeleteAvatarResponse, error)
 }
 
-func NewChatService(repo ChatRepositrory) *ChatService {
-	return &ChatService{repo: repo}
+type NotificationProducer interface {
+    SendEmailNotification(ctx context.Context, req domain.ChatMessagePayload) error
+    SendNewMessageNotification(ctx context.Context, senderID, SenderEmail, recipientID, chatID, messageContent string, messageId string) error
+    Close() error
+}
+
+
+type ChatService struct {
+	repo ChatRepositrory
+	client UserClient
+	producer NotificationProducer
+}
+
+func NewChatService(repo ChatRepositrory, client UserClient, producer NotificationProducer) *ChatService {
+	return &ChatService{
+		repo: repo,
+		client: client,
+		producer: producer,
+	}
 }
 
 func (s *ChatService) CreateChat(ctx context.Context, userId string, otherUserId string) (string, error) {
@@ -57,16 +83,59 @@ func (s *ChatService) GetChatById(ctx context.Context, chatId string) (*domain.C
 }
 
 func (s *ChatService) ProcessNewMessage(ctx context.Context, message *domain.Message) error {
+	slog.Info("process message start")
 	if message.MessageType == "" {
 		message.MessageType = "text"
 	}
-	_, err := s.repo.CreateMessage(ctx, message)
 
+	messageId, err := s.repo.CreateMessage(ctx, message)
 	if err != nil {
 		slog.Error("failed to save message")
 		return fmt.Errorf("failed to create message: %w", err)
 	}
-	return nil
+
+	chat, err := s.repo.GetChatById(ctx, message.ChatID.String())
+	if err != nil {
+		slog.Error("failed to get chat while save messgae")
+		return fmt.Errorf("failed to get chat while save message: %w", err)
+	}
+
+	var recipientId string
+    if chat.User1ID == message.SenderID {
+        recipientId = chat.User2ID.String()
+    } else {
+        recipientId = chat.User1ID.String()
+    }
+
+	resp, err := s.client.GetUserById(ctx, generateUserServiceProtoRequest(recipientId))
+	if err != nil {
+		slog.Error("failed to get user", "error", err)
+		return fmt.Errorf("failed to get user email while process new message: %w", err)
+	}
+
+	go func() {
+        notificationCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+        defer cancel()
+        slog.Info("start send")
+        err := s.producer.SendNewMessageNotification(
+            notificationCtx,
+            message.SenderID.String(),
+			resp.User.Email,
+            recipientId,
+            message.ChatID.String(),
+            message.Content,
+			messageId.String(),
+        )
+        if err != nil {
+            slog.Error("Failed to send email notification", "error", err)
+        } else {
+            slog.Info("Email notification sent for message to user", 
+						"message_id", message.ID, "recipient_id", recipientId, 
+						"email", resp.User.Email)
+        }
+    }()
+    
+    return nil
 }
 
 func (s *ChatService) CheckUserAccessToChat(ctx context.Context, chatID string, userID string) (bool, error) {
@@ -90,4 +159,10 @@ func (s *ChatService) MarkMessagesRead(ctx context.Context, chatID string, messa
     }
 
     return s.repo.MarkMessagesRead(ctx, validMessages)
+}
+
+func generateUserServiceProtoRequest(userId string) *userv1.GetUserByIdRequest{
+	return &userv1.GetUserByIdRequest{
+		UserId: userId,
+	}
 }
