@@ -13,6 +13,7 @@ type Client struct {
 	Auth *AuthClient
 	Chat *ChatClient
 	Session *SessionClient
+	Post *PostClient
 }
 
 func NewClient() (*Client, error) {	
@@ -36,11 +37,17 @@ func NewClient() (*Client, error) {
 		return nil, err
 	}
 
+	postConn, err := grpc.NewClient(os.Getenv("POST_SERVICE_URL"), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		return nil, err
+	}
+
 	return &Client{
 		User: NewUserClient(userConn),
 		Auth: NewAuthClient(authConn),
 		Chat: NewChatClient(chatConn),
 		Session: NewSessionClient(sessionConn),
+		Post: NewPostClient(postConn),
 	}, nil
 }
 
