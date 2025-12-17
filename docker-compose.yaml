@@ -13,6 +13,7 @@ services:
       - CHAT_SERVICE_URL=chat-service:${CHAT_SERVICE_PORT}
       - AUTH_SERVICE_URL=auth-service:${AUTH_SERVICE_PORT}
       - SESSION_SERVICE_URL=session-service:${SESSION_SERVICE_PORT}
+      - POST_SERVICE_URL=post-service:${POST_SERVICE_PORT}
       - JWT_SECRET=${JWT_SECRET}
     ports:
       - "${API_GATEWAY_PORT}:${API_GATEWAY_PORT}"
@@ -22,8 +23,9 @@ services:
       - chat-service
       - auth-service
       - session-service
+      - post-service
     networks:
-      - ${NETWORK_NAME}
+      - ${NETWORK_NAME:-my-app-network}
 
   redis:
     image: redis:7-alpine
@@ -36,7 +38,7 @@ services:
     volumes:
       - redis_data:/data
     networks:
-      - ${NETWORK_NAME}
+      - ${NETWORK_NAME:-my-app-network}
 
   user-db:
     image: postgres:15-alpine
@@ -50,7 +52,7 @@ services:
     volumes:
       - user_data:/var/lib/postgresql/data
     networks:
-      - ${NETWORK_NAME}
+      - ${NETWORK_NAME:-my-app-network}
     restart: unless-stopped
 
   auth-db:
@@ -65,7 +67,7 @@ services:
     volumes:
       - auth_data:/var/lib/postgresql/data
     networks:
-      - ${NETWORK_NAME}
+      - ${NETWORK_NAME:-my-app-network}
     restart: unless-stopped
 
   chat-db:
@@ -80,7 +82,7 @@ services:
     volumes:
       - chat_data:/var/lib/postgresql/data
     networks:
-      - ${NETWORK_NAME}
+      - ${NETWORK_NAME:-my-app-network}
     restart: unless-stopped
 
   session-db:
@@ -95,7 +97,7 @@ services:
     volumes:
       - session_data:/var/lib/postgresql/data
     networks:
-      - ${NETWORK_NAME}
+      - ${NETWORK_NAME:-my-app-network}
     restart: unless-stopped
 
   post-db:
@@ -110,9 +112,21 @@ services:
     volumes:
       - post_data:/var/lib/postgresql/data
     networks:
-      - ${NETWORK_NAME}
+      - ${NETWORK_NAME:-my-app-network}
     restart: unless-stopped
-
+  notification-db:
+    image: postgres:15-alpine
+    container_name: notification-db
+    environment:
+      POSTGRES_DB: ${NOTIFICATION_DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "${NOTIFICATION_DB_PORT}:5432"
+    volumes:
+      - notification_data:/var/lib/postgresql/data
+    networks:
+      - ${NETWORK_NAME:-my-app-network}
   user-service:
     build:
       context: ./user_service
@@ -130,7 +144,7 @@ services:
     depends_on:
       - user-db
     networks:
-      - ${NETWORK_NAME}
+      - ${NETWORK_NAME:-my-app-network}
 
   auth-service:
     build:
@@ -151,7 +165,7 @@ services:
       - auth-db
       - user-service
     networks:
-      - ${NETWORK_NAME}
+      - ${NETWORK_NAME:-my-app-network}
 
   chat-service:
     build:
@@ -164,6 +178,7 @@ services:
       - DB_NAME=${CHAT_DB_NAME}
       - DB_USER=${DB_USER}
       - DB_PASSWORD=${DB_PASSWORD}
+      - USER_SERVICE_URL=user-service:${USER_SERVICE_PORT}
       - GRPC_PORT=${CHAT_SERVICE_PORT}
       - REDIS_HOST=redis
       - REDIS_PORT=6379
@@ -171,13 +186,15 @@ services:
       - REDIS_DB=1
       - REDIS_CHANNEL=chat_messages
       - REDIS_URL=redis:6379
+      - GMAIL_EMAIL=${GMAIL_EMAIL}
     ports:
       - "${CHAT_SERVICE_PORT}:${CHAT_SERVICE_PORT}"
     depends_on:
       - chat-db
       - redis
+      - kafka
     networks:
-      - ${NETWORK_NAME}
+      - ${NETWORK_NAME:-my-app-network}
 
   session-service:
     build:
@@ -192,12 +209,14 @@ services:
       - DB_PASSWORD=${DB_PASSWORD}
       - GRPC_PORT=${SESSION_SERVICE_PORT}
       - SESSION_SERVICE_ADDR=session-service:${SESSION_SERVICE_PORT}
+      - USER_SERVICE_URL=user-service:${USER_SERVICE_PORT}
     ports:
       - "${SESSION_SERVICE_PORT}:${SESSION_SERVICE_PORT}"
     depends_on:
       - session-db
+      - user-service
     networks:
-      - ${NETWORK_NAME}
+      - ${NETWORK_NAME:-my-app-network}
 
   post-service:
     build:
@@ -217,7 +236,7 @@ services:
       - post-db
       - post-migrate
     networks:
-      - ${NETWORK_NAME}
+      - ${NETWORK_NAME:-my-app-network}
 
   frontend:
     build: ./frontend
@@ -232,7 +251,7 @@ services:
     depends_on:
       - api-gateway
     networks:
-      - ${NETWORK_NAME}
+      - ${NETWORK_NAME:-my-app-network}
 
   user-migrate:
     image: migrate/migrate:v4.16.2
@@ -245,7 +264,7 @@ services:
       - "-database=postgres://${DB_USER}:${DB_PASSWORD}@user-db:5432/${USER_DB_NAME}?sslmode=disable"
       - "up"
     networks:
-      - ${NETWORK_NAME}
+      - ${NETWORK_NAME:-my-app-network}
 
   auth-migrate:
     image: migrate/migrate:v4.16.2
@@ -258,7 +277,7 @@ services:
       - "-database=postgres://${DB_USER}:${DB_PASSWORD}@auth-db:5432/${AUTH_DB_NAME}?sslmode=disable"
       - "up"
     networks:
-      - ${NETWORK_NAME}
+      - ${NETWORK_NAME:-my-app-network}
 
   chat-migrate:
     image: migrate/migrate:v4.16.2
@@ -271,7 +290,7 @@ services:
       - "-database=postgres://${DB_USER}:${DB_PASSWORD}@chat-db:5432/${CHAT_DB_NAME}?sslmode=disable"
       - "up"
     networks:
-      - ${NETWORK_NAME}
+      - ${NETWORK_NAME:-my-app-network}
 
   session-migrate:
     image: migrate/migrate:v4.16.2
@@ -284,7 +303,7 @@ services:
       - "-database=postgres://${DB_USER}:${DB_PASSWORD}@session-db:5432/${SESSION_DB_NAME}?sslmode=disable"
       - "up"
     networks:
-      - ${NETWORK_NAME}
+      - ${NETWORK_NAME:-my-app-network}
 
   post-migrate:
     image: migrate/migrate:v4.16.2
@@ -297,7 +316,87 @@ services:
       - "-database=postgres://${DB_USER}:${DB_PASSWORD}@post-db:5432/${POST_DB_NAME}?sslmode=disable"
       - "up"
     networks:
-      - ${NETWORK_NAME}
+      - ${NETWORK_NAME:-my-app-network}
+  
+  notification-migrate:
+    image: migrate/migrate:v4.16.2
+    depends_on:
+      - notification-db
+    volumes:
+      - ./notification_service/migrations:/migrations
+    command:
+      - "-path=/migrations"
+      - "-database=postgres://${DB_USER}:${DB_PASSWORD}@notification-db:5432/${NOTIFICATION_DB_NAME}?sslmode=disable"
+      - "up"
+    networks:
+      - ${NETWORK_NAME:-my-app-network}
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.4.0
+    container_name: zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+    networks:
+      - ${NETWORK_NAME:-my-app-network}
+
+  kafka:
+    image: wurstmeister/kafka:latest 
+    container_name: kafka
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_BROKER_ID: ${KAFKA_BROKER_ID:-1}
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_CREATE_TOPICS: "chat_messages:3:1,book_event:3:1"
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT
+
+    ports:
+      - "29092:29092"
+      - "9092:9092"
+    volumes:
+    - kafka_data:/kafka
+    networks:
+      - ${NETWORK_NAME:-my-app-network}
+
+  notification-service:
+    build:
+      context: ./notification_service
+      dockerfile: Dockerfile
+    container_name: notification-service
+    depends_on:
+      - notification-db
+      - kafka
+    environment:
+      DB_HOST: notification-db
+      DB_PORT: 5432
+      DB_NAME: ${NOTIFICATION_DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+
+      KAFKA_BROKERS: kafka:9092
+      KAFKA_TOPIC_CHAT_MESSAGES: chat_messages
+      KAFKA_GROUP_ID: notification-service-group
+      KAFKA_AUTO_OFFSET_RESET: earliest
+
+      SMTP_HOST: smtp.gmail.com
+      SMTP_PORT: 587
+      GMAIL_EMAIL: ${GMAIL_EMAIL:-}
+      GMAIL_APP_PASSWORD: ${GMAIL_APP_PASSWORD:-}
+
+      LOG_LEVEL: debug
+    ports:
+      - "${NOTIFICATION_SERVICE_PORT}:${NOTIFICATION_SERVICE_PORT}"
+    volumes:
+      - ./notification_service/config:/app/config:ro
+      - ./notification_service/migrations:/app/migrations:ro
+    networks:
+      - ${NETWORK_NAME:-my-app-network}
 
 volumes:
   redis_data:
@@ -306,6 +405,8 @@ volumes:
   chat_data:
   session_data:
   post_data:
+  notification_data:
+  kafka_data:
 
 networks:
   my-app-network:
