@@ -14,16 +14,18 @@ type Handlers struct {
 	AuthHandler AuthHandler
 	ChatHandler ChatHandler
 	SessionHandler SessionHandler
+	PostHandler PostHandler
 }
 
 func NewHandler(websocketHandler websocket.WebSocketHandler, userHandler UserHandler, authHandler AuthHandler,
-				 chatHandler ChatHandler, sessionHandler SessionHandler) *Handlers{
+				 chatHandler ChatHandler, sessionHandler SessionHandler, postHandler PostHandler) *Handlers{
 	return &Handlers{
 		WebSocket: websocketHandler,
 		UserHandler: userHandler,
 		AuthHandler: authHandler,
 		ChatHandler: chatHandler,
 		SessionHandler: sessionHandler,
+		PostHandler: postHandler,
 	}
 }
 
@@ -60,6 +62,12 @@ func InitRoutes(handlers Handlers) *gin.Engine {
 				auth.POST("/login", handlers.AuthHandler.Login)
 				auth.POST("/refresh", handlers.AuthHandler.RefreshToken)
 				auth.POST("/logout", handlers.AuthHandler.Logout)
+			}
+			
+			posts := public.Group("/posts")
+			{
+				posts.GET("/:id", handlers.PostHandler.GetPost)
+				posts.GET("", handlers.PostHandler.ListPosts)
 			}
 		}
 
@@ -106,6 +114,14 @@ func InitRoutes(handlers Handlers) *gin.Engine {
 				sessions.POST("/:id/rate", handlers.SessionHandler.RateSession)
 				sessions.DELETE("/:id", handlers.SessionHandler.DeleteSession)
 			}
+			posts := protected.Group("/posts")
+			{
+				posts.POST("", handlers.PostHandler.CreatePost)
+				posts.PUT("/:id", handlers.PostHandler.UpdatePost)
+				posts.DELETE("/:id", handlers.PostHandler.DeletePost)
+				posts.POST("/:id/rate", handlers.PostHandler.RatePost)
+			}
+
 			protected.GET("/mentors/:mentor_id/sessions", handlers.SessionHandler.ListSessionsByMentor)
 			protected.GET("/students/:student_id/sessions", handlers.SessionHandler.ListSessionsByStudent)
 		}
