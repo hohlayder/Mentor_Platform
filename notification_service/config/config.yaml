@@ -1,0 +1,6 @@
+db:
+  port: 5432
+  host: "notification-db"
+  username: "mentors"
+  db_name: "notifications"
+  ssl_mode: "disable"
