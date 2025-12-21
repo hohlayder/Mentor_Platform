@@ -1,5 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useContext } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../store/AuthContext";
 
 export const Login: React.FC = () => {
   const [email, setEmail] = useState("");
@@ -10,12 +11,14 @@ export const Login: React.FC = () => {
   const [success, setSuccess] = useState<string | null>(null);
 
   const navigate = useNavigate();
+  const auth = useAuth();
 
   async function handleRegister(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     setSuccess(null);
     setLoading(true);
+    var userData = null;
 
     try {
       const res = await fetch("http://localhost:8080/api/v1/auth/login", {
@@ -32,10 +35,47 @@ export const Login: React.FC = () => {
       if (res.status === 200) {
         const data = await res.json(); 
         setSuccess("Успешный вход");
-        sessionStorage.setItem("access_token", data.access_token);
-        sessionStorage.setItem("refresh_token", data.refresh_token);
-        sessionStorage.setItem("expires_in", data.expires_in);
-        navigate("/");
+
+        try {
+        // Запрашиваем пользователя по email
+        const userRes = await fetch(`http://localhost:8080/api/v1/users/email/${email}`, {
+          headers: {
+            "Authorization": `Bearer ${data.access_token}`
+          }
+        });
+        
+        if (userRes.ok) {
+          userData = await userRes.json();
+          console.log('🔐 Login: User data received:', userData);
+          
+          // Сохраняем пользователя в sessionStorage
+          sessionStorage.setItem("user_data", JSON.stringify(userData));
+        } else {
+          console.warn('🔐 Login: Could not fetch user, status:', userRes.status);
+          // Создаем временного пользователя с реальным email
+          const tempUser = {
+            user_id: `temp-${Date.now()}`,
+            email: email,
+            first_name: email.split('@')[0],
+            last_name: '',
+            created_at: new Date().toISOString()
+          };
+          sessionStorage.setItem("user_data", JSON.stringify(tempUser));
+        }
+      } catch (userErr) {
+        console.error('🔐 Login: Error fetching user:', userErr);
+        // Создаем временного пользователя
+        const tempUser = {
+          user_id: `temp-${Date.now()}`,
+          email: email,
+          first_name: email.split('@')[0],
+          last_name: '',
+          created_at: new Date().toISOString()
+        };
+        sessionStorage.setItem("user_data", JSON.stringify(tempUser));
+      }
+        auth.login(data.access_token, userData);// логин!!!!!
+        navigate("/profile", { replace: true });
       } else if (res.status === 400) {
         const data = await res.json(); 
         setError("Некорректные данные. Проверьте ввод.");
@@ -47,9 +87,9 @@ export const Login: React.FC = () => {
 
     } catch (e) {
       setError("Не удалось подключиться к серверу.");
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   }
 
   return (

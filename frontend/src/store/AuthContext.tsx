@@ -1,64 +1,76 @@
-import React, { createContext, useState, useEffect } from 'react'
-import { refreshToken as apiRefresh } from '../api/auth.api'
+// store/authcontext.tsx
+import React, { createContext, useState, useContext } from 'react'
 
-
-type AuthContextType = {
-token: string | null
-setToken: (t: string | null) => void
-logout: () => void
+interface User {
+  user_id: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  avatar_url?: string;
+  created_at: string;
 }
 
+interface AuthContextType {
+  // Состояние
+  token: string | null;
+  user: User | null;
+  // Методы для обновления состояния
+  setToken: (token: string | null) => void;
+  setUser: (user: User | null) => void;
+  // Удобный метод для обновления всего сразу
+  login: (token: string, user: User) => void;
+  logout: () => void;
+}
 
-export const AuthContext = createContext<AuthContextType>({
-token: null,
-setToken: () => {},
-logout: () => {}
-})
+// Создаем контекст с пустыми значениями
+export const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
+// Хук для использования контекста
+export const useAuth = () => {
+  const context = useContext(AuthContext)
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider')
+  }
+  return context
+}
 
+// Провайдер
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-const [token, setToken] = useState<string | null>(() => sessionStorage.getItem('access_token'))
+  // СОСТОЯНИЕ - только React state, без sessionStorage
+  const [token, setToken] = useState<string | null>(null)
+  const [user, setUser] = useState<User | null>(null)
 
+  console.log('🔐 AuthContext render:', { 
+    token: token ? 'Есть' : 'Нет', 
+    user: user ? user.email : 'Нет' 
+  })
 
-useEffect(() => {
-sessionStorage.setItem('access_token', token ?? '')
-}, [token])
+  // Методы для обновления состояния
+  const login = (newToken: string, newUser: User) => {
+    console.log('🔐 login() called:', newUser.email)
+    setToken(newToken)
+    setUser(newUser)
+  }
 
+  const logout = () => {
+    console.log('🔐 logout() called')
+    setToken(null)
+    setUser(null)
+  }
 
-const logout = async () => {
-// optionally call /auth/logout via api
-sessionStorage.removeItem('access_token')
-localStorage.removeItem('refresh_token')
-setToken(null)
-window.location.href = '/login'
-}
+  // Значение контекста
+  const value: AuthContextType = {
+    token,
+    user,
+    setToken,
+    setUser,
+    login,
+    logout
+  }
 
-
-// auto refresh on mount if refresh token present and no access token
-useEffect(() => {
-const tryRefresh = async () => {
-if (!token) {
-const refresh = localStorage.getItem('refresh_token')
-if (refresh) {
-try {
-const data = await apiRefresh({ refresh_token: refresh })
-setToken(data.access_token)
-localStorage.setItem('refresh_token', data.refresh_token)
-} catch (e) {
-// ignore
-}
-}
-}
-}
-
-
-tryRefresh()
-}, [])
-
-
-return (
-<AuthContext.Provider value={{ token, setToken, logout }}>
-{children}
-</AuthContext.Provider>
-)
+  return (
+    <AuthContext.Provider value={value}>
+      {children}
+    </AuthContext.Provider>
+  )
 }
