@@ -160,5 +160,5 @@ class WebSocketService {
 
 // Создаем глобальный экземпляр WebSocket сервиса
 // Замени URL на реальный адрес твоего WebSocket сервера
-const WS_URL = 'ws://localhost:8080/ws';
+const WS_URL = 'ws://localhost:8080/api/v1/ws';
 export const websocketService = new WebSocketService(WS_URL);

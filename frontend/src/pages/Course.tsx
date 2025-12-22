@@ -1435,34 +1435,6 @@ const CoursePage: React.FC = () => {
               )}
               
               {/* Информация для преподавателя */}
-              {isAuthor && profile?.mentor && (
-                <div style={{
-                  background: 'rgba(6, 182, 212, 0.05)',
-                  border: '1px solid rgba(6, 182, 212, 0.1)',
-                  padding: '16px',
-                  borderRadius: '8px',
-                  marginBottom: '20px',
-                  fontSize: '14px'
-                }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div>
-                      <div style={{ fontWeight: 600, marginBottom: '8px', color: 'var(--accent-2)' }}>
-                        👨‍🏫 Управление временными слотами
-                      </div>
-                      <p style={{ margin: 0, color: 'var(--muted)' }}>
-                        Создавайте слоты для индивидуальных консультаций. Студенты смогут записываться в доступные слоты.
-                      </p>
-                    </div>
-                    <button
-                      className="btn btn-primary"
-                      onClick={() => setShowSlotModal(true)}
-                      style={{ fontSize: '14px', padding: '8px 16px' }}
-                    >
-                      🕒 Создать слоты
-                    </button>
-                  </div>
-                </div>
-              )}
               
               {/* Информация для студентов */}
               {!isAuthor && token && (

@@ -11,6 +11,8 @@ import CoursePage from './pages/Course';
 import ChatPage from './pages/ChatPage';
 import ChatsPage from './pages/ChatsPage';
 
+import Chats from './pages/Chats'; // Импортируем новый компонент
+
 
 console.log("🚀 App.tsx запускается!")
 
@@ -29,8 +31,7 @@ export default function App() {
           <Route path="/courses/:id" element={<CoursePage />} />
           <Route path="/course/create" element={<CourseFormPage />} />
           <Route path="/course/edit/:id" element={<CourseFormPage />} />
-          <Route path="/chats" element={<ChatsPage />} />
-          <Route path="/chat/:id" element={<ChatPage />} />
+          <Route path="/chats" element={<Chats />} /> {/* Используем новый компонент */}
 
           <Route path="*" element={<div>404 - Страница не найдена</div>} />
         </Routes>
