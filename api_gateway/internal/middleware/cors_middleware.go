@@ -38,8 +38,8 @@ func CORS() gin.HandlerFunc {
 			"Sec-WebSocket-Version",
 			"Sec-WebSocket-Protocol",
 			"Sec-WebSocket-Extensions",
-			"Upgrade",                
-			"Connection",              
+			"Upgrade",
+			"Connection",             
 		},
 		ExposeHeaders: []string{
 			"Content-Length",
