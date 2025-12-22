@@ -2,10 +2,15 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom"
 import { Login } from "./pages/Login"
 import { Home } from "./pages/Home"
 import { Register } from "./pages/Register"
-import Profile from "./pages/Profile";
+import Profile from "./pages/ProfileTest";
 import CoursesPage from './pages/Courses'
-import NotificationsPage from './pages/Notifications'
 import { AuthProvider } from "./store/AuthContext";
+import CourseFormPage from "./pages/CourseFormPage";
+import EditProfilePage from './pages/ProfileEdit';
+import CoursePage from './pages/Course';
+import ChatPage from './pages/ChatPage';
+import ChatsPage from './pages/ChatsPage';
+
 
 console.log("🚀 App.tsx запускается!")
 
@@ -19,8 +24,13 @@ export default function App() {
           <Route path="/signup" element={<Register />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/profile/:id" element={<Profile />} />
-          <Route path="/notifications" element={<NotificationsPage />} />
+          <Route path="/profile/:id/edit" element={<EditProfilePage />} />
           <Route path="/courses" element={<CoursesPage />} />
+          <Route path="/courses/:id" element={<CoursePage />} />
+          <Route path="/course/create" element={<CourseFormPage />} />
+          <Route path="/course/edit/:id" element={<CourseFormPage />} />
+          <Route path="/chats" element={<ChatsPage />} />
+          <Route path="/chat/:id" element={<ChatPage />} />
 
           <Route path="*" element={<div>404 - Страница не найдена</div>} />
         </Routes>
