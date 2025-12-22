@@ -55,7 +55,9 @@ func InitRoutes(handlers Handlers) *gin.Engine {
 		// Public endpoints
 		public := api.Group("")
 		{
+			public.GET("/ws", handlers.WebSocket.HandleWebSocket)
 			// Authentication
+			
 			auth := public.Group("/auth")
 			{
 				auth.POST("/register", handlers.AuthHandler.Register)
@@ -75,7 +77,7 @@ func InitRoutes(handlers Handlers) *gin.Engine {
 		protected.Use(middleware.AuthMiddleware())
 		{
 
-			protected.GET("/ws", handlers.WebSocket.HandleWebSocket)
+			
 
 			users := protected.Group("/users")
 			{
