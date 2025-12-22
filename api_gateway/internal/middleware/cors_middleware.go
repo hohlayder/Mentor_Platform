@@ -13,6 +13,7 @@ func CORS() gin.HandlerFunc {
                 "http://localhost:5173",
                 "http://localhost:3000",
                 "http://127.0.0.1:5173",
+				"http://localhost:8080",
         },
 		AllowMethods: []string{
 			"GET",
@@ -33,9 +34,10 @@ func CORS() gin.HandlerFunc {
 			"X-Requested-With",
 			"X-Access-Token",
 			"X-Refresh-Token",
-			"Sec-WebSocket-Key",       
-			"Sec-WebSocket-Version",   
-			"Sec-WebSocket-Protocol",  
+			"Sec-WebSocket-Key",
+			"Sec-WebSocket-Version",
+			"Sec-WebSocket-Protocol",
+			"Sec-WebSocket-Extensions",
 			"Upgrade",                
 			"Connection",              
 		},
@@ -46,5 +48,6 @@ func CORS() gin.HandlerFunc {
 		AllowCredentials: true,
 		MaxAge:           12 * time.Hour,
 		AllowWebSockets:  true,
+		AllowWildcard:    true,
 	})
 }
