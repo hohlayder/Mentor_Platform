@@ -1,12 +1,16 @@
 package websocket
 
 import (
+	"errors"
+	"fmt"
 	"log"
 	"log/slog"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"github.com/hohlayder/Mentor_Platform/api_gateway/internal/domain"
@@ -48,31 +52,98 @@ func NewWebSocketHandler(websocketService WebSocketService, messageService Messa
 	}
 }
 
+type CustomClaims struct {
+	UserId string `json:"UserId"`
+	jwt.RegisteredClaims
+	TokenType string `json:"type"`
+}
+
+func ParseToken(tokenString string) (*CustomClaims, error) {
+	jwtSecret := os.Getenv("JWT_SECRET")
+	if jwtSecret == "" {
+		return nil, errors.New("JWT_SECRET not configured")
+	}
+
+	token, err := jwt.ParseWithClaims(tokenString, &CustomClaims{}, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+		}
+		return []byte(jwtSecret), nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	if claims, ok := token.Claims.(*CustomClaims); ok && token.Valid {
+		return claims, nil
+	}
+
+	return nil, errors.New("invalid token")
+}
+
 func (h *WebSocketHandler) HandleWebSocket(c *gin.Context) {
-	userIDInterface, exists := c.Get("user_id")
-	if !exists {
+	token := c.Query("token")
+
+	if token == "" {
+		subprotocols := c.Request.Header["Sec-WebSocket-Protocol"]
+		for _, protocol := range subprotocols {
+			if len(protocol) > 7 && protocol[:7] == "Bearer " {
+				token = protocol[7:]
+				break
+			} else if len(protocol) > 0 {
+				token = protocol
+				break
+			}
+		}
+	}
+
+	if token == "" {
+		authHeader := c.GetHeader("Authorization")
+		if len(authHeader) > 7 && authHeader[:7] == "Bearer " {
+			token = authHeader[7:]
+		}
+	}
+
+	if token == "" {
 		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": "User not authenticated",
+			"error": "Authorization token required",
+			"hint":  "Use WebSocket URL: ws://localhost:8080/ws?token=YOUR_JWT_TOKEN",
 		})
 		return
 	}
 
-	userIDStr, ok := userIDInterface.(string)
-	if !ok || userIDStr == "" {
+	claims, err := ParseToken(token)
+	if err != nil {
+		log.Printf("Token validation failed: %v", err)
 		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": "Invalid user ID",
+			"error": "Invalid or expired token",
 		})
 		return
 	}
 
-	userID, err := uuid.Parse(userIDStr)
+	if claims.TokenType != "access" {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": "Access token required",
+		})
+		return
+	}
+
+	userID, err := uuid.Parse(claims.UserId)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": "Invalid user ID format",
+			"error": "Invalid user ID format in token",
 		})
 		return
 	}
 
+	c.Set("user_id", claims.UserId)
+
+	// 9. Настраиваем заголовки ответа
+	responseHeader := http.Header{}
+	if len(c.Request.Header["Sec-WebSocket-Protocol"]) > 0 {
+		responseHeader.Set("Sec-WebSocket-Protocol", "authorization")
+	}
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
 		log.Printf("WebSocket upgrade error: %v", err)
