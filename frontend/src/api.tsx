@@ -1,5 +1,5 @@
 // src/api.ts
-const API_URL = "https://localhost:8080/api/v1";
+export const API_URL = "https://localhost:8080/api/v1";
 
 export interface HealthResponse {
   message: string;
