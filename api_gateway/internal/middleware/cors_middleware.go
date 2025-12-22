@@ -33,11 +33,12 @@ func CORS() gin.HandlerFunc {
 			"X-Requested-With",
 			"X-Access-Token",
 			"X-Refresh-Token",
-			"Sec-WebSocket-Key",       
-			"Sec-WebSocket-Version",   
-			"Sec-WebSocket-Protocol",  
-			"Upgrade",                
-			"Connection",              
+			"Sec-WebSocket-Key",
+			"Sec-WebSocket-Version",
+			"Sec-WebSocket-Protocol",
+			"Sec-WebSocket-Extensions",
+			"Upgrade",
+			"Connection",             
 		},
 		ExposeHeaders: []string{
 			"Content-Length",
@@ -46,5 +47,6 @@ func CORS() gin.HandlerFunc {
 		AllowCredentials: true,
 		MaxAge:           12 * time.Hour,
 		AllowWebSockets:  true,
+		AllowWildcard:    true,
 	})
 }
