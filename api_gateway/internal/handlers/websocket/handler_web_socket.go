@@ -38,6 +38,8 @@ type WebSocketService interface {
 	HandleConnection(userID uuid.UUID, conn *websocket.Conn, ipAddress string) error
 	HandleDisconnection(userID uuid.UUID) error
 	HandleMessage(message *domain.Message) error
+	GetGoroutineStats() map[string]interface{}
+	IsUserConnected(userID uuid.UUID) bool
 }
 
 type WebSocketHandler struct {
@@ -130,77 +132,106 @@ func (h *WebSocketHandler) HandleWebSocket(c *gin.Context) {
 	}
 
 	userID, err := uuid.Parse(claims.UserId)
-	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": "Invalid user ID format in token",
-		})
-		return
-	}
-
-	c.Set("user_id", claims.UserId)
-
-	// 9. Настраиваем заголовки ответа
-	responseHeader := http.Header{}
-	if len(c.Request.Header["Sec-WebSocket-Protocol"]) > 0 {
-		responseHeader.Set("Sec-WebSocket-Protocol", "authorization")
-	}
-	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
-	if err != nil {
-		log.Printf("WebSocket upgrade error: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to upgrade to WebSocket",
-		})
-		return
-	}
-
-	if err := h.websocketService.HandleConnection(userID, conn, c.ClientIP()); err != nil {
-		conn.WriteJSON(map[string]string{"error": err.Error()})
-		conn.Close()
-		return
-	}
-
-	log.Printf("WebSocket connection established for user: %s", userID)
-	
-	go h.handleClientMessages(userID, conn)
+    if err != nil {
+        c.JSON(http.StatusUnauthorized, gin.H{
+            "error": "Invalid user ID format in token",
+        })
+        return
+    }
+    
+    c.Set("user_id", claims.UserId)
+    
+    conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
+    if err != nil {
+        log.Printf("WebSocket upgrade error: %v", err)
+        c.JSON(http.StatusInternalServerError, gin.H{
+            "error": "Failed to upgrade to WebSocket",
+        })
+        return
+    }
+    
+    // Логируем статистику перед подключением
+    stats := h.websocketService.GetGoroutineStats()
+    slog.Info("Before connection",
+        "userID", userID,
+        "active_goroutines", stats["active_goroutines"],
+        "user_connected", h.websocketService.IsUserConnected(userID))
+    
+    if err := h.websocketService.HandleConnection(userID, conn, c.ClientIP()); err != nil {
+        conn.WriteJSON(map[string]string{"error": err.Error()})
+        conn.Close()
+        
+        // Логируем ошибку
+        slog.Error("HandleConnection failed",
+            "userID", userID,
+            "error", err,
+            "active_goroutines", stats["active_goroutines"])
+        return
+    }
+    
+    // Логируем статистику после подключения
+    stats = h.websocketService.GetGoroutineStats()
+    slog.Info("Connection established",
+        "userID", userID,
+        "active_goroutines", stats["active_goroutines"],
+        "total_created", stats["total_created"])
+    
+    go h.handleClientMessages(userID, conn)
 }
 
 func (h *WebSocketHandler) handleClientMessages(userID uuid.UUID, conn *websocket.Conn) {
-	defer func() {
-		h.websocketService.HandleDisconnection(userID)
-		conn.Close()
-	}()
-
-	for {
-		var incomingMsg IncomingMessage
-		err := conn.ReadJSON(&incomingMsg)
-		if err != nil {
-			slog.Info(err.Error())
-			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-				slog.Error("WebSocket read error", "user_id", userID, "error", err)
-			}
-			break
-		}
-
-		message := &domain.Message{
-			ID:          uuid.New(),
-			ChatID:      incomingMsg.ChatID,
-			SenderID:    userID,
-			Content:     incomingMsg.Content,
-			ReplyTo:     incomingMsg.ReplyTo,
-			MessageType: incomingMsg.MessageType,
-			Attachments: incomingMsg.Attachments,
-			CreatedAt:   time.Now(),
-			UpdatedAt:   time.Now(),
-			IsEdited:    false,
-			IsRead:      false,
-		}
-
-		if err := h.websocketService.HandleMessage(message); err != nil {
-			errorMsg := map[string]interface{}{
-				"type":  "error",
-				"error": err.Error(),
-			}
-			conn.WriteJSON(errorMsg)
-		}
-	}
+    defer func() {
+        // Всегда вызываем отключение
+        if err := h.websocketService.HandleDisconnection(userID); err != nil {
+            slog.Warn("HandleDisconnection returned error",
+                "userID", userID,
+                "error", err)
+        }
+        
+        // Логируем статистику после отключения
+        stats := h.websocketService.GetGoroutineStats()
+        slog.Info("After disconnection",
+            "userID", userID,
+            "active_goroutines", stats["active_goroutines"],
+            "total_stopped", stats["total_stopped"])
+    }()
+    
+    for {
+        var incomingMsg IncomingMessage
+        err := conn.ReadJSON(&incomingMsg)
+        if err != nil {
+            if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
+                slog.Error("Unexpected WebSocket close",
+                    "user_id", userID,
+                    "error", err)
+            } else {
+                slog.Info("WebSocket read error (normal closure)",
+                    "user_id", userID,
+                    "error", err)
+            }
+            break
+        }
+        
+        message := &domain.Message{
+            ID:          uuid.New(),
+            ChatID:      incomingMsg.ChatID,
+            SenderID:    userID,
+            Content:     incomingMsg.Content,
+            ReplyTo:     incomingMsg.ReplyTo,
+            MessageType: incomingMsg.MessageType,
+            Attachments: incomingMsg.Attachments,
+            CreatedAt:   time.Now(),
+            UpdatedAt:   time.Now(),
+            IsEdited:    false,
+            IsRead:      false,
+        }
+        
+        if err := h.websocketService.HandleMessage(message); err != nil {
+            errorMsg := map[string]interface{}{
+                "type":  "error",
+                "error": err.Error(),
+            }
+            conn.WriteJSON(errorMsg)
+        }
+    }
 }
