@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "../store/AuthContext";
 
 export const Register: React.FC = () => {
   const [name, setName] = useState("");
@@ -13,7 +12,6 @@ export const Register: React.FC = () => {
   const [success, setSuccess] = useState<string | null>(null);
   
   const navigate = useNavigate();
-  const auth = useAuth();
 
 
   async function handleRegister(e: React.FormEvent) {
@@ -21,7 +19,6 @@ export const Register: React.FC = () => {
     setError(null);
     setSuccess(null);
     setLoading(true);
-    var userData = null;
 
     try {
       const res = await fetch("http://localhost:8080/api/v1/auth/register", {
@@ -41,74 +38,28 @@ export const Register: React.FC = () => {
         const data = await res.json(); 
         setSuccess("Аккаунт создан! Ваш ID: " + data.id);
         sessionStorage.setItem("id", data.id);
+        const reslog = await fetch("http://localhost:8080/api/v1/auth/login", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            name: name,
+            surname: surname,
+            email: email,
+            password: password
+          })
+        });
 
-        try {
-          const res = await fetch("http://localhost:8080/api/v1/auth/login", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-              email: email,
-              password: password
-            })
-          });
-
-          if (res.status === 200) {
-            const data = await res.json(); 
-            setSuccess("Успешный вход");
-
-            try {
-            // Запрашиваем пользователя по email
-            const userRes = await fetch(`http://localhost:8080/api/v1/users/email/${email}`, {
-              headers: {
-                "Authorization": `Bearer ${data.access_token}`
-              }
-            });
-            
-            if (userRes.ok) {
-              userData = await userRes.json();
-              console.log('🔐 Login: User data received:', userData);
-              
-              // Сохраняем пользователя в sessionStorage
-              sessionStorage.setItem("user_data", JSON.stringify(userData));
-            } else {
-              console.warn('🔐 Login: Could not fetch user, status:', userRes.status);
-              // Создаем временного пользователя с реальным email
-              const tempUser = {
-                user_id: `temp-${Date.now()}`,
-                email: email,
-                first_name: email.split('@')[0],
-                last_name: '',
-                created_at: new Date().toISOString()
-              };
-              sessionStorage.setItem("user_data", JSON.stringify(tempUser));
-            }
-          } catch (userErr) {
-            console.error('🔐 Login: Error fetching user:', userErr);
-            // Создаем временного пользователя
-            const tempUser = {
-              user_id: `temp-${Date.now()}`,
-              email: email,
-              first_name: email.split('@')[0],
-              last_name: '',
-              created_at: new Date().toISOString()
-            };
-            sessionStorage.setItem("user_data", JSON.stringify(tempUser));
-          }
-            auth.login(data.access_token, userData);// логин!!!!!
-            navigate("/profile", { replace: true });
-          } else if (res.status === 400) {
-            const data = await res.json(); 
-            setError("Некорректные данные. Проверьте ввод.");
-          } else if (res.status === 401) {
-            setError("Неверный логин или пароль");
-          } else {
-            setError(`${res.status} Error`);
-          }
-
-        } catch (e) {
-          setError("Не удалось подключиться к серверу.");
+        if(reslog.status==201){
+          const datalog = await reslog.json();
+          setSuccess("Успешный вход");
+          sessionStorage.setItem("access_token", data.access_token);
+          sessionStorage.setItem("refresh_token", data.refresh_token);
+          sessionStorage.setItem("expires_in", data.expires_in);
+          navigate("/");
+        } else {
+          setError("Give up lil bro");
         }
 
       } else if (res.status === 400) {
