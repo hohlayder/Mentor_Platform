@@ -81,9 +81,6 @@ func InitRoutes(handlers Handlers) *gin.Engine {
 		protected := api.Group("")
 		protected.Use(middleware.AuthMiddleware())
 		{
-
-			
-
 			users := protected.Group("/users")
 			{
 				users.GET("/:id", handlers.UserHandler.GetUserByID)
@@ -99,8 +96,8 @@ func InitRoutes(handlers Handlers) *gin.Engine {
 
 			chats := protected.Group("/chats")
 			{
-				chats.POST("/", handlers.ChatHandler.CreateChat)
-				chats.GET("/", handlers.ChatHandler.GetUserChats)
+				chats.POST("", handlers.ChatHandler.CreateChat)
+				chats.GET("", handlers.ChatHandler.GetUserChats)
 				chats.GET("/:id", handlers.ChatHandler.GetChatById)
 				chats.GET("/messages", handlers.ChatHandler.GetChatMessages)
 				chats.POST("/messages/read", handlers.ChatHandler.MarkMessagesRead)
