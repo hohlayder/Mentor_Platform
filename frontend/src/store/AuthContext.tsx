@@ -1,5 +1,6 @@
 // store/authcontext.tsx
-import React, { createContext, useState, useContext } from 'react'
+import React, { createContext, useState, useEffect, useContext, useCallback } from 'react'
+import { websocketService } from '../services/websocket';
 
 interface User {
   user_id: string;
@@ -11,66 +12,163 @@ interface User {
 }
 
 interface AuthContextType {
-  // Состояние
   token: string | null;
   user: User | null;
-  // Методы для обновления состояния
+  isLoading: boolean;
   setToken: (token: string | null) => void;
   setUser: (user: User | null) => void;
-  // Удобный метод для обновления всего сразу
   login: (token: string, user: User) => void;
-  logout: () => void;
+  logout: () => Promise<void>;
 }
 
-// Создаем контекст с пустыми значениями
-export const AuthContext = createContext<AuthContextType | undefined>(undefined)
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Хук для использования контекста
 export const useAuth = () => {
-  const context = useContext(AuthContext)
+  const context = useContext(AuthContext);
   if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider')
+    throw new Error('useAuth must be used within an AuthProvider');
   }
-  return context
-}
+  return context;
+};
 
-// Провайдер
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // СОСТОЯНИЕ - только React state, без sessionStorage
-  const [token, setToken] = useState<string | null>(null)
-  const [user, setUser] = useState<User | null>(null)
+  // Инициализируем из sessionStorage
+  const [token, setTokenState] = useState<string | null>(() => {
+    return sessionStorage.getItem('access_token') || localStorage.getItem('access_token');
+  });
+  
+  const [user, setUserState] = useState<User | null>(() => {
+    const savedUser = sessionStorage.getItem('user_data') || localStorage.getItem('user_data');
+    return savedUser ? JSON.parse(savedUser) : null;
+  });
+  
+  const [isLoading, setIsLoading] = useState(true);
 
-  console.log('🔐 AuthContext render:', { 
-    token: token ? 'Есть' : 'Нет', 
-    user: user ? user.email : 'Нет' 
-  })
+  // При монтировании проверяем валидность токена
+  useEffect(() => {
+    const initializeAuth = async () => {
+      console.log('🔐 AuthContext: Инициализация из sessionStorage');
+      if (token) {
+        // Можно добавить проверку валидности токена через API
+        // Например, сделать запрос к защищенному эндпоинту
+        console.log('🔐 Токен найден в sessionStorage');
+      }
+      setIsLoading(false);
+      console.log('🔐 AuthContext: Инициализация завершена', {
+        hasToken: !!token,
+        hasUser: !!user,
+        userEmail: user?.email
+      });
+    };
+    
+    initializeAuth();
+  }, []);
 
-  // Методы для обновления состояния
-  const login = (newToken: string, newUser: User) => {
-    console.log('🔐 login() called:', newUser.email)
-    setToken(newToken)
-    setUser(newUser)
-  }
+  // Кастомный setToken с сохранением в sessionStorage
+  const setToken = useCallback((newToken: string | null) => {
+    console.log('🔐 setToken:', newToken ? 'Установлен' : 'Очищен');
+    
+    if (newToken) {
+      sessionStorage.setItem('access_token', newToken);
+      localStorage.setItem('access_token', newToken);
+    } else {
+      sessionStorage.removeItem('access_token');
+    }
+    
+    setTokenState(newToken);
+  }, []);
 
-  const logout = () => {
-    console.log('🔐 logout() called')
-    setToken(null)
-    setUser(null)
-  }
+  // Кастомный setUser с сохранением в sessionStorage
+  const setUser = useCallback((newUser: User | null) => {
+    console.log('🔐 setUser:', newUser ? newUser.email : 'Очищен');
+    
+    if (newUser) {
+      sessionStorage.setItem('user_data', JSON.stringify(newUser));
+      localStorage.setItem('user_data', JSON.stringify(newUser));
+    } else {
+      sessionStorage.removeItem('user_data');
+    }
+    
+    setUserState(newUser);
+  }, []);
 
-  // Значение контекста
+  // Метод login который сохраняет все
+  const login = useCallback((newToken: string, newUser: User) => {
+    console.log('🔐 login:', newUser.email);
+    
+    // Сохраняем в sessionStorage
+    sessionStorage.setItem('access_token', newToken);
+    localStorage.setItem('access_token', newToken);
+    sessionStorage.setItem('user_data', JSON.stringify(newUser));
+    localStorage.setItem('user_data', JSON.stringify(newUser));
+    
+    // Обновляем состояние
+    setTokenState(newToken);
+    setUserState(newUser);
+
+    websocketService.setToken(newToken);
+    websocketService.connect();
+    
+    console.log('🔐 Данные сохранены в sessionStorage');
+  }, []);
+
+  // Метод logout с очисткой
+  const logout = useCallback(async () => {
+    console.log('🔐 logout: Начало');
+    
+    try {
+      // Если есть токен, отправляем запрос на сервер для logout
+      if (token) {
+        const refreshToken = localStorage.getItem('refresh_token');
+        
+        if (refreshToken) {
+          await fetch("http://localhost:8080/api/v1/auth/logout", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({ refresh_token: refreshToken }),
+          }).catch(err => {
+            console.warn('🔐 Ошибка при logout на сервере:', err);
+            // Продолжаем даже если запрос не удался
+          });
+        }
+      }
+    } catch (error) {
+      console.error('🔐 Ошибка при logout:', error);
+    } finally {
+      // Всегда очищаем клиентские данные
+      sessionStorage.removeItem('access_token');
+      sessionStorage.removeItem('user_data');
+      localStorage.removeItem('refresh_token');
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('user_data');
+      
+      setTokenState(null);
+      setUserState(null);
+      websocketService.disconnect();
+      
+      console.log('🔐 logout: Данные очищены');
+      
+      // Редирект на главную
+      window.location.href = '/';
+    }
+  }, [token]);
+
   const value: AuthContextType = {
     token,
     user,
+    isLoading,
     setToken,
     setUser,
     login,
     logout
-  }
+  };
 
   return (
     <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
-  )
-}
+  );
+};

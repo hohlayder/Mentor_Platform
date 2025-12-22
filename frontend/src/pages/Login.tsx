@@ -46,6 +46,10 @@ export const Login: React.FC = () => {
         
         if (userRes.ok) {
           userData = await userRes.json();
+          if (data.refresh_token) {
+            localStorage.setItem('refresh_token', data.refresh_token);
+            console.log('🔐 Refresh token сохранен в localStorage');
+          }
           console.log('🔐 Login: User data received:', userData);
           
           // Сохраняем пользователя в sessionStorage
@@ -126,7 +130,7 @@ export const Login: React.FC = () => {
       {error && <p style={{ color: "red", marginTop: 10 }}>{error}</p>}
       {success && <p style={{ color: "green", marginTop: 10 }}>{success}</p>}
       <p style={{ marginTop: "12px" }}>
-        Нет аккаунта? <a href="/register">Зарегестрироваться</a>
+        Нет аккаунта? <a href="/signup">Зарегестрироваться</a>
       </p>
     </div>
   );

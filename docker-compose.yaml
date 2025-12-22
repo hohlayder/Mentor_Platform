@@ -54,11 +54,6 @@ services:
     networks:
       - ${NETWORK_NAME:-my-app-network}
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${USER_DB_NAME}"]
-      interval: 5s
-      timeout: 3s
-      retries: 20
 
   auth-db:
     image: postgres:15-alpine
@@ -74,11 +69,6 @@ services:
     networks:
       - ${NETWORK_NAME:-my-app-network}
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${AUTH_DB_NAME}"]
-      interval: 5s
-      timeout: 3s
-      retries: 20
 
   chat-db:
     image: postgres:15-alpine
@@ -94,11 +84,6 @@ services:
     networks:
       - ${NETWORK_NAME:-my-app-network}
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${CHAT_DB_NAME}"]
-      interval: 5s
-      timeout: 3s
-      retries: 20
 
   session-db:
     image: postgres:15-alpine
@@ -114,11 +99,6 @@ services:
     networks:
       - ${NETWORK_NAME:-my-app-network}
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${SESSION_DB_NAME}"]
-      interval: 5s
-      timeout: 3s
-      retries: 20
 
   post-db:
     image: postgres:15-alpine
@@ -134,12 +114,6 @@ services:
     networks:
       - ${NETWORK_NAME:-my-app-network}
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${POST_DB_NAME}"]
-      interval: 5s
-      timeout: 3s
-      retries: 20
-
   notification-db:
     image: postgres:15-alpine
     container_name: notification-db
@@ -153,13 +127,6 @@ services:
       - notification_data:/var/lib/postgresql/data
     networks:
       - ${NETWORK_NAME:-my-app-network}
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${NOTIFICATION_DB_NAME}"]
-      interval: 5s
-      timeout: 3s
-      retries: 20
-
   user-service:
     build:
       context: ./user_service
@@ -175,8 +142,7 @@ services:
     ports:
       - "${USER_SERVICE_PORT}:${USER_SERVICE_PORT}"
     depends_on:
-      user-db:
-        condition: service_healthy
+      - user-db
     networks:
       - ${NETWORK_NAME:-my-app-network}
 
@@ -196,10 +162,8 @@ services:
     ports:
       - "${AUTH_SERVICE_PORT}:${AUTH_SERVICE_PORT}"
     depends_on:
-      auth-db:
-        condition: service_healthy
-      user-service:
-        condition: service_started
+      - auth-db
+      - user-service
     networks:
       - ${NETWORK_NAME:-my-app-network}
 
@@ -226,14 +190,9 @@ services:
     ports:
       - "${CHAT_SERVICE_PORT}:${CHAT_SERVICE_PORT}"
     depends_on:
-      chat-db:
-        condition: service_healthy
-      redis:
-        condition: service_started
-      kafka:
-        condition: service_started
-      user-service:
-        condition: service_started
+      - chat-db
+      - redis
+      - kafka
     networks:
       - ${NETWORK_NAME:-my-app-network}
 
@@ -254,10 +213,8 @@ services:
     ports:
       - "${SESSION_SERVICE_PORT}:${SESSION_SERVICE_PORT}"
     depends_on:
-      session-db:
-        condition: service_healthy
-      user-service:
-        condition: service_started
+      - session-db
+      - user-service
     networks:
       - ${NETWORK_NAME:-my-app-network}
 
@@ -276,8 +233,8 @@ services:
     ports:
       - "${POST_SERVICE_PORT}:${POST_SERVICE_PORT}"
     depends_on:
-      post-db:
-        condition: service_healthy
+      - post-db
+      - post-migrate
     networks:
       - ${NETWORK_NAME:-my-app-network}
 
@@ -299,8 +256,7 @@ services:
   user-migrate:
     image: migrate/migrate:v4.16.2
     depends_on:
-      user-db:
-        condition: service_healthy
+      - user-db
     volumes:
       - ./user_service/migrations:/migrations
     command:
@@ -313,8 +269,7 @@ services:
   auth-migrate:
     image: migrate/migrate:v4.16.2
     depends_on:
-      auth-db:
-        condition: service_healthy
+      - auth-db
     volumes:
       - ./auth_service/migrations:/migrations
     command:
@@ -327,8 +282,7 @@ services:
   chat-migrate:
     image: migrate/migrate:v4.16.2
     depends_on:
-      chat-db:
-        condition: service_healthy
+      - chat-db
     volumes:
       - ./chat_service/migrations:/migrations
     command:
@@ -341,8 +295,7 @@ services:
   session-migrate:
     image: migrate/migrate:v4.16.2
     depends_on:
-      session-db:
-        condition: service_healthy
+      - session-db
     volumes:
       - ./session_service/migrations:/migrations
     command:
@@ -355,8 +308,7 @@ services:
   post-migrate:
     image: migrate/migrate:v4.16.2
     depends_on:
-      post-db:
-        condition: service_healthy
+      - post-db
     volumes:
       - ./post_service/migrations:/migrations
     command:
@@ -365,12 +317,11 @@ services:
       - "up"
     networks:
       - ${NETWORK_NAME:-my-app-network}
-
+  
   notification-migrate:
     image: migrate/migrate:v4.16.2
     depends_on:
-      notification-db:
-        condition: service_healthy
+      - notification-db
     volumes:
       - ./notification_service/migrations:/migrations
     command:
@@ -392,7 +343,7 @@ services:
       - ${NETWORK_NAME:-my-app-network}
 
   kafka:
-    image: wurstmeister/kafka:latest
+    image: wurstmeister/kafka:latest 
     container_name: kafka
     depends_on:
       - zookeeper
@@ -404,11 +355,12 @@ services:
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_CREATE_TOPICS: "chat_messages:3:1,book_event:3:1"
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT
+
     ports:
       - "29092:29092"
       - "9092:9092"
     volumes:
-      - kafka_data:/kafka
+    - kafka_data:/kafka
     networks:
       - ${NETWORK_NAME:-my-app-network}
 
@@ -418,24 +370,25 @@ services:
       dockerfile: Dockerfile
     container_name: notification-service
     depends_on:
-      notification-db:
-        condition: service_healthy
-      kafka:
-        condition: service_started
+      - notification-db
+      - kafka
     environment:
       DB_HOST: notification-db
       DB_PORT: 5432
       DB_NAME: ${NOTIFICATION_DB_NAME}
       DB_USER: ${DB_USER}
       DB_PASSWORD: ${DB_PASSWORD}
+
       KAFKA_BROKERS: kafka:9092
       KAFKA_TOPIC_CHAT_MESSAGES: chat_messages
       KAFKA_GROUP_ID: notification-service-group
       KAFKA_AUTO_OFFSET_RESET: earliest
+
       SMTP_HOST: smtp.gmail.com
       SMTP_PORT: 587
       GMAIL_EMAIL: ${GMAIL_EMAIL:-}
       GMAIL_APP_PASSWORD: ${GMAIL_APP_PASSWORD:-}
+
       LOG_LEVEL: debug
     ports:
       - "${NOTIFICATION_SERVICE_PORT}:${NOTIFICATION_SERVICE_PORT}"
