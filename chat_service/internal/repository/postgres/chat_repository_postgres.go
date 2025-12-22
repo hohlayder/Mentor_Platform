@@ -117,7 +117,7 @@ func (r *ChatRepository) GetChatMessages(ctx context.Context, chatId string, lim
             OR
             ($2::timestamptz IS NULL AND $3::uuid IS NULL)
         )
-        ORDER BY created_at DESC, id DESC
+        ORDER BY created_at ASC, id ASC
         LIMIT $4`
 
 	var cursorTime sql.NullTime

@@ -103,10 +103,8 @@ func (s *MessageService) SendMessageInstantly(message *domain.Message) error {
 		message.IsRead = true
 	}
 
-	if err := s.clientRepo.SendMessage(message.SenderID, message); err != nil {
-		return fmt.Errorf("failed to send confirmation to sender: %w", err)
-	}
-
+	time.Sleep(50 * time.Millisecond)
+	
 	go s.sendForPersistence(message)
 
 	return nil
