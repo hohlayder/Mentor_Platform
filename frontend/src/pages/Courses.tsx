@@ -1,6 +1,6 @@
 // src/pages/Courses.tsx
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useAuth } from '../store/AuthContext';
 
 // Типы для курса (на основе Swagger)
@@ -21,34 +21,54 @@ interface Post {
 type SortField = 'created_at' | 'updated_at' | 'title' | 'average_rating';
 type SortOrder = 'asc' | 'desc';
 
-// Популярные теги (можно будет динамически получать из API)
-const POPULAR_TAGS = [
+// Популярные теги
+const DEFAULT_TAGS = [
   'JavaScript', 'TypeScript', 'React', 'Node.js', 'Python',
   'Java', 'C#', 'Go', 'Rust', 'DevOps', 'Docker', 'Kubernetes',
   'AWS', 'Machine Learning', 'Data Science', 'Web Development',
   'Mobile Development', 'UI/UX', 'Blockchain', 'Cybersecurity'
 ];
 
-// Опции сортировки с emoji
+// Опции сортировки
 const SORT_OPTIONS = [
-  { value: 'created_at-desc', label: '📅 Новые', icon: '📅' },
-  { value: 'created_at-asc', label: '📅 Старые', icon: '📅' },
-  { value: 'updated_at-desc', label: '⏰ Недавно обновленные', icon: '⏰' },
-  { value: 'average_rating-desc', label: '⭐ Высокий рейтинг', icon: '⭐' },
-  { value: 'title-asc', label: '📈 По названию (А-Я)', icon: '📈' },
-  { value: 'title-desc', label: '📈 По названию (Я-А)', icon: '📈' },
+  { value: 'created_at-desc', label: '📅 Новые', emoji: '📅' },
+  { value: 'created_at-asc', label: '📅 Старые', emoji: '📅' },
+  { value: 'updated_at-desc', label: '⏰ Недавно обновленные', emoji: '⏰' },
+  { value: 'average_rating-desc', label: '⭐ Высокий рейтинг', emoji: '⭐' },
+  { value: 'title-asc', label: '📈 По названию (А-Я)', emoji: '📈' },
+  { value: 'title-desc', label: '📈 По названию (Я-А)', emoji: '📈' },
 ];
+
+// Функция для управления темой
+const useTheme = () => {
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    const savedTheme = localStorage.getItem('theme') as 'light' | 'dark';
+    return savedTheme || 'light';
+  });
+
+  useEffect(() => {
+    document.body.setAttribute('data-theme', theme);
+    localStorage.setItem('theme', theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme(prev => prev === 'light' ? 'dark' : 'light');
+  };
+
+  return { theme, toggleTheme };
+};
 
 const CoursesPage: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { token } = useAuth();
+  const { token, user, logout } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   
   // Состояние фильтров
   const [searchQuery, setSearchQuery] = useState(searchParams.get('search') || '');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [customTag, setCustomTag] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'published' | 'draft' | 'archived'>('all');
+  const [showMyCourses, setShowMyCourses] = useState(false);
   const [sortBy, setSortBy] = useState<string>('created_at-desc');
   const [page, setPage] = useState(1);
   const [pageSize] = useState(12);
@@ -58,7 +78,7 @@ const CoursesPage: React.FC = () => {
   const [totalCount, setTotalCount] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [popularTags, setPopularTags] = useState<string[]>(POPULAR_TAGS);
+  const [popularTags, setPopularTags] = useState<string[]>(DEFAULT_TAGS);
   
   // Извлечение тегов из URL
   useEffect(() => {
@@ -66,7 +86,11 @@ const CoursesPage: React.FC = () => {
     if (tagsParam) {
       setSelectedTags(tagsParam.split(','));
     }
-  }, [searchParams]);
+    const myCoursesParam = searchParams.get('my');
+    if (myCoursesParam === 'true' && token) {
+      setShowMyCourses(true);
+    }
+  }, [searchParams, token]);
   
   // Загрузка курсов
   const fetchCourses = useCallback(async () => {
@@ -74,13 +98,13 @@ const CoursesPage: React.FC = () => {
     setError(null);
     
     try {
-      // Собираем параметры запроса согласно Swagger
+      // Собираем параметры запроса
       const params = new URLSearchParams({
         page_size: pageSize.toString(),
-        // Для пагинации по Swagger используется page_token, но для простоты используем page
+        status: 'published', // Только опубликованные курсы
         ...(searchQuery && { search: searchQuery }),
-        ...(statusFilter !== 'all' && { status: statusFilter }),
         ...(selectedTags.length > 0 && { tags: selectedTags.join(',') }),
+        ...(showMyCourses && user && { author_id: user.user_id }), // Фильтр по автору
       });
       
       // Добавляем сортировку
@@ -88,12 +112,11 @@ const CoursesPage: React.FC = () => {
       params.append('sort_field', sortField);
       params.append('sort_order', sortOrder);
       
-      // Для пагинации можно использовать page_token из response
-      // Для простоты оставим offset-based пагинацию
+      // Пагинация
       params.append('offset', ((page - 1) * pageSize).toString());
       params.append('limit', pageSize.toString());
       
-      // Запрос к API из Swagger: GET /posts
+      // Запрос к API
       const response = await fetch(`http://localhost:8080/api/v1/posts?${params}`, {
         headers: {
           ...(token && { Authorization: `Bearer ${token}` }),
@@ -114,7 +137,7 @@ const CoursesPage: React.FC = () => {
       const newParams = new URLSearchParams();
       if (searchQuery) newParams.set('search', searchQuery);
       if (selectedTags.length > 0) newParams.set('tags', selectedTags.join(','));
-      if (statusFilter !== 'all') newParams.set('status', statusFilter);
+      if (showMyCourses) newParams.set('my', 'true');
       newParams.set('sort', sortBy);
       setSearchParams(newParams);
       
@@ -124,7 +147,7 @@ const CoursesPage: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [searchQuery, selectedTags, statusFilter, sortBy, page, pageSize, token, setSearchParams]);
+  }, [searchQuery, selectedTags, showMyCourses, sortBy, page, pageSize, token, user, setSearchParams]);
   
   // Загружаем курсы при изменении фильтров
   useEffect(() => {
@@ -144,7 +167,7 @@ const CoursesPage: React.FC = () => {
       const sortedTags = Object.entries(tagFrequency)
         .sort(([, a], [, b]) => b - a)
         .map(([tag]) => tag)
-        .slice(0, 20);
+        .slice(0, 15);
       
       if (sortedTags.length > 0) {
         setPopularTags(prev => [...new Set([...sortedTags, ...prev])].slice(0, 20));
@@ -182,8 +205,7 @@ const CoursesPage: React.FC = () => {
   const handleClearFilters = useCallback(() => {
     setSearchQuery('');
     setSelectedTags([]);
-    setStatusFilter('all');
-    setSortBy('created_at-desc');
+    setShowMyCourses(false);
     setPage(1);
     setSearchParams({});
   }, [setSearchParams]);
@@ -198,10 +220,23 @@ const CoursesPage: React.FC = () => {
     }
   }, [handleSearch]);
   
+  const toggleMyCourses = useCallback(() => {
+    setShowMyCourses(prev => !prev);
+    setPage(1);
+  }, []);
+  
+  const handleLogout = useCallback(() => {
+    logout();
+  }, [logout]);
+  
   const totalPages = Math.ceil(totalCount / pageSize);
   
   // Функция для получения цвета фона карточки курса
-  const getCourseColor = (index: number) => {
+  const getCourseColor = (course: Post) => {
+    if (showMyCourses && user && course.author_id === user.user_id) {
+      return 'linear-gradient(135deg, var(--accent), var(--accent-dark))';
+    }
+    
     const colors = [
       'linear-gradient(135deg, var(--accent), var(--accent-2))',
       'linear-gradient(135deg, #06B6D4, #0EA5E9)',
@@ -209,205 +244,271 @@ const CoursesPage: React.FC = () => {
       'linear-gradient(135deg, #EC4899, #F43F5E)',
       'linear-gradient(135deg, #10B981, #34D399)',
     ];
-    return colors[index % colors.length];
-  };
-  
-  // Функция для отображения статуса курса
-  const getStatusBadge = (status: string) => {
-    const badges = {
-      published: { text: 'Опубликован', emoji: '✅', color: 'var(--accent-light)' },
-      draft: { text: 'Черновик', emoji: '✏️', color: '#FEF3C7' },
-      archived: { text: 'В архиве', emoji: '📦', color: '#E5E7EB' }
-    };
-    return badges[status as keyof typeof badges] || badges.published;
+    return colors[course.id.charCodeAt(0) % colors.length];
   };
   
   return (
-    <div className="container">
-      {/* Заголовок и поиск */}
-      <div className="hero">
-        <div className="hero-left">
-          <h1 style={{ fontSize: '2.5rem', fontWeight: 800, margin: 0 }}>
-            🎓 Каталог курсов
-          </h1>
-          <p className="lead">
-            Найдите идеальный курс среди {totalCount} вариантов
-          </p>
-          
-          <div className="search" style={{ maxWidth: '600px', marginTop: '24px' }}>
-            <input
-              type="text"
-              placeholder="🔍 Поиск по названию курса или описанию..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onKeyDown={handleKeyDown}
-            />
-            <button 
-              className="btn btn-primary"
-              onClick={handleSearch}
-              style={{ padding: '10px 20px' }}
-            >
-              Найти
-            </button>
-          </div>
+    <div className="container" style={{ padding: '0 24px', maxWidth: '1400px' }}>
+      {/* Header */}
+      <header className="header" style={{ padding: '12px 0' }}>
+        <Link to="/" className="brand">
+          <div className="logo">M</div>Mentor Fellowship
+        </Link>
+        <div className="header-nav">
+          <button onClick={toggleTheme} className="btn btn-ghost">
+            {theme === 'light' ? '🌙' : '☀️'} Тема
+          </button>
+          {token && user ? (
+            <>
+              <Link to={`/profile/${user.user_id}`} className="btn btn-ghost">
+                {user.first_name || 'Профиль'}
+              </Link>
+              <button onClick={handleLogout} className="btn btn-ghost">Выйти</button>
+            </>
+          ) : (
+            <>
+              <Link to="/login" className="btn btn-ghost">Войти</Link>
+              <Link to="/signup" className="btn btn-primary">Регистрация</Link>
+            </>
+          )}
         </div>
-      </div>
+      </header>
       
-      <div className="courses-container" style={{ marginTop: '32px' }}>
-        {/* Сайдбар с фильтрами */}
-        <div className="sidebar">
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
-            <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-              ⚙️ Фильтры
-            </h3>
-            {(searchQuery || selectedTags.length > 0 || statusFilter !== 'all') && (
-              <button 
-                className="btn btn-ghost" 
-                onClick={handleClearFilters}
-                style={{ fontSize: '14px', padding: '6px 12px' }}
-              >
-                🗑️ Сбросить
-              </button>
-            )}
-          </div>
-          
-          {/* Фильтр по статусу */}
-          <div className="filter-group">
-            <div className="heading">Статус курса</div>
-            <div className="chips" style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-              {[
-                { value: 'all', label: 'Все', emoji: '📚' },
-                { value: 'published', label: 'Опубликованные', emoji: '✅' },
-                { value: 'draft', label: 'Черновики', emoji: '✏️' },
-                { value: 'archived', label: 'Архивные', emoji: '📦' }
-              ].map(({ value, label, emoji }) => (
-                <button
-                  key={value}
-                  className={`chip ${statusFilter === value ? 'active' : ''}`}
-                  onClick={() => {
-                    setStatusFilter(value as any);
-                    setPage(1);
-                  }}
-                  style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
-                >
-                  <span>{emoji}</span>
-                  {label}
-                </button>
-              ))}
-            </div>
-          </div>
-          
-          {/* Популярные теги */}
-          <div className="filter-group">
-            <div className="heading">🏷️ Популярные теги</div>
-            <div className="chips" style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-              {popularTags.map((tag) => (
-                <button
-                  key={tag}
-                  className={`chip ${selectedTags.includes(tag) ? 'active' : ''}`}
-                  onClick={() => handleTagToggle(tag)}
-                  style={{ fontSize: '13px' }}
-                >
-                  {tag}
-                </button>
-              ))}
-            </div>
-          </div>
-          
-          {/* Добавить свой тег */}
-          <div className="filter-group" style={{ marginTop: '24px' }}>
-            <div className="heading">➕ Добавить тег</div>
-            <div style={{ display: 'flex', gap: '8px' }}>
+      {/* Основной контент */}
+      <div style={{ display: 'flex', gap: '32px', marginTop: '24px' }}>
+        {/* Левая панель - Фильтры */}
+        <div style={{ 
+          flex: '0 0 280px',
+          position: 'sticky',
+          top: '80px',
+          height: 'fit-content',
+          alignSelf: 'flex-start'
+        }}>
+          {/* Блок поиска - компактный */}
+          <div style={{ 
+            marginBottom: '24px',
+            background: 'var(--surface)',
+            borderRadius: 'var(--radius)',
+            padding: '16px',
+            border: '1px solid var(--glass)',
+            boxShadow: 'var(--shadow-sm)'
+          }}>
+            <div className="search" style={{ margin: 0 }}>
               <input
                 type="text"
-                placeholder="Введите тег..."
-                value={customTag}
-                onChange={(e) => setCustomTag(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleAddCustomTag()}
-                style={{ flex: 1, padding: '8px 12px' }}
+                placeholder="🔍 Поиск курсов..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={handleKeyDown}
+                style={{ width: '100%' }}
               />
-              <button 
-                className="btn btn-primary"
-                onClick={handleAddCustomTag}
-                disabled={!customTag.trim()}
-                style={{ padding: '8px 12px' }}
-              >
-                Добавить
-              </button>
             </div>
           </div>
           
-          {/* Выбранные теги */}
-          {selectedTags.length > 0 && (
-            <div className="filter-group" style={{ marginTop: '20px' }}>
-              <div className="heading">✅ Выбранные теги</div>
-              <div className="chips" style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                {selectedTags.map((tag) => (
-                  <div 
+          {/* Фильтры */}
+          <div style={{ 
+            background: 'var(--surface)',
+            borderRadius: 'var(--radius)',
+            padding: '20px',
+            border: '1px solid var(--glass)',
+            boxShadow: 'var(--shadow-sm)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
+              <h3 style={{ margin: 0, fontSize: '18px' }}>
+                ⚙️ Фильтры
+              </h3>
+              {(searchQuery || selectedTags.length > 0 || showMyCourses) && (
+                <button 
+                  className="btn btn-ghost" 
+                  onClick={handleClearFilters}
+                  style={{ fontSize: '13px', padding: '5px 10px' }}
+                >
+                  🗑️ Сбросить
+                </button>
+              )}
+            </div>
+            
+            {/* Фильтр "Мои курсы" */}
+            {token && user && (
+              <div style={{ marginBottom: '24px' }}>
+                <div style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '12px', 
+                  marginBottom: '8px',
+                  padding: '10px',
+                  borderRadius: '10px',
+                  background: showMyCourses ? 'var(--accent-light)' : 'transparent',
+                  border: `1px solid ${showMyCourses ? 'var(--accent)' : 'var(--glass)'}`,
+                  cursor: 'pointer',
+                  transition: 'all var(--transition)'
+                }} onClick={toggleMyCourses}>
+                  <div style={{ 
+                    width: '20px', 
+                    height: '20px', 
+                    borderRadius: '4px',
+                    border: `2px solid ${showMyCourses ? 'var(--accent)' : 'var(--muted)'}`,
+                    background: showMyCourses ? 'var(--accent)' : 'transparent',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}>
+                    {showMyCourses && (
+                      <span style={{ color: 'white', fontSize: '12px' }}>✓</span>
+                    )}
+                  </div>
+                  <span style={{ fontWeight: showMyCourses ? 600 : 400 }}>
+                    👤 Мои курсы
+                  </span>
+                </div>
+                {showMyCourses && (
+                  <div style={{ 
+                    fontSize: '13px', 
+                    color: 'var(--muted)',
+                    padding: '8px 12px',
+                    background: 'var(--accent-lightest)',
+                    borderRadius: '8px',
+                    marginTop: '8px'
+                  }}>
+                    📌 Показываются только курсы, созданные вами
+                  </div>
+                )}
+              </div>
+            )}
+            
+            {/* Популярные теги */}
+            <div style={{ marginBottom: '24px' }}>
+              <div style={{ fontSize: '14px', fontWeight: 600, marginBottom: '12px', color: 'var(--muted)' }}>
+                🏷️ Популярные теги
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                {popularTags.map((tag) => (
+                  <button
                     key={tag}
-                    className="chip active"
-                    style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+                    className={`chip ${selectedTags.includes(tag) ? 'active' : ''}`}
+                    onClick={() => handleTagToggle(tag)}
+                    style={{ fontSize: '13px', padding: '6px 10px' }}
                   >
                     {tag}
-                    <button 
-                      onClick={() => handleRemoveTag(tag)}
-                      style={{ 
-                        background: 'none', 
-                        border: 'none', 
-                        cursor: 'pointer', 
-                        padding: '0', 
-                        color: 'inherit',
-                        fontSize: '14px'
-                      }}
-                    >
-                      ✕
-                    </button>
-                  </div>
+                  </button>
                 ))}
               </div>
             </div>
-          )}
-          
-          {/* Статистика */}
-          <div style={{ 
-            marginTop: '24px', 
-            padding: '16px', 
-            background: 'var(--accent-lightest)',
-            borderRadius: '8px',
-            border: '1px solid var(--glass)'
-          }}>
-            <div style={{ fontSize: '14px', color: 'var(--muted)', marginBottom: '8px' }}>
-              📊 Статистика фильтров
+            
+            {/* Добавить свой тег */}
+            <div style={{ marginBottom: '24px' }}>
+              <div style={{ fontSize: '14px', fontWeight: 600, marginBottom: '12px', color: 'var(--muted)' }}>
+                ➕ Добавить тег
+              </div>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <input
+                  type="text"
+                  placeholder="Введите тег..."
+                  value={customTag}
+                  onChange={(e) => setCustomTag(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleAddCustomTag()}
+                  style={{ 
+                    flex: 1, 
+                    padding: '8px 12px',
+                    fontSize: '14px'
+                  }}
+                />
+                <button 
+                  className="btn btn-primary"
+                  onClick={handleAddCustomTag}
+                  disabled={!customTag.trim()}
+                  style={{ padding: '8px 12px', fontSize: '14px' }}
+                >
+                  +
+                </button>
+              </div>
             </div>
-            <div style={{ fontSize: '12px' }}>
-              <div>• Найдено: <strong>{totalCount}</strong> курсов</div>
-              <div>• Выбрано тегов: <strong>{selectedTags.length}</strong></div>
-              <div>• Страница: <strong>{page}</strong> из {totalPages || 1}</div>
+            
+            {/* Выбранные теги */}
+            {selectedTags.length > 0 && (
+              <div style={{ marginBottom: '24px' }}>
+                <div style={{ fontSize: '14px', fontWeight: 600, marginBottom: '12px', color: 'var(--muted)' }}>
+                  ✅ Выбранные теги
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                  {selectedTags.map((tag) => (
+                    <div 
+                      key={tag}
+                      className="chip active"
+                      style={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        gap: '6px',
+                        padding: '6px 10px',
+                        fontSize: '13px'
+                      }}
+                    >
+                      {tag}
+                      <button 
+                        onClick={() => handleRemoveTag(tag)}
+                        style={{ 
+                          background: 'none', 
+                          border: 'none', 
+                          cursor: 'pointer', 
+                          padding: '0', 
+                          color: 'inherit',
+                          fontSize: '12px'
+                        }}
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            {/* Статистика */}
+            <div style={{ 
+              padding: '16px', 
+              background: 'var(--accent-lightest)',
+              borderRadius: '8px',
+              border: '1px solid var(--glass)',
+              fontSize: '13px'
+            }}>
+              <div style={{ color: 'var(--muted)', marginBottom: '8px' }}>
+                📊 Информация
+              </div>
+              <div style={{ fontSize: '12px', lineHeight: '1.5' }}>
+                <div>• Курсов: <strong>{totalCount}</strong></div>
+                <div>• Статус: <strong>📢 Опубликованные</strong></div>
+                {showMyCourses && <div>• Режим: <strong>👤 Мои курсы</strong></div>}
+              </div>
             </div>
           </div>
         </div>
         
-        {/* Основной контент */}
-        <div style={{ flex: 1 }}>
+        {/* Правая панель - Курсы */}
+        <div style={{ flex: 1, minWidth: 0 }}>
           {/* Панель сортировки */}
           <div style={{ 
             display: 'flex', 
             justifyContent: 'space-between', 
             alignItems: 'center',
             marginBottom: '24px',
-            padding: '16px',
+            padding: '16px 20px',
             background: 'var(--surface)',
             borderRadius: 'var(--radius)',
             boxShadow: 'var(--shadow-sm)'
           }}>
             <div>
-              <span style={{ color: 'var(--muted)' }}>
-                🎯 Найдено курсов: <strong>{totalCount}</strong>
-              </span>
+              <h2 style={{ margin: 0, fontSize: '20px', fontWeight: 700 }}>
+                {showMyCourses ? '👤 Мои курсы' : '🎓 Все курсы'}
+              </h2>
+              {courses.length > 0 && (
+                <div style={{ fontSize: '14px', color: 'var(--muted)', marginTop: '4px' }}>
+                  Показано <strong>{courses.length}</strong> из <strong>{totalCount}</strong> курсов
+                </div>
+              )}
             </div>
             
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <span style={{ color: 'var(--muted)' }}>📊 Сортировка:</span>
+              <span style={{ fontSize: '14px', color: 'var(--muted)' }}>Сортировка:</span>
               <select
                 value={sortBy}
                 onChange={(e) => {
@@ -421,7 +522,8 @@ const CoursesPage: React.FC = () => {
                   background: 'transparent',
                   color: 'var(--text)',
                   cursor: 'pointer',
-                  minWidth: '220px'
+                  fontSize: '14px',
+                  minWidth: '200px'
                 }}
               >
                 {SORT_OPTIONS.map((option) => (
@@ -437,151 +539,174 @@ const CoursesPage: React.FC = () => {
           {isLoading && (
             <div style={{ 
               textAlign: 'center', 
-              padding: '60px 20px',
+              padding: '80px 20px',
               background: 'var(--surface)',
               borderRadius: 'var(--radius)',
               border: '1px solid var(--glass)'
             }}>
               <div style={{ 
-                width: '50px', 
-                height: '50px', 
+                width: '60px', 
+                height: '60px', 
                 border: '3px solid var(--glass)',
                 borderTopColor: 'var(--accent)',
                 borderRadius: '50%',
-                margin: '0 auto 20px',
+                margin: '0 auto 24px',
                 animation: 'spin 1s linear infinite'
               }} />
-              <h3 style={{ marginBottom: '12px' }}>⏳ Загружаем курсы...</h3>
-              <p style={{ color: 'var(--muted)' }}>Пожалуйста, подождите</p>
+              <h3 style={{ marginBottom: '12px', fontSize: '18px' }}>⏳ Загружаем курсы...</h3>
+              <p style={{ color: 'var(--muted)', fontSize: '14px' }}>
+                {showMyCourses ? 'Ищем ваши курсы...' : 'Загружаем каталог курсов...'}
+              </p>
             </div>
           )}
           
           {/* Ошибка */}
           {error && !isLoading && (
             <div style={{ 
-              padding: '32px', 
+              padding: '40px', 
               background: 'var(--surface)', 
               borderRadius: 'var(--radius)',
               border: '1px solid var(--glass)',
               textAlign: 'center',
               marginBottom: '24px'
             }}>
-              <div style={{ fontSize: '48px', marginBottom: '16px' }}>😞</div>
-              <h3 style={{ marginBottom: '12px' }}>Произошла ошибка</h3>
-              <p style={{ color: '#EF4444', marginBottom: '20px' }}>{error}</p>
-              <button 
-                className="btn btn-primary" 
-                onClick={fetchCourses}
-                style={{ marginRight: '12px' }}
-              >
-                🔄 Попробовать снова
-              </button>
-              <button 
-                className="btn btn-ghost" 
-                onClick={handleClearFilters}
-              >
-                🗑️ Сбросить фильтры
-              </button>
+              <div style={{ fontSize: '64px', marginBottom: '20px' }}>😞</div>
+              <h3 style={{ marginBottom: '12px', fontSize: '20px' }}>Произошла ошибка</h3>
+              <p style={{ color: '#EF4444', marginBottom: '24px', fontSize: '15px' }}>{error}</p>
+              <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+                <button 
+                  className="btn btn-primary" 
+                  onClick={fetchCourses}
+                  style={{ padding: '10px 20px' }}
+                >
+                  🔄 Попробовать снова
+                </button>
+                <button 
+                  className="btn btn-ghost" 
+                  onClick={handleClearFilters}
+                  style={{ padding: '10px 20px' }}
+                >
+                  🗑️ Сбросить фильтры
+                </button>
+              </div>
             </div>
           )}
           
           {/* Сетка курсов */}
           {!isLoading && !error && courses.length > 0 && (
             <>
-              <div className="courses-grid">
-                {courses.map((course, index) => {
-                  const statusBadge = getStatusBadge(course.status);
+              <div className="courses-grid" style={{ 
+                gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
+                gap: '24px'
+              }}>
+                {courses.map((course) => {
+                  const isMyCourse = user && course.author_id === user.user_id;
                   return (
                     <div 
                       key={course.id}
                       className="course"
                       onClick={() => handleCourseClick(course.id)}
-                      style={{ cursor: 'pointer' }}
+                      style={{ 
+                        cursor: 'pointer',
+                        position: 'relative',
+                        border: isMyCourse ? '2px solid var(--accent)' : undefined,
+                        height: '100%',
+                        display: 'flex',
+                        flexDirection: 'column'
+                      }}
                     >
+                      {/* Бейдж "Мой курс" */}
+                      {isMyCourse && (
+                        <div style={{
+                          position: 'absolute',
+                          top: '12px',
+                          left: '12px',
+                          zIndex: 2,
+                          background: 'var(--accent)',
+                          color: 'white',
+                          padding: '4px 10px',
+                          borderRadius: '12px',
+                          fontSize: '12px',
+                          fontWeight: 600,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px'
+                        }}>
+                          👤 Мой курс
+                        </div>
+                      )}
+                      
                       {/* Заголовок курса с цветным фоном */}
                       <div style={{
-                        height: '140px',
+                        height: '160px',
                         width: '100%',
-                        background: getCourseColor(index),
+                        background: getCourseColor(course),
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         color: 'white',
-                        fontSize: '24px',
+                        fontSize: '28px',
                         fontWeight: 'bold',
                         position: 'relative',
                         overflow: 'hidden'
                       }}>
-                        <div style={{
-                          position: 'absolute',
-                          top: '12px',
-                          right: '12px',
-                          background: 'rgba(255,255,255,0.2)',
-                          padding: '4px 8px',
-                          borderRadius: '12px',
-                          fontSize: '12px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '4px',
-                          backdropFilter: 'blur(4px)'
-                        }}>
-                          <span>{statusBadge.emoji}</span>
-                          <span>{statusBadge.text}</span>
-                        </div>
+                        {/* Рейтинг */}
+                        {course.average_rating > 0 && (
+                          <div style={{
+                            position: 'absolute',
+                            top: '12px',
+                            right: '12px',
+                            background: 'rgba(255,255,255,0.2)',
+                            padding: '6px 10px',
+                            borderRadius: '12px',
+                            fontSize: '13px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            backdropFilter: 'blur(4px)',
+                            fontWeight: 600
+                          }}>
+                            <span>⭐</span>
+                            <span>{course.average_rating.toFixed(1)}</span>
+                          </div>
+                        )}
+                        
                         <div style={{ 
-                          fontSize: '42px',
-                          opacity: 0.9
+                          fontSize: '48px',
+                          opacity: 0.9,
+                          fontWeight: 800
                         }}>
                           {course.title.charAt(0).toUpperCase()}
                         </div>
                       </div>
                       
-                      <div className="c-body">
-                        <div style={{ 
-                          display: 'flex', 
-                          justifyContent: 'space-between',
-                          alignItems: 'flex-start',
-                          marginBottom: '8px'
+                      <div className="c-body" style={{ 
+                        padding: '20px',
+                        flex: 1,
+                        display: 'flex',
+                        flexDirection: 'column'
+                      }}>
+                        <h3 className="title" style={{ 
+                          margin: 0, 
+                          fontSize: '18px',
+                          lineHeight: '1.4',
+                          fontWeight: 700,
+                          marginBottom: '12px'
                         }}>
-                          <h3 className="title" style={{ 
-                            margin: 0, 
-                            fontSize: '16px',
-                            lineHeight: '1.3'
-                          }}>
-                            {course.title}
-                          </h3>
-                          {course.status === 'published' && course.average_rating > 0 && (
-                            <div style={{ 
-                              display: 'flex', 
-                              alignItems: 'center', 
-                              gap: '4px',
-                              background: 'var(--accent-light)',
-                              padding: '4px 8px',
-                              borderRadius: '20px',
-                              fontSize: '12px',
-                              minWidth: '70px',
-                              justifyContent: 'center'
-                            }}>
-                              <span style={{ fontSize: '12px' }}>⭐</span>
-                              <span>{course.average_rating.toFixed(1)}</span>
-                              <span style={{ color: 'var(--muted)', fontSize: '11px' }}>
-                                ({course.ratings_count})
-                              </span>
-                            </div>
-                          )}
-                        </div>
+                          {course.title}
+                        </h3>
                         
                         {/* Краткое описание */}
                         <p style={{ 
-                          fontSize: '13px', 
+                          fontSize: '14px', 
                           color: 'var(--muted)',
-                          margin: '8px 0',
-                          lineHeight: '1.4',
-                          height: '36px',
+                          margin: '0 0 16px 0',
+                          lineHeight: '1.5',
+                          flex: 1,
                           overflow: 'hidden',
                           textOverflow: 'ellipsis',
                           display: '-webkit-box',
-                          WebkitLineClamp: 2,
+                          WebkitLineClamp: 3,
                           WebkitBoxOrient: 'vertical'
                         }}>
                           {course.content || 'Описание отсутствует'}
@@ -589,14 +714,15 @@ const CoursesPage: React.FC = () => {
                         
                         {/* Теги курса */}
                         {course.tags && course.tags.length > 0 && (
-                          <div className="chips" style={{ marginTop: '12px' }}>
-                            {course.tags.slice(0, 3).map((tag) => (
+                          <div className="chips" style={{ marginTop: 'auto' }}>
+                            {course.tags.slice(0, 4).map((tag) => (
                               <span 
                                 key={tag}
                                 className="chip"
                                 style={{ 
-                                  fontSize: '11px',
-                                  padding: '4px 8px'
+                                  fontSize: '12px',
+                                  padding: '5px 10px',
+                                  marginBottom: '8px'
                                 }}
                                 onClick={(e) => {
                                   e.stopPropagation();
@@ -606,15 +732,16 @@ const CoursesPage: React.FC = () => {
                                 {tag}
                               </span>
                             ))}
-                            {course.tags.length > 3 && (
+                            {course.tags.length > 4 && (
                               <span 
                                 className="chip"
                                 style={{ 
-                                  fontSize: '11px',
-                                  padding: '4px 8px'
+                                  fontSize: '12px',
+                                  padding: '5px 10px',
+                                  marginBottom: '8px'
                                 }}
                               >
-                                +{course.tags.length - 3}
+                                +{course.tags.length - 4}
                               </span>
                             )}
                           </div>
@@ -624,22 +751,30 @@ const CoursesPage: React.FC = () => {
                         <div className="meta" style={{ 
                           display: 'flex', 
                           justifyContent: 'space-between',
-                          marginTop: '12px',
-                          fontSize: '11px',
-                          paddingTop: '12px',
+                          alignItems: 'center',
+                          marginTop: '16px',
+                          fontSize: '13px',
+                          paddingTop: '16px',
                           borderTop: '1px solid var(--glass)'
                         }}>
-                          <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <span style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--muted)' }}>
                             <span>📅</span>
                             {new Date(course.created_at).toLocaleDateString('ru-RU')}
                           </span>
                           <span style={{ 
-                            background: statusBadge.color,
-                            padding: '2px 8px',
-                            borderRadius: '12px',
-                            fontSize: '10px'
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            fontWeight: 600
                           }}>
-                            {statusBadge.emoji} {statusBadge.text}
+                            {course.ratings_count > 0 ? (
+                              <>
+                                <span style={{ color: 'var(--muted)' }}>⭐</span>
+                                <span>{course.ratings_count}</span>
+                              </>
+                            ) : (
+                              <span style={{ color: 'var(--muted)' }}>Нет оценок</span>
+                            )}
                           </span>
                         </div>
                       </div>
@@ -654,9 +789,9 @@ const CoursesPage: React.FC = () => {
                   display: 'flex', 
                   justifyContent: 'center', 
                   alignItems: 'center',
-                  gap: '8px',
-                  marginTop: '40px',
-                  padding: '20px',
+                  gap: '12px',
+                  marginTop: '48px',
+                  padding: '24px',
                   background: 'var(--surface)',
                   borderRadius: 'var(--radius)',
                   border: '1px solid var(--glass)'
@@ -666,16 +801,17 @@ const CoursesPage: React.FC = () => {
                     onClick={() => setPage(p => Math.max(1, p - 1))}
                     disabled={page === 1}
                     style={{ 
-                      padding: '8px 16px',
+                      padding: '10px 20px',
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '6px'
+                      gap: '8px',
+                      fontSize: '15px'
                     }}
                   >
                     ◀️ Назад
                   </button>
                   
-                  <div style={{ display: 'flex', gap: '4px' }}>
+                  <div style={{ display: 'flex', gap: '8px' }}>
                     {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
                       let pageNum;
                       if (totalPages <= 5) {
@@ -694,25 +830,15 @@ const CoursesPage: React.FC = () => {
                           className={`btn ${page === pageNum ? 'btn-primary' : 'btn-ghost'}`}
                           onClick={() => setPage(pageNum)}
                           style={{ 
-                            padding: '8px 12px',
-                            minWidth: '40px'
+                            padding: '10px 16px',
+                            minWidth: '44px',
+                            fontSize: '15px'
                           }}
                         >
                           {pageNum}
                         </button>
                       );
                     })}
-                    
-                    {totalPages > 5 && page < totalPages - 2 && (
-                      <span style={{ 
-                        padding: '8px 4px',
-                        color: 'var(--muted)',
-                        display: 'flex',
-                        alignItems: 'center'
-                      }}>
-                        ...
-                      </span>
-                    )}
                   </div>
                   
                   <button
@@ -720,10 +846,11 @@ const CoursesPage: React.FC = () => {
                     onClick={() => setPage(p => Math.min(totalPages, p + 1))}
                     disabled={page === totalPages}
                     style={{ 
-                      padding: '8px 16px',
+                      padding: '10px 20px',
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '6px'
+                      gap: '8px',
+                      fontSize: '15px'
                     }}
                   >
                     Вперед ▶️
@@ -735,26 +862,57 @@ const CoursesPage: React.FC = () => {
           
           {/* Пустое состояние */}
           {!isLoading && !error && courses.length === 0 && (
-            <div className="empty-state">
-              <div style={{ fontSize: '64px', marginBottom: '20px' }}>🔍</div>
-              <h3 style={{ marginBottom: '12px' }}>Курсы не найдены</h3>
-              <p style={{ color: 'var(--muted)', marginBottom: '20px', maxWidth: '400px', margin: '0 auto 20px' }}>
-                Попробуйте изменить фильтры поиска или очистить текущие
+            <div className="empty-state" style={{ 
+              padding: '60px 40px',
+              textAlign: 'center'
+            }}>
+              <div style={{ fontSize: '80px', marginBottom: '24px' }}>
+                {showMyCourses ? '📭' : '🔍'}
+              </div>
+              <h3 style={{ marginBottom: '16px', fontSize: '24px' }}>
+                {showMyCourses ? 'У вас пока нет курсов' : 'Курсы не найдены'}
+              </h3>
+              <p style={{ 
+                color: 'var(--muted)', 
+                marginBottom: '32px', 
+                maxWidth: '500px', 
+                margin: '0 auto 32px',
+                fontSize: '16px',
+                lineHeight: '1.5'
+              }}>
+                {showMyCourses 
+                  ? 'Создайте свой первый курс, чтобы он появился здесь'
+                  : 'Попробуйте изменить фильтры поиска или очистить текущие'}
               </p>
-              <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
-                <button 
-                  className="btn btn-primary"
-                  onClick={handleClearFilters}
-                >
-                  🗑️ Сбросить фильтры
-                </button>
-                <button 
-                  className="btn btn-ghost"
-                  onClick={() => setSelectedTags([])}
-                  disabled={selectedTags.length === 0}
-                >
-                  🏷️ Очистить теги
-                </button>
+              <div style={{ display: 'flex', gap: '16px', justifyContent: 'center' }}>
+                {showMyCourses ? (
+                  <button 
+                    className="btn btn-primary"
+                    onClick={() => navigate('/course/create')}
+                    style={{ padding: '12px 24px', fontSize: '16px' }}
+                  >
+                    🎨 Создать курс
+                  </button>
+                ) : (
+                  <>
+                    <button 
+                      className="btn btn-primary"
+                      onClick={handleClearFilters}
+                      style={{ padding: '12px 24px', fontSize: '16px' }}
+                    >
+                      🗑️ Сбросить фильтры
+                    </button>
+                    {token && (
+                      <button 
+                        className="btn btn-ghost"
+                        onClick={() => setShowMyCourses(false)}
+                        style={{ padding: '12px 24px', fontSize: '16px' }}
+                      >
+                        👁️ Показать все курсы
+                      </button>
+                    )}
+                  </>
+                )}
               </div>
             </div>
           )}
@@ -769,24 +927,37 @@ const CoursesPage: React.FC = () => {
         }
         
         .course:hover {
-          transform: translateY(-6px);
-          box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1);
+          transform: translateY(-8px);
+          box-shadow: 0 16px 32px rgba(0, 0, 0, 0.12);
+          transition: transform var(--transition), box-shadow var(--transition);
         }
         
-        /* Адаптивность для карточек */
-        @media (max-width: 900px) {
+        /* Адаптивность */
+        @media (max-width: 1200px) {
           .courses-grid {
-            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)) !important;
           }
         }
         
-        @media (max-width: 600px) {
-          .courses-grid {
-            grid-template-columns: 1fr;
+        @media (max-width: 992px) {
+          .container > div {
+            flex-direction: column;
           }
           
-          .course .c-body {
-            padding: 16px;
+          .container > div > div:first-child {
+            position: static !important;
+            width: 100%;
+            margin-bottom: 32px;
+          }
+          
+          .courses-grid {
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)) !important;
+          }
+        }
+        
+        @media (max-width: 768px) {
+          .courses-grid {
+            grid-template-columns: 1fr !important;
           }
         }
       `}</style>

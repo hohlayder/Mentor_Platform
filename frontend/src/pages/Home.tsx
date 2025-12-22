@@ -159,14 +159,10 @@ export const Home: React.FC = () => {
         <Link to="/" className="brand">
           <div className="logo">M</div>Mentor Fellowship
         </Link>
-        <div className="search">
-          <input type="text" placeholder="Поиск курсов..." />
-        </div>
         <div className="header-nav">
           <button onClick={toggleTheme} className="btn btn-ghost">
             {theme === 'light' ? '🌙' : '☀️'} Тема
           </button>
-          <Link to="/notifications" className="btn btn-ghost">Уведомления</Link>
           {token && user ? (
             <>
               <Link to={`/profile/${user.user_id}`} className="btn btn-ghost">

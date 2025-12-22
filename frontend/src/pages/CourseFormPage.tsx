@@ -8,7 +8,7 @@ interface Post {
   id: string;
   title: string;
   content: string;
-  status: 'draft' | 'published' | 'archived';
+  status: string;
   tags: string[];
   author_id: string;
   average_rating: number;
@@ -20,7 +20,7 @@ interface Post {
 interface CreatePostRequest {
   title: string;
   content: string;
-  status?: 'draft' | 'published' | 'archived';
+  status?: string;
   tags?: string[];
 }
 
@@ -29,7 +29,7 @@ interface UpdatePostRequest {
     id: string;
     title?: string;
     content?: string;
-    status?: 'draft' | 'published' | 'archived';
+    status?: string;
     tags?: string[];
   };
 }
@@ -78,6 +78,7 @@ const CourseFormPage: React.FC = () => {
   const [profile, setProfile] = useState<ProfileResponse | null>(null);
   const [course, setCourse] = useState<Post | null>(null);
   const [isCourseOwner, setIsCourseOwner] = useState(false);
+  const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
 
   // Проверяем, является ли пользователь ментором и владельцем курса (если редактирование)
   useEffect(() => {
@@ -126,7 +127,7 @@ const CourseFormPage: React.FC = () => {
                 setFormData({
                   title: loadedCourse.title,
                   content: loadedCourse.content,
-                  status: loadedCourse.status,
+                  status: loadedCourse.status === 'archived' ? 'draft' : loadedCourse.status,
                   tags: loadedCourse.tags || []
                 });
               } else {
@@ -151,7 +152,7 @@ const CourseFormPage: React.FC = () => {
   }, [token, user, navigate, id, isEditMode, location.pathname]);
 
   // Обработка изменения полей формы
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
@@ -178,84 +179,93 @@ const CourseFormPage: React.FC = () => {
     }));
   };
 
-  // Обработка отправки формы
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!isMentor) {
-      setError('Только менторы могут создавать курсы');
-      return;
+  // Обработка отправки формы с определенным статусом
+  // src/pages/CourseFormPage.tsx (исправленная часть)
+
+// Обработка отправки формы с определенным статусом
+const handleSubmit = async (status: 'draft' | 'published' | 'archived') => {
+  if (!isMentor) {
+    setError('Только менторы могут создавать курсы');
+    return;
+  }
+  
+  if (isEditMode && !isCourseOwner) {
+    setError('Вы не являетесь автором этого курса');
+    return;
+  }
+  
+  setError(null);
+  setIsSubmitting(true);
+
+  try {
+    // Валидация
+    if (!formData.title.trim()) {
+      throw new Error('Введите название курса');
     }
-    
-    if (isEditMode && !isCourseOwner) {
-      setError('Вы не являетесь автором этого курса');
-      return;
+    if (!formData.content.trim()) {
+      throw new Error('Введите описание курса');
     }
+
+    let response;
     
-    setError(null);
-    setIsSubmitting(true);
-
-    try {
-      // Валидация
-      if (!formData.title.trim()) {
-        throw new Error('Введите название курса');
-      }
-      if (!formData.content.trim()) {
-        throw new Error('Введите описание курса');
-      }
-
-      let response;
+    if (isEditMode) {
+      // Редактирование существующего курса - ПРАВИЛЬНО: PUT /posts/{id}
+      const updateData: UpdatePostRequest = {
+        post: {
+          id: id!,
+          title: formData.title,
+          content: formData.content,
+          status: status,
+          tags: formData.tags
+        }
+      };
       
-      if (isEditMode) {
-        // Редактирование существующего курса
-        const updateData: UpdatePostRequest = {
-          post: {
-            id: id!,
-            title: formData.title,
-            content: formData.content,
-            status: formData.status,
-            tags: formData.tags
-          }
-        };
-        
-        response = await fetch(`http://localhost:8080/api/v1/posts/${id}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify(updateData)
-        });
-      } else {
-        // Создание нового курса
-        response = await fetch('http://localhost:8080/api/v1/posts', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify(formData)
-        });
-      }
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || `Ошибка при ${isEditMode ? 'обновлении' : 'создании'} курса`);
-      }
-
-      const data = await response.json();
-      console.log(`${isEditMode ? 'Курс обновлен' : 'Курс создан'}:`, data);
+      response = await fetch(`http://localhost:8080/api/v1/posts/${id}`, {
+        method: 'PUT', // ✅ ПРАВИЛЬНЫЙ МЕТОД
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(updateData)
+      });
+    } else {
+      // Создание нового курса - POST /posts
+      const createData: CreatePostRequest = {
+        title: formData.title,
+        content: formData.content,
+        status: status === 'archived' ? 'draft' : status, // Невозможно сразу создать архивный курс
+        tags: formData.tags
+      };
       
-      // Редирект на страницу курса
-      navigate(`/courses/${isEditMode ? id : data.post.id}`);
-      
-    } catch (err: any) {
-      console.error('Ошибка:', err);
-      setError(err.message || `Произошла ошибка при ${isEditMode ? 'обновлении' : 'создании'} курса`);
-    } finally {
-      setIsSubmitting(false);
+      response = await fetch('http://localhost:8080/api/v1/posts', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(createData)
+      });
     }
-  };
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || `Ошибка при ${isEditMode ? 'обновлении' : 'создании'} курса`);
+    }
+
+    const data = await response.json();
+    console.log(`Курс ${status === 'draft' ? 'сохранен как черновик' : status === 'published' ? 'опубликован' : 'архивирован'}:`, data);
+    
+    // Редирект на страницу курса
+    navigate(`/courses/${isEditMode ? id : data.post.id}`);
+    
+  } catch (err: any) {
+    console.error('Ошибка:', err);
+    setError(err.message || `Произошла ошибка при ${isEditMode ? 'обновлении' : 'создании'} курса`);
+  } finally {
+    setIsSubmitting(false);
+    setShowArchiveConfirm(false);
+  }
+};
 
   // Удаление курса
   const handleDelete = async () => {
@@ -417,10 +427,22 @@ const CourseFormPage: React.FC = () => {
               gap: '12px', 
               alignItems: 'center',
               padding: '12px',
-              background: 'var(--accent-lightest)',
+              background: course.status === 'published' ? 'var(--accent-lightest)' : 
+                        course.status === 'draft' ? '#FEF3C7' : '#F3F4F6',
               borderRadius: '10px',
               marginTop: '12px'
             }}>
+              <div>
+                <div style={{ fontSize: '13px', color: 'var(--muted)' }}>Текущий статус:</div>
+                <div style={{ 
+                  fontWeight: 600,
+                  color: course.status === 'published' ? 'var(--accent)' : 
+                         course.status === 'draft' ? '#D97706' : '#6B7280'
+                }}>
+                  {course.status === 'published' ? '✅ Опубликован' : 
+                   course.status === 'draft' ? '✏️ Черновик' : '📦 В архиве'}
+                </div>
+              </div>
               <div>
                 <div style={{ fontSize: '13px', color: 'var(--muted)' }}>Создан:</div>
                 <div>{new Date(course.created_at).toLocaleDateString('ru-RU')}</div>
@@ -431,16 +453,18 @@ const CourseFormPage: React.FC = () => {
                   <div>{new Date(course.updated_at).toLocaleDateString('ru-RU')}</div>
                 </div>
               )}
-              <div>
-                <div style={{ fontSize: '13px', color: 'var(--muted)' }}>Оценок:</div>
-                <div>{course.ratings_count} ({course.average_rating.toFixed(1)}★)</div>
-              </div>
+              {course.status === 'published' && (
+                <div>
+                  <div style={{ fontSize: '13px', color: 'var(--muted)' }}>Оценок:</div>
+                  <div>{course.ratings_count} ({course.average_rating.toFixed(1)}★)</div>
+                </div>
+              )}
             </div>
           )}
         </div>
 
         {/* Форма */}
-        <form onSubmit={handleSubmit}>
+        <div>
           {/* Карточка формы */}
           <div className="card" style={{ marginBottom: '24px' }}>
             {/* Основная информация */}
@@ -467,23 +491,6 @@ const CourseFormPage: React.FC = () => {
                 <div style={{ fontSize: '13px', color: 'var(--muted)', marginTop: '4px' }}>
                   {formData.title.length}/255 символов
                 </div>
-              </div>
-
-              {/* Статус */}
-              <div style={{ marginBottom: '16px' }}>
-                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 500 }}>
-                  Статус
-                </label>
-                <select
-                  name="status"
-                  value={formData.status}
-                  onChange={handleInputChange}
-                  style={{ width: '100%' }}
-                >
-                  <option value="draft">Черновик</option>
-                  <option value="published">Опубликован</option>
-                  <option value="archived">В архиве</option>
-                </select>
               </div>
 
               {/* Теги */}
@@ -611,13 +618,21 @@ const CourseFormPage: React.FC = () => {
             </div>
             
             <div style={{ display: 'flex', gap: '12px' }}>
+              {isEditMode && course?.status === 'published' && (
+                <button
+                  type="button"
+                  onClick={() => setShowArchiveConfirm(true)}
+                  className="btn btn-outline"
+                  disabled={isSubmitting}
+                  style={{ color: '#6B7280', borderColor: '#D1D5DB' }}
+                >
+                  📦 В архив
+                </button>
+              )}
+              
               <button
-                type="submit"
-                name="status"
-                value="draft"
-                onClick={(e) => {
-                  setFormData(prev => ({ ...prev, status: 'draft' }));
-                }}
+                type="button"
+                onClick={() => handleSubmit('draft')}
                 className="btn btn-outline"
                 disabled={isSubmitting}
               >
@@ -626,12 +641,8 @@ const CourseFormPage: React.FC = () => {
               </button>
               
               <button
-                type="submit"
-                name="status"
-                value="published"
-                onClick={(e) => {
-                  setFormData(prev => ({ ...prev, status: 'published' }));
-                }}
+                type="button"
+                onClick={() => handleSubmit('published')}
                 className="btn btn-primary"
                 disabled={isSubmitting}
               >
@@ -640,7 +651,68 @@ const CourseFormPage: React.FC = () => {
               </button>
             </div>
           </div>
-        </form>
+        </div>
+
+        {/* Модальное окно подтверждения архивации */}
+        {showArchiveConfirm && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: '20px'
+          }}>
+            <div className="card" style={{ 
+              maxWidth: '500px',
+              width: '100%',
+              padding: '24px'
+            }}>
+              <div style={{ fontSize: '48px', textAlign: 'center', marginBottom: '16px' }}>
+                📦
+              </div>
+              <h3 style={{ fontSize: '20px', fontWeight: 600, textAlign: 'center', marginBottom: '12px' }}>
+                Отправить курс в архив?
+              </h3>
+              <p style={{ color: 'var(--muted)', textAlign: 'center', marginBottom: '24px' }}>
+                Архивный курс:
+                <br />• Не будет виден в общем списке курсов
+                <br />• Останется доступен только вам в разделе "Мои курсы"
+                <br />• Студенты больше не смогут записываться
+                <br />• Можно восстановить в любое время
+              </p>
+              <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+                <button
+                  type="button"
+                  onClick={() => setShowArchiveConfirm(false)}
+                  className="btn btn-ghost"
+                  disabled={isSubmitting}
+                  style={{ padding: '10px 20px' }}
+                >
+                  Отмена
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSubmit('archived')}
+                  className="btn btn-outline"
+                  disabled={isSubmitting}
+                  style={{ 
+                    padding: '10px 20px',
+                    color: '#6B7280',
+                    borderColor: '#D1D5DB'
+                  }}
+                >
+                  {isSubmitting ? 'Архивация...' : 'Да, в архив'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Информация о менторе */}
         {profile?.mentor && (
