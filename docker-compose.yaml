@@ -24,6 +24,8 @@ services:
       - auth-service
       - session-service
       - post-service
+    volumes:
+      - uploads_data:/root/uploads
     networks:
       - ${NETWORK_NAME:-my-app-network}
 
