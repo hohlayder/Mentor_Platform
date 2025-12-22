@@ -1,8 +1,7 @@
-// src/pages/CoursesPage.tsx
+// src/pages/Courses.tsx
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../store/AuthContext';
-import { Search, Filter, X, TrendingUp, Calendar, Star, Clock } from 'lucide-react';
 
 // Типы для курса (на основе Swagger)
 interface Post {
@@ -30,14 +29,14 @@ const POPULAR_TAGS = [
   'Mobile Development', 'UI/UX', 'Blockchain', 'Cybersecurity'
 ];
 
-// Опции сортировки
+// Опции сортировки с emoji
 const SORT_OPTIONS = [
-  { value: 'created_at-desc', label: 'Новые', icon: Calendar },
-  { value: 'created_at-asc', label: 'Старые', icon: Calendar },
-  { value: 'updated_at-desc', label: 'Недавно обновленные', icon: Clock },
-  { value: 'average_rating-desc', label: 'Высокий рейтинг', icon: Star },
-  { value: 'title-asc', label: 'По названию (А-Я)', icon: TrendingUp },
-  { value: 'title-desc', label: 'По названию (Я-А)', icon: TrendingUp },
+  { value: 'created_at-desc', label: '📅 Новые', icon: '📅' },
+  { value: 'created_at-asc', label: '📅 Старые', icon: '📅' },
+  { value: 'updated_at-desc', label: '⏰ Недавно обновленные', icon: '⏰' },
+  { value: 'average_rating-desc', label: '⭐ Высокий рейтинг', icon: '⭐' },
+  { value: 'title-asc', label: '📈 По названию (А-Я)', icon: '📈' },
+  { value: 'title-desc', label: '📈 По названию (Я-А)', icon: '📈' },
 ];
 
 const CoursesPage: React.FC = () => {
@@ -59,6 +58,7 @@ const CoursesPage: React.FC = () => {
   const [totalCount, setTotalCount] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [popularTags, setPopularTags] = useState<string[]>(POPULAR_TAGS);
   
   // Извлечение тегов из URL
   useEffect(() => {
@@ -74,10 +74,10 @@ const CoursesPage: React.FC = () => {
     setError(null);
     
     try {
-      // Собираем параметры запроса
+      // Собираем параметры запроса согласно Swagger
       const params = new URLSearchParams({
         page_size: pageSize.toString(),
-        page: page.toString(),
+        // Для пагинации по Swagger используется page_token, но для простоты используем page
         ...(searchQuery && { search: searchQuery }),
         ...(statusFilter !== 'all' && { status: statusFilter }),
         ...(selectedTags.length > 0 && { tags: selectedTags.join(',') }),
@@ -88,7 +88,12 @@ const CoursesPage: React.FC = () => {
       params.append('sort_field', sortField);
       params.append('sort_order', sortOrder);
       
-      // Запрос к API
+      // Для пагинации можно использовать page_token из response
+      // Для простоты оставим offset-based пагинацию
+      params.append('offset', ((page - 1) * pageSize).toString());
+      params.append('limit', pageSize.toString());
+      
+      // Запрос к API из Swagger: GET /posts
       const response = await fetch(`http://localhost:8080/api/v1/posts?${params}`, {
         headers: {
           ...(token && { Authorization: `Bearer ${token}` }),
@@ -97,7 +102,8 @@ const CoursesPage: React.FC = () => {
       });
       
       if (!response.ok) {
-        throw new Error(`Ошибка загрузки курсов: ${response.status}`);
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `Ошибка загрузки курсов: ${response.status}`);
       }
       
       const data = await response.json();
@@ -125,9 +131,30 @@ const CoursesPage: React.FC = () => {
     fetchCourses();
   }, [fetchCourses]);
   
+  // Получаем популярные теги из существующих курсов
+  useEffect(() => {
+    if (courses.length > 0) {
+      const allTags = courses.flatMap(course => course.tags || []);
+      const tagFrequency: Record<string, number> = {};
+      
+      allTags.forEach(tag => {
+        tagFrequency[tag] = (tagFrequency[tag] || 0) + 1;
+      });
+      
+      const sortedTags = Object.entries(tagFrequency)
+        .sort(([, a], [, b]) => b - a)
+        .map(([tag]) => tag)
+        .slice(0, 20);
+      
+      if (sortedTags.length > 0) {
+        setPopularTags(prev => [...new Set([...sortedTags, ...prev])].slice(0, 20));
+      }
+    }
+  }, [courses]);
+  
   // Обработчики фильтров
   const handleSearch = useCallback(() => {
-    setPage(1); // Сбрасываем на первую страницу при новом поиске
+    setPage(1);
   }, []);
   
   const handleTagToggle = useCallback((tag: string) => {
@@ -162,10 +189,38 @@ const CoursesPage: React.FC = () => {
   }, [setSearchParams]);
   
   const handleCourseClick = useCallback((courseId: string) => {
-    navigate(`/course/${courseId}`);
+    navigate(`/courses/${courseId}`);
   }, [navigate]);
   
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleSearch();
+    }
+  }, [handleSearch]);
+  
   const totalPages = Math.ceil(totalCount / pageSize);
+  
+  // Функция для получения цвета фона карточки курса
+  const getCourseColor = (index: number) => {
+    const colors = [
+      'linear-gradient(135deg, var(--accent), var(--accent-2))',
+      'linear-gradient(135deg, #06B6D4, #0EA5E9)',
+      'linear-gradient(135deg, #8B5CF6, #A855F7)',
+      'linear-gradient(135deg, #EC4899, #F43F5E)',
+      'linear-gradient(135deg, #10B981, #34D399)',
+    ];
+    return colors[index % colors.length];
+  };
+  
+  // Функция для отображения статуса курса
+  const getStatusBadge = (status: string) => {
+    const badges = {
+      published: { text: 'Опубликован', emoji: '✅', color: 'var(--accent-light)' },
+      draft: { text: 'Черновик', emoji: '✏️', color: '#FEF3C7' },
+      archived: { text: 'В архиве', emoji: '📦', color: '#E5E7EB' }
+    };
+    return badges[status as keyof typeof badges] || badges.published;
+  };
   
   return (
     <div className="container">
@@ -173,7 +228,7 @@ const CoursesPage: React.FC = () => {
       <div className="hero">
         <div className="hero-left">
           <h1 style={{ fontSize: '2.5rem', fontWeight: 800, margin: 0 }}>
-            Каталог курсов
+            🎓 Каталог курсов
           </h1>
           <p className="lead">
             Найдите идеальный курс среди {totalCount} вариантов
@@ -182,17 +237,17 @@ const CoursesPage: React.FC = () => {
           <div className="search" style={{ maxWidth: '600px', marginTop: '24px' }}>
             <input
               type="text"
-              placeholder="Поиск по названию курса или описанию..."
+              placeholder="🔍 Поиск по названию курса или описанию..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+              onKeyDown={handleKeyDown}
             />
             <button 
               className="btn btn-primary"
               onClick={handleSearch}
               style={{ padding: '10px 20px' }}
             >
-              <Search size={20} />
+              Найти
             </button>
           </div>
         </div>
@@ -203,8 +258,7 @@ const CoursesPage: React.FC = () => {
         <div className="sidebar">
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
             <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Filter size={20} />
-              Фильтры
+              ⚙️ Фильтры
             </h3>
             {(searchQuery || selectedTags.length > 0 || statusFilter !== 'all') && (
               <button 
@@ -212,7 +266,7 @@ const CoursesPage: React.FC = () => {
                 onClick={handleClearFilters}
                 style={{ fontSize: '14px', padding: '6px 12px' }}
               >
-                Сбросить
+                🗑️ Сбросить
               </button>
             )}
           </div>
@@ -220,33 +274,39 @@ const CoursesPage: React.FC = () => {
           {/* Фильтр по статусу */}
           <div className="filter-group">
             <div className="heading">Статус курса</div>
-            <div className="chips" style={{ display: 'flex' }}>
-              {['all', 'published', 'draft', 'archived'].map((status) => (
+            <div className="chips" style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+              {[
+                { value: 'all', label: 'Все', emoji: '📚' },
+                { value: 'published', label: 'Опубликованные', emoji: '✅' },
+                { value: 'draft', label: 'Черновики', emoji: '✏️' },
+                { value: 'archived', label: 'Архивные', emoji: '📦' }
+              ].map(({ value, label, emoji }) => (
                 <button
-                  key={status}
-                  className={`chip ${statusFilter === status ? 'active' : ''}`}
+                  key={value}
+                  className={`chip ${statusFilter === value ? 'active' : ''}`}
                   onClick={() => {
-                    setStatusFilter(status as any);
+                    setStatusFilter(value as any);
                     setPage(1);
                   }}
+                  style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
                 >
-                  {status === 'all' ? 'Все' : 
-                   status === 'published' ? 'Опубликованные' :
-                   status === 'draft' ? 'Черновики' : 'Архивные'}
+                  <span>{emoji}</span>
+                  {label}
                 </button>
               ))}
             </div>
           </div>
           
-          {/* Теги */}
+          {/* Популярные теги */}
           <div className="filter-group">
-            <div className="heading">Популярные теги</div>
-            <div className="chips" style={{ display: 'flex' }}>
-              {POPULAR_TAGS.map((tag) => (
+            <div className="heading">🏷️ Популярные теги</div>
+            <div className="chips" style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+              {popularTags.map((tag) => (
                 <button
                   key={tag}
                   className={`chip ${selectedTags.includes(tag) ? 'active' : ''}`}
                   onClick={() => handleTagToggle(tag)}
+                  style={{ fontSize: '13px' }}
                 >
                   {tag}
                 </button>
@@ -256,7 +316,7 @@ const CoursesPage: React.FC = () => {
           
           {/* Добавить свой тег */}
           <div className="filter-group" style={{ marginTop: '24px' }}>
-            <div className="heading">Добавить тег</div>
+            <div className="heading">➕ Добавить тег</div>
             <div style={{ display: 'flex', gap: '8px' }}>
               <input
                 type="text"
@@ -280,8 +340,8 @@ const CoursesPage: React.FC = () => {
           {/* Выбранные теги */}
           {selectedTags.length > 0 && (
             <div className="filter-group" style={{ marginTop: '20px' }}>
-              <div className="heading">Выбранные теги</div>
-              <div className="chips" style={{ display: 'flex' }}>
+              <div className="heading">✅ Выбранные теги</div>
+              <div className="chips" style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                 {selectedTags.map((tag) => (
                   <div 
                     key={tag}
@@ -291,15 +351,40 @@ const CoursesPage: React.FC = () => {
                     {tag}
                     <button 
                       onClick={() => handleRemoveTag(tag)}
-                      style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0', color: 'inherit' }}
+                      style={{ 
+                        background: 'none', 
+                        border: 'none', 
+                        cursor: 'pointer', 
+                        padding: '0', 
+                        color: 'inherit',
+                        fontSize: '14px'
+                      }}
                     >
-                      <X size={14} />
+                      ✕
                     </button>
                   </div>
                 ))}
               </div>
             </div>
           )}
+          
+          {/* Статистика */}
+          <div style={{ 
+            marginTop: '24px', 
+            padding: '16px', 
+            background: 'var(--accent-lightest)',
+            borderRadius: '8px',
+            border: '1px solid var(--glass)'
+          }}>
+            <div style={{ fontSize: '14px', color: 'var(--muted)', marginBottom: '8px' }}>
+              📊 Статистика фильтров
+            </div>
+            <div style={{ fontSize: '12px' }}>
+              <div>• Найдено: <strong>{totalCount}</strong> курсов</div>
+              <div>• Выбрано тегов: <strong>{selectedTags.length}</strong></div>
+              <div>• Страница: <strong>{page}</strong> из {totalPages || 1}</div>
+            </div>
+          </div>
         </div>
         
         {/* Основной контент */}
@@ -317,12 +402,12 @@ const CoursesPage: React.FC = () => {
           }}>
             <div>
               <span style={{ color: 'var(--muted)' }}>
-                Найдено курсов: <strong>{totalCount}</strong>
+                🎯 Найдено курсов: <strong>{totalCount}</strong>
               </span>
             </div>
             
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <span style={{ color: 'var(--muted)' }}>Сортировка:</span>
+              <span style={{ color: 'var(--muted)' }}>📊 Сортировка:</span>
               <select
                 value={sortBy}
                 onChange={(e) => {
@@ -336,172 +421,231 @@ const CoursesPage: React.FC = () => {
                   background: 'transparent',
                   color: 'var(--text)',
                   cursor: 'pointer',
-                  minWidth: '200px'
+                  minWidth: '220px'
                 }}
               >
-                {SORT_OPTIONS.map((option) => {
-                  const Icon = option.icon;
-                  return (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  );
-                })}
+                {SORT_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
               </select>
             </div>
           </div>
           
-          {/* Состояние загрузки/ошибки */}
+          {/* Состояние загрузки */}
           {isLoading && (
-            <div style={{ textAlign: 'center', padding: '48px' }}>
+            <div style={{ 
+              textAlign: 'center', 
+              padding: '60px 20px',
+              background: 'var(--surface)',
+              borderRadius: 'var(--radius)',
+              border: '1px solid var(--glass)'
+            }}>
               <div style={{ 
-                width: '40px', 
-                height: '40px', 
+                width: '50px', 
+                height: '50px', 
                 border: '3px solid var(--glass)',
                 borderTopColor: 'var(--accent)',
                 borderRadius: '50%',
-                margin: '0 auto 16px',
+                margin: '0 auto 20px',
                 animation: 'spin 1s linear infinite'
               }} />
-              <p style={{ color: 'var(--muted)' }}>Загрузка курсов...</p>
+              <h3 style={{ marginBottom: '12px' }}>⏳ Загружаем курсы...</h3>
+              <p style={{ color: 'var(--muted)' }}>Пожалуйста, подождите</p>
             </div>
           )}
           
-          {error && (
+          {/* Ошибка */}
+          {error && !isLoading && (
             <div style={{ 
-              padding: '24px', 
+              padding: '32px', 
               background: 'var(--surface)', 
               borderRadius: 'var(--radius)',
               border: '1px solid var(--glass)',
-              textAlign: 'center'
+              textAlign: 'center',
+              marginBottom: '24px'
             }}>
-              <p style={{ color: '#EF4444' }}>Ошибка: {error}</p>
+              <div style={{ fontSize: '48px', marginBottom: '16px' }}>😞</div>
+              <h3 style={{ marginBottom: '12px' }}>Произошла ошибка</h3>
+              <p style={{ color: '#EF4444', marginBottom: '20px' }}>{error}</p>
               <button 
                 className="btn btn-primary" 
                 onClick={fetchCourses}
-                style={{ marginTop: '12px' }}
+                style={{ marginRight: '12px' }}
               >
-                Попробовать снова
+                🔄 Попробовать снова
+              </button>
+              <button 
+                className="btn btn-ghost" 
+                onClick={handleClearFilters}
+              >
+                🗑️ Сбросить фильтры
               </button>
             </div>
           )}
           
           {/* Сетка курсов */}
-          {!isLoading && !error && (
+          {!isLoading && !error && courses.length > 0 && (
             <>
               <div className="courses-grid">
-                {courses.map((course) => (
-                  <div 
-                    key={course.id}
-                    className="course"
-                    onClick={() => handleCourseClick(course.id)}
-                  >
-                    {/* Картинка курса (можно добавить заглушку) */}
-                    <div style={{
-                      height: '140px',
-                      width: '100%',
-                      background: `linear-gradient(135deg, var(--accent), var(--accent-2))`,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      color: 'white',
-                      fontSize: '24px',
-                      fontWeight: 'bold'
-                    }}>
-                      {course.title.charAt(0).toUpperCase()}
-                    </div>
-                    
-                    <div className="c-body">
-                      <div style={{ 
-                        display: 'flex', 
-                        justifyContent: 'space-between',
-                        alignItems: 'flex-start',
-                        marginBottom: '8px'
+                {courses.map((course, index) => {
+                  const statusBadge = getStatusBadge(course.status);
+                  return (
+                    <div 
+                      key={course.id}
+                      className="course"
+                      onClick={() => handleCourseClick(course.id)}
+                      style={{ cursor: 'pointer' }}
+                    >
+                      {/* Заголовок курса с цветным фоном */}
+                      <div style={{
+                        height: '140px',
+                        width: '100%',
+                        background: getCourseColor(index),
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: 'white',
+                        fontSize: '24px',
+                        fontWeight: 'bold',
+                        position: 'relative',
+                        overflow: 'hidden'
                       }}>
-                        <h3 className="title" style={{ margin: 0, fontSize: '16px' }}>
-                          {course.title}
-                        </h3>
-                        {course.status === 'published' && course.average_rating > 0 && (
-                          <div style={{ 
-                            display: 'flex', 
-                            alignItems: 'center', 
-                            gap: '4px',
-                            background: 'var(--accent-light)',
-                            padding: '4px 8px',
-                            borderRadius: '20px',
-                            fontSize: '12px'
-                          }}>
-                            <Star size={12} fill="currentColor" />
-                            <span>{course.average_rating.toFixed(1)}</span>
-                            <span style={{ color: 'var(--muted)' }}>({course.ratings_count})</span>
-                          </div>
-                        )}
+                        <div style={{
+                          position: 'absolute',
+                          top: '12px',
+                          right: '12px',
+                          background: 'rgba(255,255,255,0.2)',
+                          padding: '4px 8px',
+                          borderRadius: '12px',
+                          fontSize: '12px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          backdropFilter: 'blur(4px)'
+                        }}>
+                          <span>{statusBadge.emoji}</span>
+                          <span>{statusBadge.text}</span>
+                        </div>
+                        <div style={{ 
+                          fontSize: '42px',
+                          opacity: 0.9
+                        }}>
+                          {course.title.charAt(0).toUpperCase()}
+                        </div>
                       </div>
                       
-                      <p style={{ 
-                        fontSize: '14px', 
-                        color: 'var(--muted)',
-                        margin: '8px 0',
-                        lineHeight: '1.4',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        display: '-webkit-box',
-                        WebkitLineClamp: 2,
-                        WebkitBoxOrient: 'vertical'
-                      }}>
-                        {course.content}
-                      </p>
-                      
-                      {/* Теги курса */}
-                      {course.tags && course.tags.length > 0 && (
-                        <div className="chips" style={{ marginTop: '12px' }}>
-                          {course.tags.slice(0, 3).map((tag) => (
-                            <span 
-                              key={tag}
-                              className="chip"
-                              style={{ 
-                                fontSize: '11px',
-                                padding: '4px 8px'
-                              }}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleTagToggle(tag);
-                              }}
-                            >
-                              {tag}
-                            </span>
-                          ))}
-                          {course.tags.length > 3 && (
-                            <span 
-                              className="chip"
-                              style={{ 
-                                fontSize: '11px',
-                                padding: '4px 8px'
-                              }}
-                            >
-                              +{course.tags.length - 3}
-                            </span>
+                      <div className="c-body">
+                        <div style={{ 
+                          display: 'flex', 
+                          justifyContent: 'space-between',
+                          alignItems: 'flex-start',
+                          marginBottom: '8px'
+                        }}>
+                          <h3 className="title" style={{ 
+                            margin: 0, 
+                            fontSize: '16px',
+                            lineHeight: '1.3'
+                          }}>
+                            {course.title}
+                          </h3>
+                          {course.status === 'published' && course.average_rating > 0 && (
+                            <div style={{ 
+                              display: 'flex', 
+                              alignItems: 'center', 
+                              gap: '4px',
+                              background: 'var(--accent-light)',
+                              padding: '4px 8px',
+                              borderRadius: '20px',
+                              fontSize: '12px',
+                              minWidth: '70px',
+                              justifyContent: 'center'
+                            }}>
+                              <span style={{ fontSize: '12px' }}>⭐</span>
+                              <span>{course.average_rating.toFixed(1)}</span>
+                              <span style={{ color: 'var(--muted)', fontSize: '11px' }}>
+                                ({course.ratings_count})
+                              </span>
+                            </div>
                           )}
                         </div>
-                      )}
-                      
-                      <div className="meta" style={{ 
-                        display: 'flex', 
-                        justifyContent: 'space-between',
-                        marginTop: '12px',
-                        fontSize: '12px'
-                      }}>
-                        <span>
-                          {course.status === 'published' ? 'Опубликован' : 
-                           course.status === 'draft' ? 'Черновик' : 'В архиве'}
-                        </span>
-                        <span>
-                          {new Date(course.created_at).toLocaleDateString('ru-RU')}
-                        </span>
+                        
+                        {/* Краткое описание */}
+                        <p style={{ 
+                          fontSize: '13px', 
+                          color: 'var(--muted)',
+                          margin: '8px 0',
+                          lineHeight: '1.4',
+                          height: '36px',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          display: '-webkit-box',
+                          WebkitLineClamp: 2,
+                          WebkitBoxOrient: 'vertical'
+                        }}>
+                          {course.content || 'Описание отсутствует'}
+                        </p>
+                        
+                        {/* Теги курса */}
+                        {course.tags && course.tags.length > 0 && (
+                          <div className="chips" style={{ marginTop: '12px' }}>
+                            {course.tags.slice(0, 3).map((tag) => (
+                              <span 
+                                key={tag}
+                                className="chip"
+                                style={{ 
+                                  fontSize: '11px',
+                                  padding: '4px 8px'
+                                }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleTagToggle(tag);
+                                }}
+                              >
+                                {tag}
+                              </span>
+                            ))}
+                            {course.tags.length > 3 && (
+                              <span 
+                                className="chip"
+                                style={{ 
+                                  fontSize: '11px',
+                                  padding: '4px 8px'
+                                }}
+                              >
+                                +{course.tags.length - 3}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                        
+                        {/* Мета-информация */}
+                        <div className="meta" style={{ 
+                          display: 'flex', 
+                          justifyContent: 'space-between',
+                          marginTop: '12px',
+                          fontSize: '11px',
+                          paddingTop: '12px',
+                          borderTop: '1px solid var(--glass)'
+                        }}>
+                          <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <span>📅</span>
+                            {new Date(course.created_at).toLocaleDateString('ru-RU')}
+                          </span>
+                          <span style={{ 
+                            background: statusBadge.color,
+                            padding: '2px 8px',
+                            borderRadius: '12px',
+                            fontSize: '10px'
+                          }}>
+                            {statusBadge.emoji} {statusBadge.text}
+                          </span>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
               
               {/* Пагинация */}
@@ -511,70 +655,108 @@ const CoursesPage: React.FC = () => {
                   justifyContent: 'center', 
                   alignItems: 'center',
                   gap: '8px',
-                  marginTop: '40px'
+                  marginTop: '40px',
+                  padding: '20px',
+                  background: 'var(--surface)',
+                  borderRadius: 'var(--radius)',
+                  border: '1px solid var(--glass)'
                 }}>
                   <button
                     className="btn btn-ghost"
                     onClick={() => setPage(p => Math.max(1, p - 1))}
                     disabled={page === 1}
-                    style={{ padding: '8px 16px' }}
+                    style={{ 
+                      padding: '8px 16px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px'
+                    }}
                   >
-                    Назад
+                    ◀️ Назад
                   </button>
                   
-                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                    let pageNum;
-                    if (totalPages <= 5) {
-                      pageNum = i + 1;
-                    } else if (page <= 3) {
-                      pageNum = i + 1;
-                    } else if (page >= totalPages - 2) {
-                      pageNum = totalPages - 4 + i;
-                    } else {
-                      pageNum = page - 2 + i;
-                    }
+                  <div style={{ display: 'flex', gap: '4px' }}>
+                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                      let pageNum;
+                      if (totalPages <= 5) {
+                        pageNum = i + 1;
+                      } else if (page <= 3) {
+                        pageNum = i + 1;
+                      } else if (page >= totalPages - 2) {
+                        pageNum = totalPages - 4 + i;
+                      } else {
+                        pageNum = page - 2 + i;
+                      }
+                      
+                      return (
+                        <button
+                          key={pageNum}
+                          className={`btn ${page === pageNum ? 'btn-primary' : 'btn-ghost'}`}
+                          onClick={() => setPage(pageNum)}
+                          style={{ 
+                            padding: '8px 12px',
+                            minWidth: '40px'
+                          }}
+                        >
+                          {pageNum}
+                        </button>
+                      );
+                    })}
                     
-                    return (
-                      <button
-                        key={pageNum}
-                        className={`btn ${page === pageNum ? 'btn-primary' : 'btn-ghost'}`}
-                        onClick={() => setPage(pageNum)}
-                        style={{ 
-                          padding: '8px 12px',
-                          minWidth: '40px'
-                        }}
-                      >
-                        {pageNum}
-                      </button>
-                    );
-                  })}
+                    {totalPages > 5 && page < totalPages - 2 && (
+                      <span style={{ 
+                        padding: '8px 4px',
+                        color: 'var(--muted)',
+                        display: 'flex',
+                        alignItems: 'center'
+                      }}>
+                        ...
+                      </span>
+                    )}
+                  </div>
                   
                   <button
                     className="btn btn-ghost"
                     onClick={() => setPage(p => Math.min(totalPages, p + 1))}
                     disabled={page === totalPages}
-                    style={{ padding: '8px 16px' }}
+                    style={{ 
+                      padding: '8px 16px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px'
+                    }}
                   >
-                    Вперед
-                  </button>
-                </div>
-              )}
-              
-              {courses.length === 0 && !isLoading && (
-                <div className="empty-state">
-                  <h3 style={{ marginBottom: '12px' }}>Курсы не найдены</h3>
-                  <p style={{ color: 'var(--muted)', marginBottom: '20px' }}>
-                    Попробуйте изменить фильтры или очистить поиск
-                  </p>
-                  <button 
-                    className="btn btn-primary"
-                    onClick={handleClearFilters}
-                  >
-                    Сбросить фильтры
+                    Вперед ▶️
                   </button>
                 </div>
               )}
             </>
+          )}
+          
+          {/* Пустое состояние */}
+          {!isLoading && !error && courses.length === 0 && (
+            <div className="empty-state">
+              <div style={{ fontSize: '64px', marginBottom: '20px' }}>🔍</div>
+              <h3 style={{ marginBottom: '12px' }}>Курсы не найдены</h3>
+              <p style={{ color: 'var(--muted)', marginBottom: '20px', maxWidth: '400px', margin: '0 auto 20px' }}>
+                Попробуйте изменить фильтры поиска или очистить текущие
+              </p>
+              <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+                <button 
+                  className="btn btn-primary"
+                  onClick={handleClearFilters}
+                >
+                  🗑️ Сбросить фильтры
+                </button>
+                <button 
+                  className="btn btn-ghost"
+                  onClick={() => setSelectedTags([])}
+                  disabled={selectedTags.length === 0}
+                >
+                  🏷️ Очистить теги
+                </button>
+              </div>
+            </div>
           )}
         </div>
       </div>
@@ -584,6 +766,28 @@ const CoursesPage: React.FC = () => {
         @keyframes spin {
           0% { transform: rotate(0deg); }
           100% { transform: rotate(360deg); }
+        }
+        
+        .course:hover {
+          transform: translateY(-6px);
+          box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1);
+        }
+        
+        /* Адаптивность для карточек */
+        @media (max-width: 900px) {
+          .courses-grid {
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+          }
+        }
+        
+        @media (max-width: 600px) {
+          .courses-grid {
+            grid-template-columns: 1fr;
+          }
+          
+          .course .c-body {
+            padding: 16px;
+          }
         }
       `}</style>
     </div>
