@@ -19,6 +19,7 @@ interface AuthContextType {
   setUser: (user: User | null) => void;
   login: (token: string, user: User) => void;
   logout: () => Promise<void>;
+  refreshToken: () => Promise<string | null>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -73,6 +74,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.setItem('access_token', newToken);
     } else {
       sessionStorage.removeItem('access_token');
+      localStorage.removeItem('access_token');
     }
     
     setTokenState(newToken);
@@ -87,6 +89,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.setItem('user_data', JSON.stringify(newUser));
     } else {
       sessionStorage.removeItem('user_data');
+      localStorage.removeItem('user_data');
     }
     
     setUserState(newUser);
@@ -156,6 +159,54 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [token]);
 
+  // Метод для обновления токена
+  const refreshToken = useCallback(async (): Promise<string | null> => {
+    try {
+      const refreshToken = localStorage.getItem('refresh_token');
+      if (!refreshToken) {
+        console.log('🔐 Нет refresh токена');
+        logout();
+        return null;
+      }
+
+      console.log('🔐 Обновление токена...');
+      
+      const response = await fetch('http://localhost:8080/api/v1/auth/refresh', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ refresh_token: refreshToken })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log('🔐 Токен успешно обновлен');
+        
+        // Сохраняем новый токен
+        localStorage.setItem('access_token', data.access_token);
+        sessionStorage.setItem('access_token', data.access_token);
+        
+        if (data.refresh_token) {
+          localStorage.setItem('refresh_token', data.refresh_token);
+        }
+        
+        setToken(data.access_token);
+        return data.access_token;
+      } else {
+        console.log('🔐 Ошибка при обновлении токена:', response.status);
+        logout();
+        return null;
+      }
+      
+    } catch (err) {
+      console.error('🔐 Ошибка обновления токена:', err);
+      logout();
+      return null;
+    }
+  }, [token, logout, setToken]);
+
   const value: AuthContextType = {
     token,
     user,
@@ -163,7 +214,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setToken,
     setUser,
     login,
-    logout
+    logout,
+    refreshToken
   };
 
   return (

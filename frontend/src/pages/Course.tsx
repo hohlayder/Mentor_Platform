@@ -131,6 +131,15 @@ interface SessionResponse {
   updated_at: string;
 }
 
+// Типы для чатов
+interface Chat {
+  id: string;
+  user1_id: string;
+  user2_id: string;
+  created_at: string;
+  updated_at: string;
+}
+
 // Дни недели
 const DAYS_OF_WEEK = [
   { id: 1, name: 'Понедельник', short: 'Пн' },
@@ -278,17 +287,73 @@ const CoursePage: React.FC = () => {
     }
   };
 
+  // Функция для создания/перехода в чат с автором
+  const handleStartChat = async (mentorId: string) => {
+    if (!token || !user) {
+      navigate('/login', { state: { returnTo: `/course/${id}` } });
+      return;
+    }
+
+    try {
+      // 1. Получаем список всех чатов пользователя
+      const chatsResponse = await fetch('http://localhost:8080/api/v1/chats', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!chatsResponse.ok) {
+        throw new Error('Ошибка при загрузке чатов');
+      }
+
+      const chatsData = await chatsResponse.json();
+      
+      // 2. Ищем существующий чат с этим ментором
+      const existingChat = chatsData.chats?.find((chat: Chat) => 
+        (chat.user1_id === mentorId && chat.user2_id === user.user_id) ||
+        (chat.user2_id === mentorId && chat.user1_id === user.user_id)
+      );
+
+      if (existingChat) {
+        // 3. Если чат существует - переходим в него
+        navigate(`/chats?chat=${existingChat.id}`);
+      } else {
+        // 4. Если чата нет - создаем новый
+        const createResponse = await fetch('http://localhost:8080/api/v1/chats', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            other_user_id: mentorId
+          })
+        });
+
+        if (!createResponse.ok) {
+          const errorData = await createResponse.json();
+          throw new Error(errorData.message || 'Ошибка создания чата');
+        }
+
+        const createData = await createResponse.json();
+        
+        // 5. Переходим в созданный чат
+        navigate(`/chats?chat=${createData.chat_id}`);
+      }
+
+    } catch (err: any) {
+      console.error('Ошибка при создании/переходе в чат:', err);
+      setError(err.message || 'Не удалось открыть чат');
+    }
+  };
+
   // Загрузка слотов и сессий
   const loadSlotsAndSessions = async () => {
     if (!author || !token) return;
     
     setLoadingSlots(true);
     try {
-      // Загружаем слоты ментора
-      // Согласно Swagger, можно получить слоты ментора через /slots/{id}
-      // Но для получения всех слотов ментора нужно делать отдельный запрос
-      // Временно используем mock-данные или пустой массив
-      
       // Загружаем сессии студента (если пользователь студент)
       if (user && profile?.student) {
         const sessionsResponse = await fetch(
@@ -650,7 +715,6 @@ const CoursePage: React.FC = () => {
           },
           body: JSON.stringify(slotData)
         });
-        console.log(JSON.stringify(slotData));
 
         if (!response.ok) {
           const errorData = await response.json();
@@ -699,7 +763,6 @@ const CoursePage: React.FC = () => {
           status: newStatus
         } as UpdateSlotStatusRequest)
       });
-      console.log("Статус слота обновлен!")
 
       if (response.ok) {
         // Обновляем список слотов
@@ -1308,7 +1371,7 @@ const CoursePage: React.FC = () => {
                 {user?.user_id !== author.user_id && token && (
                   <button 
                     className="btn btn-primary"
-                    onClick={() => navigate(`/chats?mentor=${author.user_id}`)}
+                    onClick={() => handleStartChat(author.user_id)}
                     style={{ fontSize: '14px' }}
                   >
                     Написать

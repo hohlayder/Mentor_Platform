@@ -718,7 +718,7 @@ const handleSubmit = async (status: 'draft' | 'published' | 'archived') => {
         {profile?.mentor && (
           <div className="card" style={{ marginTop: '32px' }}>
             <h3 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '12px' }}>
-              👨‍🏫 Информация о менторе
+              Информация о менторе
             </h3>
             <div style={{ 
               display: 'grid', 

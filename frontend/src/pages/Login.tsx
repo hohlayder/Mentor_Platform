@@ -79,7 +79,7 @@ export const Login: React.FC = () => {
         sessionStorage.setItem("user_data", JSON.stringify(tempUser));
       }
         auth.login(data.access_token, userData);// логин!!!!!
-        navigate("/profile", { replace: true });
+        navigate("/", { replace: true });
       } else if (res.status === 400) {
         const data = await res.json(); 
         setError("Некорректные данные. Проверьте ввод.");

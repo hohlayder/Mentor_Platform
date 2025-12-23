@@ -1,6 +1,6 @@
 // src/pages/EditProfilePage.tsx
 import React, { useState, useEffect, useRef } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../store/AuthContext'
 
 // Типы на основе Swagger
@@ -67,10 +67,30 @@ interface ProfileResponse {
   }>
 }
 
+// Хук для управления темой
+const useTheme = () => {
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    const savedTheme = localStorage.getItem('theme') as 'light' | 'dark';
+    return savedTheme || 'light';
+  });
+
+  useEffect(() => {
+    document.body.setAttribute('data-theme', theme);
+    localStorage.setItem('theme', theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme(prev => prev === 'light' ? 'dark' : 'light');
+  };
+
+  return { theme, toggleTheme };
+};
+
 const EditProfilePage: React.FC = () => {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const { user: currentUser, token, setUser } = useAuth()
+  const { user: currentUser, token, setUser, logout } = useAuth()
+  const { theme, toggleTheme } = useTheme()
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [formData, setFormData] = useState<UpdateProfileRequest>({
@@ -142,6 +162,11 @@ const EditProfilePage: React.FC = () => {
       return url
     }
   }
+
+  // Обработка выхода
+  const handleLogout = () => {
+    logout();
+  };
 
   // Проверка прав доступа
   useEffect(() => {
@@ -531,6 +556,33 @@ const handleDeleteAvatar = async () => {
   if (loading) {
     return (
       <div className="container">
+        {/* Header */}
+        <header className="header">
+          <Link to="/" className="brand">
+            <div className="logo">M</div>Mentor Fellowship
+          </Link>
+          <div className="header-nav">
+            <button onClick={toggleTheme} className="btn btn-ghost">
+              {theme === 'light' ? '🌙' : '☀️'} Тема
+            </button>
+            {token && currentUser ? (
+              <>
+                <Link to="/courses" className="btn btn-ghost">Курсы</Link>
+                <Link to="/chats" className="btn btn-ghost">Сообщения</Link>
+                <Link to={`/profile/${currentUser.user_id}`} className="btn btn-ghost">
+                  {currentUser.first_name || 'Профиль'}
+                </Link>
+                <button onClick={handleLogout} className="btn btn-ghost">Выйти</button>
+              </>
+            ) : (
+              <>
+                <Link to="/login" className="btn btn-ghost">Войти</Link>
+                <Link to="/signup" className="btn btn-primary">Регистрация</Link>
+              </>
+            )}
+          </div>
+        </header>
+        
         <div style={{ textAlign: 'center', padding: '60px 20px' }}>
           <div className="logo" style={{ 
             margin: '0 auto 20px', 
@@ -546,12 +598,39 @@ const handleDeleteAvatar = async () => {
 
   return (
     <div className="container">
+      {/* Header */}
+      <header className="header">
+        <Link to="/" className="brand">
+          <div className="logo">M</div>Mentor Fellowship
+        </Link>
+        <div className="header-nav">
+          <button onClick={toggleTheme} className="btn btn-ghost">
+            {theme === 'light' ? '🌙' : '☀️'} Тема
+          </button>
+          {token && currentUser ? (
+            <>
+              <Link to="/courses" className="btn btn-ghost">Курсы</Link>
+              <Link to="/chats" className="btn btn-ghost">Сообщения</Link>
+              <Link to={`/profile/${currentUser.user_id}`} className="btn btn-ghost">
+                {currentUser.first_name || 'Профиль'}
+              </Link>
+              <button onClick={handleLogout} className="btn btn-ghost">Выйти</button>
+            </>
+          ) : (
+            <>
+              <Link to="/login" className="btn btn-ghost">Войти</Link>
+              <Link to="/signup" className="btn btn-primary">Регистрация</Link>
+            </>
+          )}
+        </div>
+      </header>
+
       <div style={{ maxWidth: '800px', margin: '0 auto' }}>
         {/* Хлебные крошки */}
         <nav style={{ marginBottom: '24px' }}>
-          <a href="/" style={{ color: 'var(--muted)' }}>Главная</a>
+          <Link to="/" style={{ color: 'var(--muted)' }}>Главная</Link>
           <span style={{ margin: '0 8px', color: 'var(--muted)' }}>/</span>
-          <a href={`/profile/${id}`} style={{ color: 'var(--muted)' }}>Профиль</a>
+          <Link to={`/profile/${id}`} style={{ color: 'var(--muted)' }}>Профиль</Link>
           <span style={{ margin: '0 8px', color: 'var(--muted)' }}>/</span>
           <span style={{ color: 'var(--accent)' }}>Редактирование</span>
         </nav>

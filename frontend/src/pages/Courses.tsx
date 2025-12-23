@@ -22,12 +22,7 @@ type SortField = 'created_at' | 'updated_at' | 'title' | 'average_rating';
 type SortOrder = 'asc' | 'desc';
 
 // Популярные теги
-const DEFAULT_TAGS = [
-  'JavaScript', 'TypeScript', 'React', 'Node.js', 'Python',
-  'Java', 'C#', 'Go', 'Rust', 'DevOps', 'Docker', 'Kubernetes',
-  'AWS', 'Machine Learning', 'Data Science', 'Web Development',
-  'Mobile Development', 'UI/UX', 'Blockchain', 'Cybersecurity'
-];
+const DEFAULT_TAGS = ['JavaScript'];
 
 // Опции сортировки
 const SORT_OPTIONS = [
@@ -273,6 +268,12 @@ const CoursesPage: React.FC = () => {
           )}
         </div>
       </header>
+
+      <nav style={{ marginBottom: '24px', marginTop: '20px' }}>
+        <Link to="/" style={{ color: 'var(--muted)' }}>Главная</Link>
+        <span style={{ margin: '0 8px', color: 'var(--muted)' }}>/</span>
+        <span style={{ color: 'var(--accent)' }}>Курсы</span>
+      </nav>
       
       {/* Основной контент */}
       <div style={{ display: 'flex', gap: '32px', marginTop: '24px' }}>
@@ -296,7 +297,7 @@ const CoursesPage: React.FC = () => {
             <div className="search" style={{ margin: 0 }}>
               <input
                 type="text"
-                placeholder="🔍 Поиск курсов..."
+                placeholder="Поиск курсов..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onKeyDown={handleKeyDown}
@@ -323,7 +324,7 @@ const CoursesPage: React.FC = () => {
                   onClick={handleClearFilters}
                   style={{ fontSize: '13px', padding: '5px 10px' }}
                 >
-                  🗑️ Сбросить
+                  Сбросить
                 </button>
               )}
             </div>
@@ -370,7 +371,7 @@ const CoursesPage: React.FC = () => {
                     borderRadius: '8px',
                     marginTop: '8px'
                   }}>
-                    📌 Показываются только курсы, созданные вами
+                    Показываются только курсы, созданные вами
                   </div>
                 )}
               </div>
@@ -379,7 +380,7 @@ const CoursesPage: React.FC = () => {
             {/* Популярные теги */}
             <div style={{ marginBottom: '24px' }}>
               <div style={{ fontSize: '14px', fontWeight: 600, marginBottom: '12px', color: 'var(--muted)' }}>
-                🏷️ Популярные теги
+                Популярные теги
               </div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                 {popularTags.map((tag) => (
@@ -472,11 +473,11 @@ const CoursesPage: React.FC = () => {
               fontSize: '13px'
             }}>
               <div style={{ color: 'var(--muted)', marginBottom: '8px' }}>
-                📊 Информация
+                Информация
               </div>
               <div style={{ fontSize: '12px', lineHeight: '1.5' }}>
                 <div>• Курсов: <strong>{totalCount}</strong></div>
-                <div>• Статус: <strong>📢 Опубликованные</strong></div>
+                <div>• Статус: <strong>Опубликованные</strong></div>
                 {showMyCourses && <div>• Режим: <strong>👤 Мои курсы</strong></div>}
               </div>
             </div>
@@ -498,7 +499,7 @@ const CoursesPage: React.FC = () => {
           }}>
             <div>
               <h2 style={{ margin: 0, fontSize: '20px', fontWeight: 700 }}>
-                {showMyCourses ? '👤 Мои курсы' : '🎓 Все курсы'}
+                {showMyCourses ? 'Мои курсы' : 'Все курсы'}
               </h2>
               {courses.length > 0 && (
                 <div style={{ fontSize: '14px', color: 'var(--muted)', marginTop: '4px' }}>
@@ -586,7 +587,7 @@ const CoursesPage: React.FC = () => {
                   onClick={handleClearFilters}
                   style={{ padding: '10px 20px' }}
                 >
-                  🗑️ Сбросить фильтры
+                  Сбросить фильтры
                 </button>
               </div>
             </div>
@@ -884,36 +885,7 @@ const CoursesPage: React.FC = () => {
                   ? 'Создайте свой первый курс, чтобы он появился здесь'
                   : 'Попробуйте изменить фильтры поиска или очистить текущие'}
               </p>
-              <div style={{ display: 'flex', gap: '16px', justifyContent: 'center' }}>
-                {showMyCourses ? (
-                  <button 
-                    className="btn btn-primary"
-                    onClick={() => navigate('/course/create')}
-                    style={{ padding: '12px 24px', fontSize: '16px' }}
-                  >
-                    🎨 Создать курс
-                  </button>
-                ) : (
-                  <>
-                    <button 
-                      className="btn btn-primary"
-                      onClick={handleClearFilters}
-                      style={{ padding: '12px 24px', fontSize: '16px' }}
-                    >
-                      🗑️ Сбросить фильтры
-                    </button>
-                    {token && (
-                      <button 
-                        className="btn btn-ghost"
-                        onClick={() => setShowMyCourses(false)}
-                        style={{ padding: '12px 24px', fontSize: '16px' }}
-                      >
-                        👁️ Показать все курсы
-                      </button>
-                    )}
-                  </>
-                )}
-              </div>
+              
             </div>
           )}
         </div>

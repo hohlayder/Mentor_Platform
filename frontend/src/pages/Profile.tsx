@@ -1,8 +1,7 @@
+// src/pages/ProfilePage.tsx (обновленная версия)
 import React, { useState, useEffect } from 'react'
-import { useParams, useNavigate, useLocation } from 'react-router-dom'
+import { useParams, useNavigate, useLocation, Link } from 'react-router-dom'
 import { useAuth } from '../store/AuthContext'
-import axios from 'axios'
-import { API_BASE } from '../api/axios'
 
 // Типы
 interface User {
@@ -67,11 +66,31 @@ interface Post {
   updated_at: string
 }
 
+// Хук для управления темой
+const useTheme = () => {
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    const savedTheme = localStorage.getItem('theme') as 'light' | 'dark';
+    return savedTheme || 'light';
+  });
+
+  useEffect(() => {
+    document.body.setAttribute('data-theme', theme);
+    localStorage.setItem('theme', theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme(prev => prev === 'light' ? 'dark' : 'light');
+  };
+
+  return { theme, toggleTheme };
+};
+
 const ProfilePage: React.FC = () => {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const location = useLocation()
-  const { user, token } = useAuth()
+  const { user, token, logout } = useAuth()
+  const { theme, toggleTheme } = useTheme()
 
   const [profile, setProfile] = useState<ProfileResponse | null>(null)
   const [mentorCourses, setMentorCourses] = useState<Post[]>([])
@@ -175,10 +194,40 @@ const ProfilePage: React.FC = () => {
     loadProfile()
   }, [id, token, isProfileRoot])
 
+  // Обработка выхода
+  const handleLogout = () => {
+    logout();
+  };
+
   // Если на /profile и редирект не сработал
   if (isProfileRoot) {
     return (
       <div className="container">
+        {/* Header */}
+        <header className="header">
+          <Link to="/" className="brand">
+            <div className="logo">M</div>Mentor Fellowship
+          </Link>
+          <div className="header-nav">
+            <button onClick={toggleTheme} className="btn btn-ghost">
+              {theme === 'light' ? '🌙' : '☀️'} Тема
+            </button>
+            {token && user ? (
+              <>
+                <Link to={`/profile/${user.user_id}`} className="btn btn-ghost">
+                  {user.first_name || 'Профиль'}
+                </Link>
+                <button onClick={handleLogout} className="btn btn-ghost">Выйти</button>
+              </>
+            ) : (
+              <>
+                <Link to="/login" className="btn btn-ghost">Войти</Link>
+                <Link to="/signup" className="btn btn-primary">Регистрация</Link>
+              </>
+            )}
+          </div>
+        </header>
+        
         <div style={{ textAlign: 'center', padding: '60px 20px' }}>
           <div className="logo" style={{ 
             margin: '0 auto 20px', 
@@ -195,6 +244,33 @@ const ProfilePage: React.FC = () => {
   if (loading) {
     return (
       <div className="container">
+        {/* Header */}
+        <header className="header">
+          <Link to="/" className="brand">
+            <div className="logo">M</div>Mentor Fellowship
+          </Link>
+          <div className="header-nav">
+            <button onClick={toggleTheme} className="btn btn-ghost">
+              {theme === 'light' ? '🌙' : '☀️'} Тема
+            </button>
+            {token && user ? (
+              <>
+                <Link to="/courses" className="btn btn-ghost">Курсы</Link>
+                <Link to="/chats" className="btn btn-ghost">Сообщения</Link>
+                <Link to={`/profile/${user.user_id}`} className="btn btn-ghost">
+                  {user.first_name || 'Профиль'}
+                </Link>
+                <button onClick={handleLogout} className="btn btn-ghost">Выйти</button>
+              </>
+            ) : (
+              <>
+                <Link to="/login" className="btn btn-ghost">Войти</Link>
+                <Link to="/signup" className="btn btn-primary">Регистрация</Link>
+              </>
+            )}
+          </div>
+        </header>
+        
         <div style={{ textAlign: 'center', padding: '60px 20px' }}>
           <div className="logo" style={{ 
             margin: '0 auto 20px', 
@@ -211,6 +287,33 @@ const ProfilePage: React.FC = () => {
   if (error || !profile) {
     return (
       <div className="container">
+        {/* Header */}
+        <header className="header">
+          <Link to="/" className="brand">
+            <div className="logo">M</div>Mentor Fellowship
+          </Link>
+          <div className="header-nav">
+            <button onClick={toggleTheme} className="btn btn-ghost">
+              {theme === 'light' ? '🌙' : '☀️'} Тема
+            </button>
+            {token && user ? (
+              <>
+                <Link to="/courses" className="btn btn-ghost">Курсы</Link>
+                <Link to="/chats" className="btn btn-ghost">Сообщения</Link>
+                <Link to={`/profile/${user.user_id}`} className="btn btn-ghost">
+                  {user.first_name || 'Профиль'}
+                </Link>
+                <button onClick={handleLogout} className="btn btn-ghost">Выйти</button>
+              </>
+            ) : (
+              <>
+                <Link to="/login" className="btn btn-ghost">Войти</Link>
+                <Link to="/signup" className="btn btn-primary">Регистрация</Link>
+              </>
+            )}
+          </div>
+        </header>
+        
         <div style={{ textAlign: 'center', padding: '60px 20px' }}>
           <div className="logo" style={{ margin: '0 auto 20px', background: '#ef4444' }}>
             <span>⚠️</span>
@@ -245,19 +348,45 @@ const ProfilePage: React.FC = () => {
 
   return (
     <div className="container">
-      {/* Кнопка назад */}
-      <div style={{ marginBottom: '24px' }}>
-        <button
-          className="btn btn-ghost"
-          onClick={() => navigate("/", {replace: true})}
-          style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
-        >
-          ← На Главную
-        </button>
-        <h1 style={{ margin: '12px 0' }}>
-          {isOwnProfile ? 'Мой профиль' : 'Профиль пользователя'}
-        </h1>
-      </div>
+      {/* Header */}
+      <header className="header">
+        <Link to="/" className="brand">
+          <div className="logo">M</div>Mentor Fellowship
+        </Link>
+        <div className="header-nav">
+          <button onClick={toggleTheme} className="btn btn-ghost">
+            {theme === 'light' ? '🌙' : '☀️'} Тема
+          </button>
+          {token && user ? (
+            <>
+              <Link to="/courses" className="btn btn-ghost">Курсы</Link>
+              <Link to="/chats" className="btn btn-ghost">Сообщения</Link>
+              <Link to={`/profile/${user.user_id}`} className="btn btn-ghost">
+                {user.first_name || 'Профиль'}
+              </Link>
+              <button onClick={handleLogout} className="btn btn-ghost">Выйти</button>
+            </>
+          ) : (
+            <>
+              <Link to="/login" className="btn btn-ghost">Войти</Link>
+              <Link to="/signup" className="btn btn-primary">Регистрация</Link>
+            </>
+          )}
+        </div>
+      </header>
+
+      {/* Хлебные крошки */}
+      <nav style={{ marginBottom: '24px' }}>
+        <Link to="/" style={{ color: 'var(--muted)' }}>Главная</Link>
+        <span style={{ margin: '0 8px', color: 'var(--muted)' }}>/</span>
+        <span style={{ color: 'var(--accent)' }}>
+          {isOwnProfile ? 'Мой профиль' : 'Профиль'}
+        </span>
+      </nav>
+
+      <h1 style={{ fontSize: '32px', fontWeight: 700, marginBottom: '32px' }}>
+        {isOwnProfile ? 'Мой профиль' : `${profile.user.first_name} ${profile.user.last_name}`}
+      </h1>
 
       {/* Заголовок профиля */}
       <div className="card" style={{ marginBottom: '24px' }}>
@@ -314,24 +443,80 @@ const ProfilePage: React.FC = () => {
               </div>
 
               {/* Кнопки действий */}
-              {isOwnProfile && (
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <button 
-                    className="btn btn-outline"
-                    onClick={() => navigate(`/profile/${id}/edit`)}
-                  >
-                    Редактировать профиль
-                  </button>
-                  {isMentor && (
+              <div style={{ display: 'flex', gap: '8px' }}>
+                {isOwnProfile && (
+                  <>
                     <button 
-                      className="btn btn-primary"
-                      onClick={() => navigate('/course/create')}
+                      className="btn btn-outline"
+                      onClick={() => navigate(`/profile/${id}/edit`)}
                     >
-                      + Создать курс
+                      Редактировать профиль
                     </button>
-                  )}
-                </div>
-              )}
+                  </>
+                )}
+                {/* Кнопка "Написать" для не-своих профилей */}
+                {!isOwnProfile && token && (
+                  <button 
+                    className="btn btn-primary"
+                    onClick={async () => {
+                      try {
+                        // Сначала проверяем существующий чат
+                        const chatsResponse = await fetch('http://localhost:8080/api/v1/chats?limit=20&offset=0', {
+                          headers: {
+                            'Authorization': `Bearer ${token}`,
+                          },
+                        });
+                        
+                        if (chatsResponse.ok) {
+                          const chatsData = await chatsResponse.json();
+                          
+                          // Ищем существующий чат с этим пользователем
+                          const existingChat = chatsData.chats?.find((chat: any) => 
+                            (chat.user1_id === profile.user.user_id && chat.user2_id === user?.user_id) ||
+                            (chat.user2_id === profile.user.user_id && chat.user1_id === user?.user_id)
+                          );
+                          
+                          if (existingChat) {
+                            // Переходим к существующему чату
+                            navigate(`/chats?chat=${existingChat.id}`);
+                          } else {
+                            // Создаем новый чат
+                            const createResponse = await fetch('http://localhost:8080/api/v1/chats', {
+                              method: 'POST',
+                              headers: {
+                                'Authorization': `Bearer ${token}`,
+                                'Content-Type': 'application/json',
+                              },
+                              body: JSON.stringify({
+                                other_user_id: profile.user.user_id,
+                              }),
+                            });
+                            
+                            if (createResponse.ok) {
+                              const chatData = await createResponse.json();
+                              // Переходим к новому чату
+                              navigate(`/chats?chat=${chatData.chat_id}`);
+                            } else {
+                              const errorData = await createResponse.json();
+                              alert(`Ошибка создания чата: ${errorData.message || 'Неизвестная ошибка'}`);
+                            }
+                          }
+                        }
+                      } catch (error) {
+                        console.error('Ошибка при создании чата:', error);
+                        alert('Ошибка при создании чата. Попробуйте позже.');
+                      }
+                    }}
+                    style={{ 
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px'
+                    }}
+                  >
+                    Написать
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -422,8 +607,7 @@ const ProfilePage: React.FC = () => {
                       color: '#fff',
                       fontWeight: 'bold',
                       fontSize: '24px'
-                    }}
-                  >
+                    }}>
                     {course.title[0]}
                   </div>
                   <div className="c-body">
@@ -469,15 +653,6 @@ const ProfilePage: React.FC = () => {
                 ? 'Вы пока не создали ни одного курса'
                 : 'Пользователь пока не создал ни одного курса'
               }
-              {isOwnProfile && (
-                <button
-                  className="btn btn-primary"
-                  style={{ marginTop: '16px' }}
-                  onClick={() => navigate('/course/create')}
-                >
-                  Создать первый курс
-                </button>
-              )}
             </div>
           )}
         </div>
@@ -555,6 +730,14 @@ const ProfilePage: React.FC = () => {
           )}
         </div>
       </div>
+      
+      <style>{`
+        @keyframes pulse {
+          0% { opacity: 1; }
+          50% { opacity: 0.5; }
+          100% { opacity: 1; }
+        }
+      `}</style>
     </div>
   )
 }
