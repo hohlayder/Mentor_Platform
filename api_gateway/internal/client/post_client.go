@@ -43,6 +43,10 @@ func (c *PostClient) ListPosts(ctx context.Context, in *postsv1.ListPostsRequest
 	return c.Client.ListPosts(ctx, in)
 }
 
+func (c *PostClient) GetPostRatings(ctx context.Context, in *postsv1.GetPostRatingsRequest) (*postsv1.GetPostRatingsResponse, error) {
+	return c.Client.GetPostRatings(ctx, in)
+}
+
 func (c *PostClient) Close() error {
 	if c.conn != nil {
 		return c.conn.Close()

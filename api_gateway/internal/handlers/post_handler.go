@@ -8,6 +8,8 @@ import (
 	"github.com/hohlayder/Mentor_Platform/api_gateway/internal/domain"
 	"github.com/hohlayder/Mentor_Platform/api_gateway/internal/service"
 	"github.com/hohlayder/Mentor_Platform/api_gateway/internal/utils"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 type PostHandler struct {
@@ -16,6 +18,75 @@ type PostHandler struct {
 
 func NewPostHandler(postService *service.PostService) *PostHandler {
 	return &PostHandler{postService: postService}
+}
+
+// GetPostRatings возвращает отзывы по ID поста
+// @Summary Получить отзывы поста
+// @Description Возвращает список отзывов и рейтингов для поста с пагинацией
+// @Tags posts
+// @Produce json
+// @Param id path string true "ID поста"
+// @Param page_token query string false "Токен пагинации"
+// @Param page_size query int false "Размер страницы" minimum(1) maximum(100) default(20)
+// @Success 200 {object} domain.GetPostRatingsResponse
+// @Failure 400 {object} domain.ErrorResponse
+// @Failure 404 {object} domain.ErrorResponse
+// @Failure 500 {object} domain.ErrorResponse
+// @Router /posts/{id}/ratings [get]
+func (h *PostHandler) GetPostRatings(c *gin.Context) {
+	postID := c.Param("id")
+	if postID == "" {
+		c.JSON(http.StatusBadRequest, domain.ErrorResponse{
+			Error:   "VALIDATION_ERROR",
+			Message: "Post ID is required",
+		})
+		return
+	}
+
+	var req domain.GetPostRatingsRequest
+	if err := c.ShouldBindQuery(&req); err != nil {
+		c.JSON(http.StatusBadRequest, domain.ErrorResponse{
+			Error:   "VALIDATION_ERROR",
+			Message: "Invalid query parameters",
+			Details: err.Error(),
+		})
+		return
+	}
+
+	// Устанавливаем дефолтный размер страницы
+	if req.PageSize == 0 {
+		req.PageSize = 20
+	}
+
+	resp, err := h.postService.GetPostRatings(c.Request.Context(), postID, req)
+	if err != nil {
+		// Обрабатываем gRPC ошибки
+		if st, ok := status.FromError(err); ok {
+			switch st.Code() {
+			case codes.NotFound:
+				c.JSON(http.StatusNotFound, domain.ErrorResponse{
+					Error:   "NOT_FOUND",
+					Message: "Post not found",
+				})
+				return
+			case codes.InvalidArgument:
+				c.JSON(http.StatusBadRequest, domain.ErrorResponse{
+					Error:   "VALIDATION_ERROR",
+					Message: st.Message(),
+				})
+				return
+			}
+		}
+
+		slog.Error("Failed to get post ratings", "error", err, "post_id", postID)
+		c.JSON(http.StatusInternalServerError, domain.ErrorResponse{
+			Error:   "INTERNAL_ERROR",
+			Message: "Failed to get post ratings",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, resp)
 }
 
 // CreatePost создает новый пост
@@ -368,3 +439,4 @@ func (h *PostHandler) RatePost(c *gin.Context) {
 		Post: *post,
 	})
 }
+
