@@ -19,6 +19,7 @@ type PostClient interface {
 	UpdatePost(ctx context.Context, in *postsv1.UpdatePostRequest) (*postsv1.UpdatePostResponse, error)
 	DeletePost(ctx context.Context, in *postsv1.DeletePostRequest) (*postsv1.DeletePostResponse, error)
 	RatePost(ctx context.Context, in *postsv1.RatePostRequest) (*postsv1.RatePostResponse, error)
+	GetPostRatings(ctx context.Context, in *postsv1.GetPostRatingsRequest) (*postsv1.GetPostRatingsResponse, error)
 }
 
 type PostService struct {
@@ -274,4 +275,63 @@ func (s *PostService) ValidatePostStatus(status string) bool {
 	statusUpper := strings.ToUpper(status)
 	_, ok := postsv1.PostStatus_value[statusUpper]
 	return ok
+}
+
+
+func (s *PostService) GetPostRatings(ctx context.Context, postID string, req domain.GetPostRatingsRequest) (*domain.GetPostRatingsResponse, error) {
+	if postID == "" {
+		return nil, errors.New("post ID is required")
+	}
+
+	// Делаем gRPC вызов
+	grpcReq := &postsv1.GetPostRatingsRequest{
+		PostId:    postID,
+		PageToken: req.PageToken,
+		PageSize:  req.PageSize,
+	}
+
+	grpcResp, err := s.postClient.GetPostRatings(ctx, grpcReq)
+	if err != nil {
+		slog.Error("Failed to get post ratings via gRPC", "error", err, "post_id", postID)
+		return nil, fmt.Errorf("failed to get post ratings: %w", err)
+	}
+
+	// Конвертируем gRPC ответ в доменную модель
+	return convertRatingsResponseFromProto(grpcResp), nil
+}
+
+func convertRatingsResponseFromProto(protoResp *postsv1.GetPostRatingsResponse) *domain.GetPostRatingsResponse {
+	if protoResp == nil {
+		return &domain.GetPostRatingsResponse{
+			Ratings:       []domain.Rating{},
+			TotalCount:    0,
+			AverageRating: 0,
+			RatingsCount:  0,
+		}
+	}
+
+	// Конвертируем список оценок
+	ratings := make([]domain.Rating, 0, len(protoResp.Ratings))
+	for _, protoRating := range protoResp.Ratings {
+		ratings = append(ratings, convertRatingFromProto(protoRating))
+	}
+
+	return &domain.GetPostRatingsResponse{
+		Ratings:       ratings,
+		NextPageToken: protoResp.NextPageToken,
+		TotalCount:    protoResp.TotalCount,
+		AverageRating: protoResp.AverageRating,
+		RatingsCount:  protoResp.RatingsCount,
+	}
+}
+
+func convertRatingFromProto(protoRating *postsv1.Rating) domain.Rating {
+	return domain.Rating{
+		ID:        protoRating.Id,
+		PostID:    protoRating.PostId,
+		UserID:    protoRating.UserId, // Только ID пользователя
+		Rate:      protoRating.Rate,
+		Comment:   protoRating.Comment,
+		CreatedAt: protoRating.CreatedAt.AsTime(),
+	}
 }

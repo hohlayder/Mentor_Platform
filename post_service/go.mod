@@ -3,7 +3,7 @@ module github.com/hohlayder/Mentor_Platform/post_service
 go 1.24.4
 
 require (
-	github.com/Sergey-1214/contracts_mentors v0.0.21-0.20251208110427-a44495aae6f0
+	github.com/Sergey-1214/contracts_mentors v0.0.22
 	github.com/google/uuid v1.6.0
 	github.com/jmoiron/sqlx v1.4.0
 	github.com/lib/pq v1.10.9
