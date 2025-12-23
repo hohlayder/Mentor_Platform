@@ -1347,7 +1347,7 @@ const CoursePage: React.FC = () => {
             onClick={() => setActiveTab('slots')}
             style={{ whiteSpace: 'nowrap', fontSize: '14px', padding: '10px 16px' }}
           >
-            📅 Слоты и сессии
+            📅 Доступные слоты
           </button>
           <button
             className={`btn ${activeTab === 'reviews' ? 'btn-primary' : 'btn-ghost'}`}
