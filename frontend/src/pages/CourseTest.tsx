@@ -22,7 +22,7 @@ const useTheme = () => {
   return { theme, toggleTheme };
 };
 
-// Типы (без изменений)
+// Типы (обновлены в соответствии с документацией)
 interface Post {
   id: string;
   title: string;
@@ -83,7 +83,7 @@ interface RatePostRequest {
   comment?: string;
 }
 
-// Типы для слотов
+// Типы для слотов (обновлены)
 interface SlotResponse {
   id: string;
   mentor_id: string;
@@ -109,11 +109,21 @@ interface CreateSlotRequest {
   status?: string;
 }
 
+interface UpdateSlotRequest {
+  title?: string;
+  description?: string;
+  start_time?: string;
+  duration_minutes?: number;
+  price?: number;
+  currency?: string;
+  status?: string;
+}
+
 interface UpdateSlotStatusRequest {
   status: string;
 }
 
-// Типы для сессий
+// Типы для сессий (обновлены)
 interface CreateSessionRequest {
   slot_id: string;
   student_id: string;
@@ -135,6 +145,31 @@ interface ListSessionsResponse {
   sessions: SessionResponse[];
   total: number;
 }
+
+interface ListSlotsResponse {
+  slots: SlotResponse[];
+  total: number;
+}
+
+// Вспомогательная функция для работы с API
+const apiFetch = async <T,>(
+  url: string, 
+  options: RequestInit = {}
+): Promise<T> => {
+  const response = await fetch(url, options);
+  
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({
+      message: 'Ошибка сервера',
+      error: 'Server Error',
+      details: response.statusText
+    }));
+    
+    throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
+  }
+  
+  return response.json();
+};
 
 // Константы
 const DAYS_OF_WEEK = [
@@ -162,6 +197,13 @@ const SLOT_STATUSES = {
   available: { label: 'Доступен', color: '#10b981', emoji: '🟢' },
   booked: { label: 'Забронирован', color: '#f59e0b', emoji: '🟡' },
   closed: { label: 'Закрыт', color: '#ef4444', emoji: '🔴' }
+};
+
+const PAYMENT_STATUSES = {
+  pending: { label: 'Ожидает оплаты', color: '#f59e0b' },
+  paid: { label: 'Оплачено', color: '#10b981' },
+  failed: { label: 'Ошибка оплаты', color: '#ef4444' },
+  refunded: { label: 'Возврат', color: '#6b7280' }
 };
 
 const CoursePage: React.FC = () => {
@@ -192,6 +234,7 @@ const CoursePage: React.FC = () => {
   const [bookingError, setBookingError] = useState<string | null>(null);
   const [bookingSuccess, setBookingSuccess] = useState(false);
   const [cancelingSessionId, setCancelingSessionId] = useState<string | null>(null);
+  const [updatingSlotId, setUpdatingSlotId] = useState<string | null>(null);
 
   // Данные для создания слотов
   const [selectedDays, setSelectedDays] = useState<number[]>([]);
@@ -287,34 +330,35 @@ const CoursePage: React.FC = () => {
           headers['Authorization'] = `Bearer ${token}`;
         }
 
-        // 1. Загружаем курс
-        const courseResponse = await fetch(`http://localhost:8080/api/v1/posts/${id}`, { headers });
+        // 1. Загружаем курс по документации: GET /posts/{id}
+        const courseData = await apiFetch<{ post: Post }>(
+          `http://localhost:8080/api/v1/posts/${id}`,
+          { headers }
+        );
         
-        if (!courseResponse.ok) {
-          if (courseResponse.status === 404) {
-            throw new Error('Курс не найден');
-          }
-          throw new Error('Не удалось загрузить курс');
-        }
-
-        const courseData = await courseResponse.json();
-        const loadedCourse: Post = courseData.post;
+        const loadedCourse = courseData.post;
         setCourse(loadedCourse);
 
-        // 2. Загружаем информацию об авторе
-        const authorResponse = await fetch(`http://localhost:8080/api/v1/users/${loadedCourse.author_id}`, { headers });
-        
-        if (authorResponse.ok) {
-          const authorData: User = await authorResponse.json();
+        // 2. Загружаем информацию об авторе по документации: GET /users/{id}
+        try {
+          const authorData = await apiFetch<User>(
+            `http://localhost:8080/api/v1/users/${loadedCourse.author_id}`,
+            { headers }
+          );
           setAuthor(authorData);
+        } catch (err) {
+          console.warn('Не удалось загрузить информацию об авторе:', err);
         }
 
-        // 3. Загружаем профиль автора
-        const profileResponse = await fetch(`http://localhost:8080/api/v1/profiles/${loadedCourse.author_id}`, { headers });
-        
-        if (profileResponse.ok) {
-          const profileData: ProfileResponse = await profileResponse.json();
+        // 3. Загружаем профиль автора по документации: GET /profiles/{id}
+        try {
+          const profileData = await apiFetch<ProfileResponse>(
+            `http://localhost:8080/api/v1/profiles/${loadedCourse.author_id}`,
+            { headers }
+          );
           setProfile(profileData);
+        } catch (err) {
+          console.warn('Не удалось загрузить профиль автора:', err);
         }
 
       } catch (err: any) {
@@ -334,6 +378,7 @@ const CoursePage: React.FC = () => {
   const canRate = !isAuthor && token;
   const statusInfo = course ? getStatusInfo(course.status) : getStatusInfo('');
   const isStudent = profile?.student && token && user?.user_id === profile.student.user_id;
+  const isMentor = profile?.mentor && token && user?.user_id === profile.mentor.user_id;
 
   // Загрузка слотов и сессий
   const loadSlotsAndSessions = useCallback(async () => {
@@ -341,29 +386,29 @@ const CoursePage: React.FC = () => {
     
     setLoadingSlots(true);
     try {
-      // Загружаем слоты ментора (предполагаем, что эндпоинт существует)
+      // Загружаем слоты ментора по документации: GET /mentors/{mentor_id}/slots
       if (isAuthor && profile?.mentor) {
         try {
-          const slotsResponse = await fetch(`http://localhost:8080/api/v1/mentors/${user.user_id}/slots`, {
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json'
+          const slotsData = await apiFetch<ListSlotsResponse>(
+            `http://localhost:8080/api/v1/mentors/${user.user_id}/slots`,
+            {
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+              }
             }
-          });
+          );
           
-          if (slotsResponse.ok) {
-            const slotsData = await slotsResponse.json();
-            setSlots(slotsData.slots || []);
-          }
+          setSlots(slotsData.slots || []);
         } catch (err) {
           console.error('Ошибка загрузки слотов ментора:', err);
         }
       }
       
-      // Загружаем сессии студента
+      // Загружаем сессии студента по документации: GET /students/{student_id}/sessions
       if (isStudent) {
         try {
-          const sessionsResponse = await fetch(
+          const sessionsData = await apiFetch<ListSessionsResponse>(
             `http://localhost:8080/api/v1/students/${user.user_id}/sessions`,
             {
               headers: {
@@ -373,12 +418,29 @@ const CoursePage: React.FC = () => {
             }
           );
           
-          if (sessionsResponse.ok) {
-            const sessionsData = await sessionsResponse.json();
-            setSessions(sessionsData.sessions || []);
-          }
+          setSessions(sessionsData.sessions || []);
         } catch (err) {
-          console.error('Ошибка загрузки сессий:', err);
+          console.error('Ошибка загрузки сессий студента:', err);
+        }
+      }
+      
+      // Загружаем сессии ментора по документации: GET /mentors/{mentor_id}/sessions
+      if (isMentor) {
+        try {
+          const mentorSessionsData = await apiFetch<ListSessionsResponse>(
+            `http://localhost:8080/api/v1/mentors/${user.user_id}/sessions`,
+            {
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+              }
+            }
+          );
+          
+          // Объединяем сессии студента и ментора
+          setSessions(prev => [...prev, ...(mentorSessionsData.sessions || [])]);
+        } catch (err) {
+          console.error('Ошибка загрузки сессий ментора:', err);
         }
       }
       
@@ -387,7 +449,7 @@ const CoursePage: React.FC = () => {
     } finally {
       setLoadingSlots(false);
     }
-  }, [token, user, isAuthor, profile, isStudent]);
+  }, [token, user, isAuthor, profile, isStudent, isMentor]);
 
   // Загружаем слоты и сессии при загрузке курса
   useEffect(() => {
@@ -396,7 +458,7 @@ const CoursePage: React.FC = () => {
     }
   }, [course, token, user, loadSlotsAndSessions]);
 
-  // Функции для работы с курсом (без изменений)
+  // Функции для работы с курсом
   const updateCourseStatus = async (newStatus: 'draft' | 'published' | 'archived') => {
     if (!token || !course) return;
 
@@ -408,32 +470,29 @@ const CoursePage: React.FC = () => {
     }
 
     try {
-      const response = await fetch(`http://localhost:8080/api/v1/posts/${course.id}`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          post: {
-            id: course.id,
-            status: newStatus
-          }
-        } as UpdatePostRequest)
-      });
+      const data = await apiFetch<UpdatePostResponse>(
+        `http://localhost:8080/api/v1/posts/${course.id}`,
+        {
+          method: 'PUT',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            post: {
+              id: course.id,
+              status: newStatus
+            }
+          } as UpdatePostRequest)
+        }
+      );
 
-      if (response.ok) {
-        const data: UpdatePostResponse = await response.json();
-        setCourse(data.post);
-        
-        const successMessage = newStatus === 'archived' ? 'Курс перемещен в архив' :
-                               newStatus === 'published' ? 'Курс опубликован' : 
-                               'Курс переведен в черновик';
-        alert(`✅ ${successMessage}!`);
-      } else {
-        const errorData = await response.json();
-        throw new Error(errorData.message || `Ошибка при ${action} курса`);
-      }
+      setCourse(data.post);
+      
+      const successMessage = newStatus === 'archived' ? 'Курс перемещен в архив' :
+                             newStatus === 'published' ? 'Курс опубликован' : 
+                             'Курс переведен в черновик';
+      alert(`✅ ${successMessage}!`);
     } catch (err: any) {
       console.error(`Ошибка ${action} курса:`, err);
       setError(err.message || `Не удалось ${action} курс`);
@@ -445,29 +504,26 @@ const CoursePage: React.FC = () => {
 
     setSubmittingRating(true);
     try {
-      const response = await fetch(`http://localhost:8080/api/v1/posts/${course.id}/rate`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          rate: rating,
-          user_id: user.user_id,
-          comment: review.trim() || undefined
-        } as RatePostRequest)
-      });
+      const data = await apiFetch<{ post: Post }>(
+        `http://localhost:8080/api/v1/posts/${course.id}/rate`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            rate: rating,
+            user_id: user.user_id,
+            comment: review.trim() || undefined
+          } as RatePostRequest)
+        }
+      );
 
-      if (response.ok) {
-        const data = await response.json();
-        setCourse(data.post);
-        setRating(0);
-        setReview('');
-        setActiveTab('reviews');
-      } else {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Ошибка при оценке курса');
-      }
+      setCourse(data.post);
+      setRating(0);
+      setReview('');
+      setActiveTab('reviews');
     } catch (err: any) {
       console.error('Ошибка оценки курса:', err);
       setError(err.message || 'Не удалось оценить курс');
@@ -484,19 +540,17 @@ const CoursePage: React.FC = () => {
     if (!token || !course) return;
 
     try {
-      const response = await fetch(`http://localhost:8080/api/v1/posts/${course.id}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`
+      await apiFetch(
+        `http://localhost:8080/api/v1/posts/${course.id}`,
+        {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
         }
-      });
+      );
 
-      if (response.ok) {
-        navigate('/courses');
-      } else {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Ошибка при удалении курса');
-      }
+      navigate('/courses');
     } catch (err: any) {
       console.error('Ошибка удаления курса:', err);
       setError(err.message || 'Не удалось удалить курс');
@@ -534,7 +588,7 @@ const CoursePage: React.FC = () => {
     });
   }, []);
 
-  // Бронирование слота студентом
+  // Бронирование слота студентом по документации: POST /sessions
   const bookSlot = async (slotId: string) => {
     if (!token || !user) {
       setBookingError('Необходимо авторизоваться');
@@ -546,30 +600,29 @@ const CoursePage: React.FC = () => {
     setBookingSuccess(false);
 
     try {
-      const response = await fetch('http://localhost:8080/api/v1/sessions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          slot_id: slotId,
-          student_id: user.user_id
-        } as CreateSessionRequest)
-      });
+      await apiFetch(
+        'http://localhost:8080/api/v1/sessions',
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            slot_id: slotId,
+            student_id: user.user_id,
+            payment_status: 'pending'
+          } as CreateSessionRequest)
+        }
+      );
 
-      if (response.ok) {
-        setBookingSuccess(true);
-        // Обновляем данные
-        loadSlotsAndSessions();
-        // Убираем успешное сообщение через 3 секунды
-        setTimeout(() => {
-          setBookingSuccess(false);
-        }, 3000);
-      } else {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Ошибка при бронировании');
-      }
+      setBookingSuccess(true);
+      // Обновляем данные
+      loadSlotsAndSessions();
+      // Убираем успешное сообщение через 3 секунды
+      setTimeout(() => {
+        setBookingSuccess(false);
+      }, 3000);
     } catch (err: any) {
       console.error('Ошибка бронирования:', err);
       setBookingError(err.message || 'Не удалось забронировать слот');
@@ -578,7 +631,7 @@ const CoursePage: React.FC = () => {
     }
   };
 
-  // Отмена сессии
+  // Отмена сессии по документации: DELETE /sessions/{id}
   const cancelSession = async (sessionId: string) => {
     if (!token || !window.confirm('Вы уверены, что хотите отменить сессию?')) {
       return;
@@ -586,21 +639,19 @@ const CoursePage: React.FC = () => {
 
     setCancelingSessionId(sessionId);
     try {
-      const response = await fetch(`http://localhost:8080/api/v1/sessions/${sessionId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`
+      await apiFetch(
+        `http://localhost:8080/api/v1/sessions/${sessionId}`,
+        {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
         }
-      });
+      );
 
-      if (response.ok) {
-        // Обновляем данные
-        loadSlotsAndSessions();
-        alert('✅ Сессия отменена!');
-      } else {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Ошибка при отмене сессии');
-      }
+      // Обновляем данные
+      loadSlotsAndSessions();
+      alert('✅ Сессия отменена!');
     } catch (err: any) {
       console.error('Ошибка отмены сессии:', err);
       setError(err.message || 'Не удалось отменить сессию');
@@ -635,7 +686,7 @@ const CoursePage: React.FC = () => {
     setSlotError(null);
   };
 
-  // Создание слотов преподавателем
+  // Создание слотов преподавателем по документации: POST /slots
   const createSlots = async () => {
     if (!token || !user || !course) return;
     
@@ -655,6 +706,16 @@ const CoursePage: React.FC = () => {
       return;
     }
 
+    if (slotDuration < 15 || slotDuration > 240) {
+      setSlotError('Длительность должна быть от 15 до 240 минут');
+      return;
+    }
+
+    if (slotPrice !== '' && (Number(slotPrice) < 0 || Number(slotPrice) > 1000000)) {
+      setSlotError('Цена должна быть от 0 до 1000000');
+      return;
+    }
+
     setCreatingSlots(true);
     setSlotError(null);
 
@@ -663,13 +724,14 @@ const CoursePage: React.FC = () => {
       const requests: CreateSlotRequest[] = [];
       const today = new Date();
       
+      // Создаем слоты на следующую неделю
       selectedDays.forEach(dayIndex => {
         selectedTimes.forEach(time => {
           // Находим дату для этого дня недели на следующей неделе
           const targetDate = new Date(today);
           const currentDay = targetDate.getDay() || 7;
           const daysToAdd = (dayIndex - currentDay + 7) % 7;
-          targetDate.setDate(targetDate.getDate() + daysToAdd);
+          targetDate.setDate(targetDate.getDate() + daysToAdd + 7); // +7 дней для следующей недели
           
           // Устанавливаем время
           const [hours, minutes] = time.split(':').map(Number);
@@ -677,44 +739,57 @@ const CoursePage: React.FC = () => {
           
           // Проверка на пересечение
           if (checkSlotOverlap(targetDate, slotDuration, slots)) {
-            throw new Error(`Слот на ${DAYS_OF_WEEK.find(d => d.id === dayIndex)?.name} в ${time} пересекается с существующим`);
+            console.warn(`Слот на ${DAYS_OF_WEEK.find(d => d.id === dayIndex)?.name} в ${time} пересекается с существующим`);
+            return; // Пропускаем пересекающиеся слоты
           }
           
           const startTimeISO = targetDate.toISOString();
           
-          requests.push({
+          const slotData: CreateSlotRequest = {
             mentor_id: user.user_id,
-            title: slotTitle,
-            description: slotDescription || undefined,
+            title: slotTitle.trim(),
             start_time: startTimeISO,
             duration_minutes: slotDuration,
-            price: slotPrice ? Number(slotPrice) : undefined,
-            currency: slotPrice ? slotCurrency : undefined,
             status: 'available'
-          } as CreateSlotRequest);
+          };
+          
+          if (slotDescription.trim()) {
+            slotData.description = slotDescription.trim();
+          }
+          
+          if (slotPrice !== '') {
+            slotData.price = Number(slotPrice);
+            slotData.currency = slotCurrency;
+          }
+          
+          requests.push(slotData);
         });
       });
 
-      // Отправляем запросы
-      const promises = requests.map(async (slotData) => {
-        const response = await fetch('http://localhost:8080/api/v1/slots', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(slotData)
-        });
+      if (requests.length === 0) {
+        setSlotError('Нет слотов для создания (все пересекаются с существующими)');
+        return;
+      }
 
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.message || 'Ошибка создания слота');
+      // Отправляем запросы последовательно
+      for (const slotData of requests) {
+        try {
+          await apiFetch(
+            'http://localhost:8080/api/v1/slots',
+            {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify(slotData)
+            }
+          );
+        } catch (err) {
+          console.error('Ошибка создания одного из слотов:', err);
+          // Продолжаем создание остальных слотов
         }
-
-        return response.json();
-      });
-
-      await Promise.all(promises);
+      }
       
       setSlotSuccess(true);
       loadSlotsAndSessions();
@@ -733,32 +808,139 @@ const CoursePage: React.FC = () => {
     }
   };
 
-  // Изменение статуса слота
+  // Изменение статуса слота по документации: PATCH /slots/{id}/status
   const updateSlotStatus = async (slotId: string, newStatus: string) => {
     if (!token) return;
 
+    setUpdatingSlotId(slotId);
     try {
-      const response = await fetch(`http://localhost:8080/api/v1/slots/${slotId}/status`, {
-        method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          status: newStatus
-        } as UpdateSlotStatusRequest)
-      });
+      await apiFetch(
+        `http://localhost:8080/api/v1/slots/${slotId}/status`,
+        {
+          method: 'PATCH',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            status: newStatus
+          } as UpdateSlotStatusRequest)
+        }
+      );
 
-      if (response.ok) {
-        loadSlotsAndSessions();
-        alert(`✅ Статус слота изменен на "${SLOT_STATUSES[newStatus as keyof typeof SLOT_STATUSES]?.label || newStatus}"`);
-      } else {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Ошибка при изменении статуса слота');
-      }
+      loadSlotsAndSessions();
+      alert(`✅ Статус слота изменен на "${SLOT_STATUSES[newStatus as keyof typeof SLOT_STATUSES]?.label || newStatus}"`);
     } catch (err: any) {
       console.error('Ошибка изменения статуса слота:', err);
       setError(err.message || 'Не удалось изменить статус слота');
+    } finally {
+      setUpdatingSlotId(null);
+    }
+  };
+
+  // Обновление информации о слоте по документации: PUT /slots/{id}
+  const updateSlot = async (slotId: string, updates: UpdateSlotRequest) => {
+    if (!token) return;
+
+    setUpdatingSlotId(slotId);
+    try {
+      await apiFetch(
+        `http://localhost:8080/api/v1/slots/${slotId}`,
+        {
+          method: 'PUT',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(updates)
+        }
+      );
+
+      loadSlotsAndSessions();
+      alert('✅ Слот успешно обновлен!');
+    } catch (err: any) {
+      console.error('Ошибка обновления слота:', err);
+      setError(err.message || 'Не удалось обновить слот');
+    } finally {
+      setUpdatingSlotId(null);
+    }
+  };
+
+  // Удаление слота по документации: DELETE /slots/{id}
+  const deleteSlot = async (slotId: string) => {
+    if (!token || !window.confirm('Вы уверены, что хотите удалить этот слот?')) {
+      return;
+    }
+
+    setUpdatingSlotId(slotId);
+    try {
+      await apiFetch(
+        `http://localhost:8080/api/v1/slots/${slotId}`,
+        {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        }
+      );
+
+      loadSlotsAndSessions();
+      alert('✅ Слот успешно удален!');
+    } catch (err: any) {
+      console.error('Ошибка удаления слота:', err);
+      setError(err.message || 'Не удалось удалить слот');
+    } finally {
+      setUpdatingSlotId(null);
+    }
+  };
+
+  // Обновление сессии по документации: PUT /sessions/{id}
+  const updateSession = async (sessionId: string, updates: { payment_status?: string; rating?: number; review?: string }) => {
+    if (!token) return;
+
+    try {
+      await apiFetch(
+        `http://localhost:8080/api/v1/sessions/${sessionId}`,
+        {
+          method: 'PUT',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(updates)
+        }
+      );
+
+      loadSlotsAndSessions();
+      alert('✅ Сессия успешно обновлена!');
+    } catch (err: any) {
+      console.error('Ошибка обновления сессии:', err);
+      setError(err.message || 'Не удалось обновить сессию');
+    }
+  };
+
+  // Оценка сессии по документации: POST /sessions/{id}/rate
+  const rateSession = async (sessionId: string, rating: number, review?: string) => {
+    if (!token || rating < 1 || rating > 5) return;
+
+    try {
+      await apiFetch(
+        `http://localhost:8080/api/v1/sessions/${sessionId}/rate`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ rating, review })
+        }
+      );
+
+      loadSlotsAndSessions();
+      alert('✅ Спасибо за вашу оценку!');
+    } catch (err: any) {
+      console.error('Ошибка оценки сессии:', err);
+      setError(err.message || 'Не удалось оценить сессию');
     }
   };
 
@@ -778,6 +960,22 @@ const CoursePage: React.FC = () => {
   const formatDateTime = (dateString: string) => {
     const date = new Date(dateString);
     return `${date.toLocaleDateString('ru-RU')} ${date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}`;
+  };
+
+  // Форматирование продолжительности
+  const formatDuration = (minutes: number) => {
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    
+    if (hours === 0) {
+      return `${mins} мин`;
+    }
+    
+    if (mins === 0) {
+      return `${hours} ч`;
+    }
+    
+    return `${hours} ч ${mins} мин`;
   };
 
   // Генерация тегов
@@ -827,6 +1025,18 @@ const CoursePage: React.FC = () => {
     );
   };
 
+  // Получение сессии по ID слота
+  const getSessionForSlot = (slotId: string) => {
+    return sessions.find(session => session.slot_id === slotId);
+  };
+
+  // Получение информации о статусе платежа
+  const getPaymentStatusInfo = (status?: string) => {
+    if (!status) return PAYMENT_STATUSES.pending;
+    
+    return PAYMENT_STATUSES[status as keyof typeof PAYMENT_STATUSES] || PAYMENT_STATUSES.pending;
+  };
+
   // ========== РЕНДЕРИНГ КОМПОНЕНТОВ ==========
 
   // Рендеринг доступных слотов для студентов
@@ -868,39 +1078,84 @@ const CoursePage: React.FC = () => {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           {availableSlots.map(slot => {
             const isBooked = isSlotBookedByCurrentUser(slot.id);
+            const session = getSessionForSlot(slot.id);
+            const paymentStatus = getPaymentStatusInfo(session?.payment_status);
             
             return (
               <div key={slot.id} className="card" style={{ padding: '16px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                  <div>
+                  <div style={{ flex: 1 }}>
                     <div style={{ fontWeight: 600, marginBottom: '4px' }}>
                       {slot.title}
                     </div>
                     <div style={{ fontSize: '14px', color: 'var(--muted)', marginBottom: '8px' }}>
-                      {formatDateTime(slot.start_time)}
-                      {slot.duration_minutes && ` • ${slot.duration_minutes} минут`}
+                      📅 {formatDateTime(slot.start_time)}
+                      <span style={{ margin: '0 8px' }}>•</span>
+                      ⏱️ {formatDuration(slot.duration_minutes)}
                     </div>
                     {slot.description && (
-                      <div style={{ fontSize: '13px', marginBottom: '8px' }}>
-                        {slot.description}
+                      <div style={{ fontSize: '13px', marginBottom: '8px', color: 'var(--text)' }}>
+                        📝 {slot.description}
                       </div>
                     )}
-                    {slot.price && (
-                      <div style={{ fontSize: '14px', color: 'var(--accent)', fontWeight: 600 }}>
-                        {slot.price} {slot.currency}
+                    {slot.price && slot.price > 0 && (
+                      <div style={{ fontSize: '14px', color: 'var(--accent)', fontWeight: 600, marginBottom: '8px' }}>
+                        💰 {slot.price} {slot.currency}
+                      </div>
+                    )}
+                    {isBooked && session && (
+                      <div style={{ 
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        fontSize: '13px',
+                        padding: '4px 8px',
+                        background: paymentStatus.color + '20',
+                        color: paymentStatus.color,
+                        borderRadius: '4px',
+                        marginTop: '8px'
+                      }}>
+                        <span>✅</span>
+                        <span>{paymentStatus.label}</span>
                       </div>
                     )}
                   </div>
                   
-                  <div style={{ display: 'flex', gap: '8px' }}>
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                     {isBooked ? (
-                      <button
-                        className="btn btn-outline"
-                        disabled
-                        style={{ fontSize: '12px', padding: '6px 12px' }}
-                      >
-                        ✅ Забронировано
-                      </button>
+                      <>
+                        <button
+                          className="btn btn-outline"
+                          disabled
+                          style={{ 
+                            fontSize: '12px', 
+                            padding: '6px 12px',
+                            borderColor: paymentStatus.color,
+                            color: paymentStatus.color
+                          }}
+                        >
+                          ✅ Забронировано
+                        </button>
+                        {session && !session.rating && session.payment_status === 'paid' && (
+                          <button
+                            className="btn btn-ghost"
+                            onClick={() => {
+                              const rating = prompt('Оцените сессию (1-5):');
+                              const review = prompt('Оставьте отзыв (опционально):');
+                              if (rating && Number(rating) >= 1 && Number(rating) <= 5) {
+                                rateSession(session.id, Number(rating), review || undefined);
+                              }
+                            }}
+                            style={{ 
+                              fontSize: '12px', 
+                              padding: '6px 12px',
+                              color: '#f59e0b'
+                            }}
+                          >
+                            ⭐ Оценить
+                          </button>
+                        )}
+                      </>
                     ) : (
                       <button
                         className="btn btn-primary"
@@ -970,63 +1225,134 @@ const CoursePage: React.FC = () => {
         
         <div style={{ display: 'grid', gap: '12px' }}>
           {slots.map(slot => {
-            const slotSession = sessions.find(s => s.slot_id === slot.id);
+            const session = sessions.find(s => s.slot_id === slot.id);
             const statusInfo = SLOT_STATUSES[slot.status as keyof typeof SLOT_STATUSES] || SLOT_STATUSES.available;
+            const isUpdating = updatingSlotId === slot.id;
             
             return (
               <div key={slot.id} className="card" style={{ padding: '16px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px' }}>
                   <div style={{ flex: 1 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                      <span style={{ color: statusInfo.color }}>{statusInfo.emoji}</span>
-                      <span style={{ fontWeight: 600 }}>{slot.title}</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', flexWrap: 'wrap' }}>
+                      <span style={{ color: statusInfo.color, fontSize: '20px' }}>{statusInfo.emoji}</span>
+                      <span style={{ fontWeight: 600, fontSize: '15px' }}>{slot.title}</span>
                       <span style={{
                         fontSize: '12px',
                         padding: '2px 8px',
                         background: statusInfo.color + '20',
                         color: statusInfo.color,
-                        borderRadius: '4px'
+                        borderRadius: '4px',
+                        fontWeight: 500
                       }}>
                         {statusInfo.label}
                       </span>
                     </div>
                     
                     <div style={{ fontSize: '14px', color: 'var(--muted)', marginBottom: '8px' }}>
-                      {formatDateTime(slot.start_time)} • {slot.duration_minutes} минут
+                      📅 {formatDateTime(slot.start_time)}
+                      <span style={{ margin: '0 8px' }}>•</span>
+                      ⏱️ {formatDuration(slot.duration_minutes)}
                     </div>
                     
                     {slot.description && (
-                      <div style={{ fontSize: '13px', marginBottom: '8px' }}>
-                        {slot.description}
+                      <div style={{ fontSize: '13px', marginBottom: '8px', color: 'var(--text)' }}>
+                        📝 {slot.description}
                       </div>
                     )}
                     
-                    {slotSession && (
-                      <div style={{ fontSize: '13px', color: 'var(--accent)' }}>
-                        Забронировано студентом
+                    {slot.price && slot.price > 0 && (
+                      <div style={{ fontSize: '14px', color: 'var(--accent)', fontWeight: 600, marginBottom: '8px' }}>
+                        💰 {slot.price} {slot.currency}
+                      </div>
+                    )}
+                    
+                    {session && (
+                      <div style={{ 
+                        fontSize: '13px', 
+                        color: 'var(--accent)',
+                        padding: '4px 8px',
+                        background: 'rgba(79, 70, 229, 0.1)',
+                        borderRadius: '4px',
+                        display: 'inline-block',
+                        marginTop: '8px'
+                      }}>
+                        👤 Забронировано студентом
+                        {session.rating && (
+                          <span style={{ marginLeft: '8px', color: '#f59e0b' }}>
+                            ⭐ {session.rating}/5
+                          </span>
+                        )}
                       </div>
                     )}
                   </div>
                   
-                  <div style={{ display: 'flex', gap: '8px', flexDirection: 'column' }}>
-                    {slot.status === 'available' && (
+                  <div style={{ display: 'flex', gap: '8px', flexDirection: 'column', minWidth: '120px' }}>
+                    {slot.status === 'available' && !session && (
                       <button
                         className="btn btn-ghost"
                         onClick={() => updateSlotStatus(slot.id, 'closed')}
-                        style={{ fontSize: '12px', padding: '4px 8px' }}
+                        disabled={isUpdating}
+                        style={{ 
+                          fontSize: '12px', 
+                          padding: '4px 8px',
+                          color: '#ef4444',
+                          borderColor: 'rgba(239, 68, 68, 0.2)'
+                        }}
                       >
-                        Закрыть
+                        {isUpdating ? '...' : 'Закрыть'}
                       </button>
                     )}
-                    {slot.status === 'closed' && (
+                    
+                    {slot.status === 'closed' && !session && (
                       <button
                         className="btn btn-ghost"
                         onClick={() => updateSlotStatus(slot.id, 'available')}
-                        style={{ fontSize: '12px', padding: '4px 8px', color: '#10b981' }}
+                        disabled={isUpdating}
+                        style={{ 
+                          fontSize: '12px', 
+                          padding: '4px 8px',
+                          color: '#10b981',
+                          borderColor: 'rgba(16, 185, 129, 0.2)'
+                        }}
                       >
-                        Открыть
+                        {isUpdating ? '...' : 'Открыть'}
                       </button>
                     )}
+                    
+                    {session && (
+                      <button
+                        className="btn btn-ghost"
+                        onClick={() => {
+                          const newStatus = prompt('Изменить статус платежа (pending/paid/failed/refunded):');
+                          if (newStatus && ['pending', 'paid', 'failed', 'refunded'].includes(newStatus)) {
+                            updateSession(session.id, { payment_status: newStatus });
+                          }
+                        }}
+                        disabled={isUpdating}
+                        style={{ 
+                          fontSize: '12px', 
+                          padding: '4px 8px',
+                          color: '#3b82f6'
+                        }}
+                      >
+                        💳 Статус оплаты
+                      </button>
+                    )}
+                    
+                    <button
+                      className="btn btn-ghost"
+                      onClick={() => deleteSlot(slot.id)}
+                      disabled={isUpdating}
+                      style={{ 
+                        fontSize: '12px', 
+                        padding: '4px 8px',
+                        color: '#ef4444',
+                        opacity: session ? 0.5 : 1
+                      }}
+                      title={session ? 'Нельзя удалить забронированный слот' : 'Удалить слот'}
+                    >
+                      🗑️ Удалить
+                    </button>
                   </div>
                 </div>
               </div>
@@ -1037,9 +1363,18 @@ const CoursePage: React.FC = () => {
     );
   };
 
-  // Рендеринг сессий студента
+  // Рендеринг сессий пользователя
   const renderUserSessions = () => {
     if (sessions.length === 0) {
+      return null;
+    }
+
+    const userSessions = sessions.filter(session => 
+      session.student_id === user?.user_id || 
+      slots.find(slot => slot.id === session.slot_id)?.mentor_id === user?.user_id
+    );
+
+    if (userSessions.length === 0) {
       return null;
     }
 
@@ -1047,35 +1382,101 @@ const CoursePage: React.FC = () => {
       <div style={{ marginTop: '32px' }}>
         <h4 style={{ margin: '0 0 16px 0', fontSize: '16px' }}>Ваши записи:</h4>
         <div style={{ display: 'grid', gap: '12px' }}>
-          {sessions.map(session => {
+          {userSessions.map(session => {
             const slot = slots.find(s => s.id === session.slot_id);
+            const isStudentSession = session.student_id === user?.user_id;
+            const paymentStatus = getPaymentStatusInfo(session.payment_status);
+            
             return (
               <div key={session.id} className="card" style={{ padding: '16px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                  <div>
+                  <div style={{ flex: 1 }}>
                     <div style={{ fontWeight: 600, marginBottom: '4px' }}>
                       {slot?.title || 'Сессия'}
+                      {!isStudentSession && (
+                        <span style={{ marginLeft: '8px', fontSize: '12px', color: 'var(--muted)' }}>
+                          (со студентом)
+                        </span>
+                      )}
                     </div>
                     <div style={{ fontSize: '14px', color: 'var(--muted)' }}>
                       {slot ? formatDateTime(slot.start_time) : 'Дата не указана'}
+                      {slot && (
+                        <>
+                          <span style={{ margin: '0 8px' }}>•</span>
+                          {formatDuration(slot.duration_minutes)}
+                        </>
+                      )}
                     </div>
-                    <div style={{ fontSize: '13px', marginTop: '8px' }}>
-                      Статус: {session.payment_status || 'ожидает оплаты'}
-                    </div>
-                  </div>
-                  <button
-                    className="btn btn-ghost"
-                    onClick={() => cancelSession(session.id)}
-                    disabled={cancelingSessionId === session.id}
-                    style={{ 
-                      color: '#ef4444', 
-                      fontSize: '12px', 
+                    <div style={{ 
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      fontSize: '13px',
                       padding: '4px 8px',
-                      opacity: cancelingSessionId === session.id ? 0.5 : 1
-                    }}
-                  >
-                    {cancelingSessionId === session.id ? 'Отмена...' : 'Отменить'}
-                  </button>
+                      background: paymentStatus.color + '20',
+                      color: paymentStatus.color,
+                      borderRadius: '4px',
+                      marginTop: '8px'
+                    }}>
+                      💳 {paymentStatus.label}
+                    </div>
+                    {session.rating && (
+                      <div style={{ 
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        fontSize: '13px',
+                        padding: '4px 8px',
+                        background: 'rgba(245, 158, 11, 0.1)',
+                        color: '#f59e0b',
+                        borderRadius: '4px',
+                        marginLeft: '8px',
+                        marginTop: '8px'
+                      }}>
+                        ⭐ {session.rating}/5
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    {isStudentSession && (
+                      <button
+                        className="btn btn-ghost"
+                        onClick={() => cancelSession(session.id)}
+                        disabled={cancelingSessionId === session.id || session.payment_status === 'paid'}
+                        style={{ 
+                          color: '#ef4444', 
+                          fontSize: '12px', 
+                          padding: '4px 8px',
+                          opacity: cancelingSessionId === session.id || session.payment_status === 'paid' ? 0.5 : 1
+                        }}
+                        title={session.payment_status === 'paid' ? 'Оплаченную сессию нельзя отменить' : 'Отменить сессию'}
+                      >
+                        {cancelingSessionId === session.id ? 'Отмена...' : 'Отменить'}
+                      </button>
+                    )}
+                    
+                    {isStudentSession && !session.rating && session.payment_status === 'paid' && (
+                      <button
+                        className="btn btn-ghost"
+                        onClick={() => {
+                          const rating = prompt('Оцените сессию (1-5):');
+                          const review = prompt('Оставьте отзыв (опционально):');
+                          if (rating && Number(rating) >= 1 && Number(rating) <= 5) {
+                            rateSession(session.id, Number(rating), review || undefined);
+                          }
+                        }}
+                        style={{ 
+                          fontSize: '12px', 
+                          padding: '4px 8px',
+                          color: '#f59e0b'
+                        }}
+                      >
+                        ⭐ Оценить
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             );
@@ -1835,7 +2236,7 @@ const CoursePage: React.FC = () => {
               paddingBottom: '12px',
               borderBottom: '1px solid var(--glass)'
             }}>
-              <h2 style={{ margin: 0, fontSize: '20px' }}>🕒 Создание временных слотов</h2>
+              <h2 style={{ margin: 0, fontSize: '20px' }}>Создание временных слотов</h2>
               <button
                 onClick={() => setShowSlotModal(false)}
                 style={{
@@ -1882,13 +2283,16 @@ const CoursePage: React.FC = () => {
             {/* Основная форма */}
             <div style={{ marginBottom: '24px' }}>
               <label style={{ display: 'block', marginBottom: '8px', fontWeight: 500 }}>
-                Заголовок слота
+                Заголовок слота *
               </label>
               <input
                 type="text"
                 value={slotTitle}
                 onChange={(e) => setSlotTitle(e.target.value)}
                 placeholder="Например: Консультация по React"
+                required
+                minLength={3}
+                maxLength={255}
                 style={{
                   width: '100%',
                   padding: '10px 12px',
@@ -1902,12 +2306,13 @@ const CoursePage: React.FC = () => {
               />
 
               <label style={{ display: 'block', marginBottom: '8px', fontWeight: 500 }}>
-                Описание (опционально)
+                Описание (опционально, до 1000 символов)
               </label>
               <textarea
                 value={slotDescription}
                 onChange={(e) => setSlotDescription(e.target.value)}
                 placeholder="Дополнительная информация о сессии..."
+                maxLength={1000}
                 style={{
                   width: '100%',
                   minHeight: '80px',
@@ -1925,7 +2330,7 @@ const CoursePage: React.FC = () => {
               {/* Длительность сессии */}
               <div style={{ marginBottom: '24px' }}>
                 <label style={{ display: 'block', marginBottom: '12px', fontWeight: 500 }}>
-                  Длительность сессии (15-240 минут)
+                  Длительность сессии * (15-240 минут)
                 </label>
                 <div className="chips" style={{ gap: '8px', flexWrap: 'wrap' }}>
                   {DURATIONS.map(duration => (
@@ -1951,7 +2356,7 @@ const CoursePage: React.FC = () => {
               {/* Выбор дней недели */}
               <div style={{ marginBottom: '24px' }}>
                 <label style={{ display: 'block', marginBottom: '12px', fontWeight: 500 }}>
-                  Выберите дни недели
+                  Выберите дни недели *
                 </label>
                 <div className="chips" style={{ gap: '8px', flexWrap: 'wrap' }}>
                   {DAYS_OF_WEEK.map(day => (
@@ -1979,7 +2384,7 @@ const CoursePage: React.FC = () => {
               {/* Выбор времени */}
               <div style={{ marginBottom: '24px' }}>
                 <label style={{ display: 'block', marginBottom: '12px', fontWeight: 500 }}>
-                  Выберите время
+                  Выберите время *
                 </label>
                 <div style={{
                   display: 'grid',
@@ -2124,10 +2529,11 @@ const CoursePage: React.FC = () => {
               <button
                 className="btn btn-primary"
                 onClick={createSlots}
-                disabled={creatingSlots || selectedDays.length === 0 || selectedTimes.length === 0}
+                disabled={creatingSlots || selectedDays.length === 0 || selectedTimes.length === 0 || !slotTitle.trim()}
                 style={{ 
                   padding: '10px 24px',
-                  background: creatingSlots ? 'var(--muted)' : 'var(--accent)'
+                  background: creatingSlots ? 'var(--muted)' : 'var(--accent)',
+                  opacity: (selectedDays.length === 0 || selectedTimes.length === 0 || !slotTitle.trim()) ? 0.5 : 1
                 }}
               >
                 {creatingSlots ? (

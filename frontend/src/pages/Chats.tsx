@@ -96,50 +96,54 @@ const Chats: React.FC = () => {
 
   // Загрузка списка чатов
   const loadChats = useCallback(async () => {
-    if (!token) return;
+  if (!token) return []; // Всегда возвращаем массив
+  
+  try {
+    const response = await fetch('http://localhost:8080/api/v1/chats?limit=20&offset=0', {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Access-Control-Allow-Origin': 'http://localhost:5173',
+      },
+    });
     
-    try {
-      const response = await fetch('http://localhost:8080/api/v1/chats?limit=20&offset=0', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Access-Control-Allow-Origin': 'http://localhost:5173', // Ваш фронтенд порт
-        },
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        const chatsWithUsers = await Promise.all(
-          data.chats.map(async (chat: Chat) => {
-            // Определяем ID собеседника
-            const otherUserId = chat.user1_id === user?.user_id ? chat.user2_id : chat.user1_id;
+    if (response.ok) {
+      const data = await response.json();
+      const chatsWithUsers = await Promise.all(
+        data.chats.map(async (chat: Chat) => {
+          // Определяем ID собеседника
+          const otherUserId = chat.user1_id === user?.user_id ? chat.user2_id : chat.user1_id;
+          
+          // Загружаем данные пользователя
+          try {
+            const userResponse = await fetch(`http://localhost:8080/api/v1/users/${otherUserId}`, {
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Access-Control-Allow-Origin': 'http://localhost:5173',
+              },
+            });
             
-            // Загружаем данные пользователя
-            try {
-              const userResponse = await fetch(`http://localhost:8080/api/v1/users/${otherUserId}`, {
-                headers: {
-                  'Authorization': `Bearer ${token}`,
-                  'Access-Control-Allow-Origin': 'http://localhost:5173', // Ваш фронтенд порт
-                },
-              });
-              
-              if (userResponse.ok) {
-                const userData = await userResponse.json();
-                return { ...chat, other_user: userData };
-              }
-            } catch (error) {
-              console.error('Ошибка загрузки пользователя:', error);
+            if (userResponse.ok) {
+              const userData = await userResponse.json();
+              return { ...chat, other_user: userData };
             }
-            
-            return chat;
-          })
-        );
-        
-        setChats(chatsWithUsers);
-      }
-    } catch (error) {
-      console.error('Ошибка загрузки чатов:', error);
+          } catch (error) {
+            console.error('Ошибка загрузки пользователя:', error);
+          }
+          
+          return chat;
+        })
+      );
+      
+      setChats(chatsWithUsers);
+      return chatsWithUsers; // Явно возвращаем
     }
-  }, [token, user]);
+    return []; // Всегда возвращаем массив
+  } catch (error) {
+    console.error('Ошибка загрузки чатов:', error);
+    return []; // Всегда возвращаем массив
+  }
+}, [token, user]);
+
 
   // Поиск пользователя по email
   const searchUserByEmail = async (email: string) => {
