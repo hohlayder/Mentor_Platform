@@ -5,7 +5,6 @@ import (
 
 	postsv1 "github.com/Sergey-1214/contracts_mentors/post/v1"
 	"google.golang.org/grpc"
-	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 type PostClient struct {
@@ -32,7 +31,7 @@ func (c *PostClient) UpdatePost(ctx context.Context, in *postsv1.UpdatePostReque
 	return c.Client.UpdatePost(ctx, in)
 }
 
-func (c *PostClient) DeletePost(ctx context.Context, in *postsv1.DeletePostRequest) (*emptypb.Empty, error) {
+func (c *PostClient) DeletePost(ctx context.Context, in *postsv1.DeletePostRequest) (*postsv1.DeletePostResponse, error) {
 	return c.Client.DeletePost(ctx, in)
 }
 

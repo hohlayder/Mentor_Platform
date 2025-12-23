@@ -233,3 +233,23 @@ func (r *SlotRepository) GetSessionBySlotID(ctx context.Context, slotID string) 
 	
 	return &session, nil
 }
+
+func (r *SlotRepository) GetSlotsByMentor(ctx context.Context, mentorID string) ([]domain.Slot, error) {
+    query := `
+        SELECT 
+            id, mentor_id, status, title, description, 
+            start_time, duration_minutes, price, currency,
+            created_at, updated_at
+        FROM slots 
+        WHERE mentor_id = $1
+        ORDER BY start_time ASC
+    `
+
+    var slots []domain.Slot
+    err := r.db.SelectContext(ctx, &slots, query, mentorID)
+    if err != nil {
+        return nil, fmt.Errorf("failed to get slots by mentor: %w", err)
+    }
+
+    return slots, nil
+}
