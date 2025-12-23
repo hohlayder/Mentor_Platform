@@ -342,3 +342,78 @@ func postToProto(post *repository.Post) *postsv1.Post {
 		UpdatedAt: timestamppb.New(post.UpdatedAt),
 	}
 }
+
+
+
+func (s *PostService) GetPostRatings(ctx context.Context, req *postsv1.GetPostRatingsRequest) (*postsv1.GetPostRatingsResponse, error) {
+	postID := req.GetPostId()
+	if postID == "" {
+		return nil, status.Error(codes.InvalidArgument, "post_id is required")
+	}
+
+	// Проверяем, существует ли пост
+	_, err := s.postRepository.GetByID(ctx, postID)
+	if err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return nil, status.Error(codes.NotFound, "post not found")
+		}
+		return nil, status.Errorf(codes.Internal, "failed to get post: %v", err)
+	}
+
+	// Настраиваем пагинацию
+	pageSize := req.GetPageSize()
+	if pageSize <= 0 {
+		pageSize = 20
+	}
+	if pageSize > 100 {
+		pageSize = 100
+	}
+
+	var offset int
+	if token := req.GetPageToken(); token != "" {
+		val, err := strconv.Atoi(token)
+		if err != nil || val < 0 {
+			return nil, status.Error(codes.InvalidArgument, "invalid page_token")
+		}
+		offset = val
+	}
+
+	// Получаем отзывы
+	ratings, total, err := s.ratingRepository.GetRatingsByPostID(ctx, postID, int(pageSize), offset)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to get ratings: %v", err)
+	}
+
+	// Получаем агрегированные данные (средний рейтинг и количество)
+	avgRating, ratingsCount, err := s.ratingRepository.GetAggregatedRating(ctx, postID)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to get aggregated rating: %v", err)
+	}
+
+	// Конвертируем в protobuf
+	protoRatings := make([]*postsv1.Rating, 0, len(ratings))
+	for _, r := range ratings {
+		protoRatings = append(protoRatings, &postsv1.Rating{
+			Id:        r.ID,
+			PostId:    r.PostID,
+			UserId:    r.UserID,
+			Rate:      r.Rate,
+			Comment:   r.Comment,
+			CreatedAt: timestamppb.New(r.CreatedAt),
+		})
+	}
+
+	resp := &postsv1.GetPostRatingsResponse{
+		Ratings:       protoRatings,
+		TotalCount:    total,
+		AverageRating: float32(avgRating),
+		RatingsCount:  ratingsCount,
+	}
+
+	// Устанавливаем next_page_token если есть еще данные
+	if len(ratings) == int(pageSize) {
+		resp.NextPageToken = strconv.Itoa(offset + int(pageSize))
+	}
+
+	return resp, nil
+}
