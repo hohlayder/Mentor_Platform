@@ -75,6 +75,7 @@ func InitRoutes(handlers Handlers) *gin.Engine {
 			{
 				posts.GET("/:id", handlers.PostHandler.GetPost)
 				posts.GET("", handlers.PostHandler.ListPosts)
+				posts.GET("/:id/ratings", handlers.PostHandler.GetPostRatings)
 			}
 		}
 
