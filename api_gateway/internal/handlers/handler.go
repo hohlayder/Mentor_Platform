@@ -15,10 +15,11 @@ type Handlers struct {
 	ChatHandler ChatHandler
 	SessionHandler SessionHandler
 	PostHandler PostHandler
+	FileHandler FileHandler
 }
 
 func NewHandler(websocketHandler websocket.WebSocketHandler, userHandler UserHandler, authHandler AuthHandler,
-				 chatHandler ChatHandler, sessionHandler SessionHandler, postHandler PostHandler) *Handlers{
+				 chatHandler ChatHandler, sessionHandler SessionHandler, postHandler PostHandler, FileHandler FileHandler) *Handlers{
 	return &Handlers{
 		WebSocket: websocketHandler,
 		UserHandler: userHandler,
@@ -26,6 +27,7 @@ func NewHandler(websocketHandler websocket.WebSocketHandler, userHandler UserHan
 		ChatHandler: chatHandler,
 		SessionHandler: sessionHandler,
 		PostHandler: postHandler,
+		FileHandler: FileHandler,
 	}
 }
 
@@ -57,7 +59,11 @@ func InitRoutes(handlers Handlers) *gin.Engine {
 		{
 			public.GET("/ws", handlers.WebSocket.HandleWebSocket)
 			// Authentication
-			
+			files := public.Group("/files")
+			{
+				files.GET("/avatar/:filename", handlers.FileHandler.GetAvatar)
+			}
+
 			auth := public.Group("/auth")
 			{
 				auth.POST("/register", handlers.AuthHandler.Register)
@@ -122,6 +128,11 @@ func InitRoutes(handlers Handlers) *gin.Engine {
 				posts.PUT("/:id", handlers.PostHandler.UpdatePost)
 				posts.DELETE("/:id", handlers.PostHandler.DeletePost)
 				posts.POST("/:id/rate", handlers.PostHandler.RatePost)
+			}
+			files := protected.Group("/files")
+			{
+				files.POST("/avatar", handlers.FileHandler.UploadAvatar)
+				files.DELETE("/avatar", handlers.FileHandler.DeleteAvatar)
 			}
 
 			protected.GET("/mentors/:mentor_id/sessions", handlers.SessionHandler.ListSessionsByMentor)
