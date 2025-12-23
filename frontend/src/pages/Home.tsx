@@ -187,8 +187,8 @@ export const Home: React.FC = () => {
             <h1>Добро пожаловать в Mentor Fellowship</h1>
             <p className="lead">
               {user 
-                ? `Привет, ${user.first_name}! Развивайтесь вместе с нами.` 
-                : 'Платформа для обучения и преподавания. Найдите своего ментора или станьте им.'
+                ? `Привет, ${user.first_name}! Развивайтесь вместе с нами.\n` 
+                : 'Платформа для обучения и преподавания. Найдите своего ментора или станьте им.\n'
               }
             </p>
             {user ? (
@@ -212,7 +212,7 @@ export const Home: React.FC = () => {
         <div className="section">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
             <h2>Популярные курсы</h2>
-            <Link to="/posts" className="btn btn-ghost">Все курсы →</Link>
+            <Link to="/courses" className="btn btn-ghost">Все курсы →</Link>
           </div>
           
           {loading.courses ? (
@@ -238,7 +238,7 @@ export const Home: React.FC = () => {
               {courses.map((course) => (
                 <Link 
                   key={course.id} 
-                  to={`/posts/${course.id}`}
+                  to={`/courses/${course.id}`}
                   className="course"
                   style={{ textDecoration: 'none', color: 'inherit' }}
                 >
@@ -277,7 +277,7 @@ export const Home: React.FC = () => {
             <div style={{ textAlign: 'center', padding: '40px', color: 'var(--muted)' }}>
               <p>Пока нет доступных курсов</p>
               {token && (
-                <Link to="/posts/new" className="btn btn-primary" style={{ marginTop: '10px' }}>
+                <Link to="/courses/new" className="btn btn-primary" style={{ marginTop: '10px' }}>
                   Создать первый курс
                 </Link>
               )}
@@ -285,60 +285,6 @@ export const Home: React.FC = () => {
           )}
         </div>
 
-        {/* Top Teachers */}
-        <div className="section">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-            <h2>Лучшие менторы</h2>
-            <Link to="/mentors" className="btn btn-ghost">Все менторы →</Link>
-          </div>
-          
-          {loading.teachers ? (
-            <div style={{ textAlign: 'center', padding: '20px' }}>
-              <p style={{ color: 'var(--muted)' }}>Загрузка менторов...</p>
-            </div>
-          ) : teachers.length > 0 ? (
-            <div className="teachers-grid">
-              {teachers.map((teacher) => (
-                <Link 
-                  key={teacher.user_id} 
-                  to={`/profile/${teacher.user_id}`}
-                  className="teacher"
-                  style={{ textDecoration: 'none', color: 'inherit' }}
-                >
-                  <div style={{ 
-                    width: 48, 
-                    height: 48, 
-                    borderRadius: '50%',
-                    background: `linear-gradient(135deg, var(--accent), var(--accent-2))`,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: '#fff',
-                    fontWeight: 'bold',
-                    fontSize: '16px'
-                  }}>
-                    {teacher.avatar_url ? (
-                      <img 
-                        src={teacher.avatar_url} 
-                        alt={teacher.first_name}
-                        style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }}
-                      />
-                    ) : (
-                      <span>{teacher.first_name?.[0]}{teacher.last_name?.[0]}</span>
-                    )}
-                  </div>
-                  <div style={{ fontSize: '14px', fontWeight: '500' }}>
-                    {teacher.first_name} {teacher.last_name}
-                  </div>
-                </Link>
-              ))}
-            </div>
-          ) : (
-            <div style={{ textAlign: 'center', padding: '20px', color: 'var(--muted)' }}>
-              <p>Информация о менторах появится здесь</p>
-            </div>
-          )}
-        </div>
 
         {/* Статистика для зарегистрированных пользователей */}
         {token && user && (
@@ -394,7 +340,7 @@ export const Home: React.FC = () => {
             <div>
               <h4>Полезные ссылки</h4>
               <Link to="/">Главная страница</Link>
-              <Link to="/posts">Поиск курсов</Link>
+              <Link to="/courses">Поиск курсов</Link>
               <Link to="/profile">Профиль</Link>
               <Link to="/notifications">Уведомления</Link>
             </div>
@@ -405,7 +351,7 @@ export const Home: React.FC = () => {
                   {Array.from(new Set(courses.flatMap(c => c.tags)))
                     .slice(0, 3)
                     .map(tag => (
-                      <a key={tag} href={`/posts?tags=${tag}`}>#{tag}</a>
+                      <a key={tag} href={`/courses?tags=${tag}`}>#{tag}</a>
                     ))}
                 </>
               )}

@@ -1,5 +1,6 @@
 // src/pages/Chats.tsx
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { Link } from 'react-router-dom'; // Добавляем импорт Link
 import { useAuth } from '../store/AuthContext';
 
 // Типы на основе ваших API и WebSocket документации
@@ -28,7 +29,7 @@ interface Message {
   sender_id: string;
   content: string;
   reply_to?: string;
-  message_type: string;
+  message_type: 'text' | 'image' | 'file' | 'audio' | 'video';
   attachments?: Attachment[];
   created_at: string;
   updated_at: string;
@@ -39,7 +40,7 @@ interface Message {
 
 interface Attachment {
   id: string;
-  type: string;
+  type: 'image' | 'file' | 'audio' | 'video';
   url: string;
   name?: string;
   size?: number;
@@ -50,13 +51,13 @@ interface Attachment {
 interface WebSocketMessage {
   chat_id: string;
   content: string;
-  message_type: string;
+  message_type: 'text' | 'image' | 'file' | 'audio' | 'video';
   reply_to?: string;
   attachments?: Attachment[];
 }
 
 const Chats: React.FC = () => {
-  const { token, user } = useAuth();
+  const { token, user, logout } = useAuth();
   const [chats, setChats] = useState<Chat[]>([]);
   const [selectedChat, setSelectedChat] = useState<Chat | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -72,8 +73,26 @@ const Chats: React.FC = () => {
   const [foundUser, setFoundUser] = useState<User | null>(null);
   const [createChatError, setCreateChatError] = useState<string | null>(null);
   
+  // Состояние для темы
+  const [theme, setTheme] = useState<'light' | 'dark'>('light');
+  
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Инициализация темы
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('theme') as 'light' | 'dark' || 'light';
+    setTheme(savedTheme);
+    document.body.setAttribute('data-theme', savedTheme);
+  }, []);
+
+  // Переключение темы
+  const toggleTheme = () => {
+    const newTheme = theme === 'light' ? 'dark' : 'light';
+    setTheme(newTheme);
+    document.body.setAttribute('data-theme', newTheme);
+    localStorage.setItem('theme', newTheme);
+  };
 
   // Загрузка списка чатов
   const loadChats = useCallback(async () => {
@@ -81,9 +100,9 @@ const Chats: React.FC = () => {
     
     try {
       const response = await fetch('http://localhost:8080/api/v1/chats?limit=20&offset=0', {
-        method: "GET",
         headers: {
           'Authorization': `Bearer ${token}`,
+          'Access-Control-Allow-Origin': 'http://localhost:5173', // Ваш фронтенд порт
         },
       });
       
@@ -97,9 +116,9 @@ const Chats: React.FC = () => {
             // Загружаем данные пользователя
             try {
               const userResponse = await fetch(`http://localhost:8080/api/v1/users/${otherUserId}`, {
-                method: "GET",
                 headers: {
                   'Authorization': `Bearer ${token}`,
+                  'Access-Control-Allow-Origin': 'http://localhost:5173', // Ваш фронтенд порт
                 },
               });
               
@@ -131,10 +150,10 @@ const Chats: React.FC = () => {
     setFoundUser(null);
     
     try {
-      const response = await fetch(`http://localhost:8080/api/v1/users/email/${email}`, {
-        method: "GET",
+      const response = await fetch(`http://localhost:8080/api/v1/users/email/${encodeURIComponent(email)}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
+          'Access-Control-Allow-Origin': 'http://localhost:5173', // Ваш фронтенд порт
         },
       });
       
@@ -184,6 +203,7 @@ const Chats: React.FC = () => {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': 'http://localhost:5173', // Ваш фронтенд порт
         },
         body: JSON.stringify({
           other_user_id: foundUser.user_id,
@@ -232,6 +252,7 @@ const Chats: React.FC = () => {
         {
           headers: {
             'Authorization': `Bearer ${token}`,
+            'Access-Control-Allow-Origin': 'http://localhost:5173', // Ваш фронтенд порт
           },
         }
       );
@@ -251,6 +272,7 @@ const Chats: React.FC = () => {
             headers: {
               'Authorization': `Bearer ${token}`,
               'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': 'http://localhost:5173', // Ваш фронтенд порт
             },
             body: JSON.stringify({
               chat_id: chatId,
@@ -376,6 +398,7 @@ const Chats: React.FC = () => {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': 'http://localhost:5173', // Ваш фронтенд порт
         },
         body: JSON.stringify({
           chat_id: chatId,
@@ -564,340 +587,369 @@ const Chats: React.FC = () => {
   }
 
   return (
-    <div className="container">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--gap-lg)' }}>
-        <h1 style={{ margin: 0 }}>Сообщения</h1>
-        <button
-          className="btn btn-primary"
-          onClick={() => setShowCreateChatModal(true)}
-        >
-          + Новый чат
-        </button>
-      </div>
-      
-      <div className="chat-layout">
-        {/* Список чатов */}
-        <div className="chat-list">
-          <div style={{ padding: 'var(--gap-sm)', borderBottom: '1px solid var(--glass)' }}>
-            <input 
-              type="text" 
-              placeholder="Поиск чатов..." 
-              style={{ width: '100%', marginBottom: 'var(--gap-sm)' }}
-            />
-            <div className="chips">
-              <span className="chip active">Все</span>
-              <span className="chip">Непрочитанные</span>
+    <>
+      {/* Header */}
+      <header className="header">
+        <Link to="/" className="brand">
+          <div className="logo">M</div>Mentor Fellowship
+        </Link>
+        <div className="header-nav">
+          <button onClick={toggleTheme} className="btn btn-ghost">
+            {theme === 'light' ? '🌙' : '☀️'} Тема
+          </button>
+          {token && user ? (
+            <>
+              <Link to={`/profile/${user.user_id}`} className="btn btn-ghost">
+                {user.first_name || 'Профиль'}
+              </Link>
+              <button onClick={logout} className="btn btn-ghost">Выйти</button>
+            </>
+          ) : (
+            <>
+              <Link to="/login" className="btn btn-ghost">Войти</Link>
+              <Link to="/signup" className="btn btn-primary">Регистрация</Link>
+            </>
+          )}
+        </div>
+      </header>
+
+      <div className="container">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--gap-lg)' }}>
+          <h1 style={{ margin: 0 }}>Сообщения</h1>
+          <button
+            className="btn btn-primary"
+            onClick={() => setShowCreateChatModal(true)}
+          >
+            + Новый чат
+          </button>
+        </div>
+        
+        <div className="chat-layout">
+          {/* Список чатов */}
+          <div className="chat-list">
+            <div style={{ padding: 'var(--gap-sm)', borderBottom: '1px solid var(--glass)' }}>
+              <input 
+                type="text" 
+                placeholder="Поиск чатов..." 
+                style={{ width: '100%', marginBottom: 'var(--gap-sm)' }}
+              />
+              <div className="chips">
+                <span className="chip active">Все</span>
+                <span className="chip">Непрочитанные</span>
+              </div>
+            </div>
+            
+            <div style={{ paddingTop: 'var(--gap-sm)' }}>
+              {chats.length === 0 ? (
+                <div style={{ 
+                  textAlign: 'center', 
+                  padding: 'var(--gap-lg)', 
+                  color: 'var(--muted)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: 'var(--gap-md)'
+                }}>
+                  <div style={{ fontSize: '48px' }}>💬</div>
+                  <div>У вас пока нет чатов</div>
+                  <button
+                    className="btn btn-primary"
+                    onClick={() => setShowCreateChatModal(true)}
+                    style={{ marginTop: 'var(--gap-sm)' }}
+                  >
+                    Создать первый чат
+                  </button>
+                </div>
+              ) : (
+                chats.map(chat => (
+                  <div 
+                    key={chat.id}
+                    className={`card ${selectedChat?.id === chat.id ? 'selected' : ''}`}
+                    style={{ 
+                      marginBottom: 'var(--gap-sm)', 
+                      cursor: 'pointer',
+                      backgroundColor: selectedChat?.id === chat.id ? 'var(--accent-light)' : '',
+                      border: selectedChat?.id === chat.id ? '1px solid var(--accent)' : ''
+                    }}
+                    onClick={() => {
+                      setSelectedChat(chat);
+                      loadMessages(chat.id);
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div>
+                        <div style={{ fontWeight: 600 }}>{getOtherUserName(chat)}</div>
+                        <div style={{ fontSize: '14px', color: 'var(--muted)', marginTop: '4px' }}>
+                          {chat.last_message?.content?.substring(0, 50) || 'Нет сообщений'}
+                          {chat.last_message?.content && chat.last_message.content.length > 50 ? '...' : ''}
+                        </div>
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <div style={{ fontSize: '12px', color: 'var(--muted)' }}>
+                          {chat.last_message ? formatDate(chat.last_message.created_at) : ''}
+                        </div>
+                        {chat.unread_count > 0 && (
+                          <div style={{
+                            backgroundColor: 'var(--accent)',
+                            color: 'white',
+                            borderRadius: '50%',
+                            width: '20px',
+                            height: '20px',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '12px',
+                            marginTop: '4px'
+                          }}>
+                            {chat.unread_count > 9 ? '9+' : chat.unread_count}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
           
-          <div style={{ paddingTop: 'var(--gap-sm)' }}>
-            {chats.length === 0 ? (
+          {/* Окно чата */}
+          <div className="chat-window">
+            {selectedChat ? (
+              <>
+                <div className="chat-header">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--gap-sm)' }}>
+                    <div style={{
+                      width: '40px',
+                      height: '40px',
+                      borderRadius: '50%',
+                      background: 'linear-gradient(135deg, var(--accent), var(--accent-2))',
+                      color: 'white',
+                      display: 'grid',
+                      placeContent: 'center',
+                      fontWeight: 600
+                    }}>
+                      {getOtherUserName(selectedChat).charAt(0)}
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: 700 }}>{getOtherUserName(selectedChat)}</div>
+                      <div style={{ fontSize: '14px', color: 'var(--muted)' }}>
+                        {isWsConnected ? 'онлайн' : 'оффлайн'}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="header-nav">
+                    <button className="btn btn-ghost">⋮</button>
+                  </div>
+                </div>
+                
+                <div className="messages">
+                  {messages.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: 'var(--gap-lg)', color: 'var(--muted)' }}>
+                      Начните общение
+                    </div>
+                  ) : (
+                    messages.map(message => (
+                      <div 
+                        key={message.id}
+                        className={`msg ${message.sender_id === user?.user_id ? 'sent' : 'received'}`}
+                        style={{ 
+                          maxWidth: '70%',
+                          padding: '10px',
+                          borderRadius: '12px',
+                          marginBottom: '8px'
+                        }}
+                      >
+                        {message.reply_to && (
+                          <div style={{
+                            fontSize: '12px',
+                            color: 'var(--muted)',
+                            borderLeft: '2px solid var(--accent)',
+                            paddingLeft: '8px',
+                            marginBottom: '4px'
+                          }}>
+                            Ответ на сообщение
+                          </div>
+                        )}
+                        
+                        <div>{message.content}</div>
+                        
+                        {message.attachments?.map(attachment => (
+                          <div key={attachment.id} style={{ marginTop: '8px' }}>
+                            {attachment.type === 'image' ? (
+                              <img 
+                                src={attachment.url} 
+                                alt={attachment.name} 
+                                style={{ 
+                                  maxWidth: '100%', 
+                                  borderRadius: '8px',
+                                  maxHeight: '200px'
+                                }}
+                              />
+                            ) : (
+                              <div style={{
+                                padding: '8px',
+                                backgroundColor: 'var(--accent-light)',
+                                borderRadius: '8px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px'
+                              }}>
+                                <span>📎</span>
+                                <span>{attachment.name}</span>
+                                <span style={{ fontSize: '12px', color: 'var(--muted)' }}>
+                                  ({Math.round((attachment.size || 0) / 1024)} KB)
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                        
+                        <div style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          fontSize: '11px',
+                          color: message.sender_id === user?.user_id ? 'rgba(255,255,255,0.7)' : 'var(--muted)',
+                          marginTop: '4px'
+                        }}>
+                          <span>{formatDate(message.created_at)}</span>
+                          {message.sender_id === user?.user_id && (
+                            <span>{message.is_read ? '✓✓' : '✓'}</span>
+                          )}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                  <div ref={messagesEndRef} />
+                </div>
+                
+                <div style={{ 
+                  display: 'flex', 
+                  gap: 'var(--gap-sm)', 
+                  alignItems: 'flex-end',
+                  borderTop: '1px solid var(--glass)',
+                  paddingTop: 'var(--gap-sm)'
+                }}>
+                  <button 
+                    className="btn btn-ghost"
+                    onClick={() => fileInputRef.current?.click()}
+                    style={{ flexShrink: 0 }}
+                  >
+                    📎
+                  </button>
+                  
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    style={{ display: 'none' }}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        // Реализация загрузки файла
+                        console.log('Выбран файл:', file);
+                        // Здесь можно добавить загрузку файла на сервер
+                      }
+                      e.target.value = '';
+                    }}
+                  />
+                  
+                  <div style={{ flex: 1, position: 'relative' }}>
+                    <textarea
+                      value={newMessage}
+                      onChange={(e) => setNewMessage(e.target.value)}
+                      onKeyPress={handleKeyPress}
+                      placeholder="Введите сообщение..."
+                      style={{
+                        width: '100%',
+                        minHeight: '44px',
+                        maxHeight: '120px',
+                        padding: '12px',
+                        paddingRight: '60px',
+                        borderRadius: '24px',
+                        border: '1px solid var(--glass)',
+                        backgroundColor: 'transparent',
+                        color: 'var(--text)',
+                        resize: 'none',
+                        fontFamily: 'inherit',
+                        fontSize: '14px'
+                      }}
+                    />
+                    
+                    <button
+                      className="btn btn-primary"
+                      onClick={sendMessage}
+                      disabled={!newMessage.trim() || !isWsConnected}
+                      style={{
+                        position: 'absolute',
+                        right: '8px',
+                        bottom: '8px',
+                        width: '36px',
+                        height: '36px',
+                        borderRadius: '50%',
+                        padding: 0,
+                        display: 'grid',
+                        placeContent: 'center'
+                      }}
+                    >
+                      ↗
+                    </button>
+                  </div>
+                </div>
+              </>
+            ) : (
               <div style={{ 
-                textAlign: 'center', 
-                padding: 'var(--gap-lg)', 
-                color: 'var(--muted)',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: 'var(--gap-md)'
+                display: 'flex', 
+                flexDirection: 'column', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                height: '100%',
+                color: 'var(--muted)'
               }}>
-                <div style={{ fontSize: '48px' }}>💬</div>
-                <div>У вас пока нет чатов</div>
+                <div style={{ fontSize: '48px', marginBottom: 'var(--gap-md)' }}>💬</div>
+                <h3>Выберите чат</h3>
+                <p style={{ textAlign: 'center', maxWidth: '300px' }}>
+                  Выберите существующий чат из списка или создайте новый
+                </p>
                 <button
                   className="btn btn-primary"
                   onClick={() => setShowCreateChatModal(true)}
-                  style={{ marginTop: 'var(--gap-sm)' }}
+                  style={{ marginTop: 'var(--gap-md)' }}
                 >
-                  Создать первый чат
+                  + Создать чат
                 </button>
               </div>
-            ) : (
-              chats.map(chat => (
-                <div 
-                  key={chat.id}
-                  className={`card ${selectedChat?.id === chat.id ? 'selected' : ''}`}
-                  style={{ 
-                    marginBottom: 'var(--gap-sm)', 
-                    cursor: 'pointer',
-                    backgroundColor: selectedChat?.id === chat.id ? 'var(--accent-light)' : '',
-                    border: selectedChat?.id === chat.id ? '1px solid var(--accent)' : ''
-                  }}
-                  onClick={() => {
-                    setSelectedChat(chat);
-                    loadMessages(chat.id);
-                  }}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div>
-                      <div style={{ fontWeight: 600 }}>{getOtherUserName(chat)}</div>
-                      <div style={{ fontSize: '14px', color: 'var(--muted)', marginTop: '4px' }}>
-                        {chat.last_message?.content || 'Нет сообщений'}
-                      </div>
-                    </div>
-                    <div style={{ textAlign: 'right' }}>
-                      <div style={{ fontSize: '12px', color: 'var(--muted)' }}>
-                        {chat.last_message ? formatDate(chat.last_message.created_at) : ''}
-                      </div>
-                      {chat.unread_count > 0 && (
-                        <div style={{
-                          backgroundColor: 'var(--accent)',
-                          color: 'white',
-                          borderRadius: '50%',
-                          width: '20px',
-                          height: '20px',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontSize: '12px',
-                          marginTop: '4px'
-                        }}>
-                          {chat.unread_count}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))
             )}
           </div>
         </div>
         
-        {/* Окно чата */}
-        <div className="chat-window">
-          {selectedChat ? (
-            <>
-              <div className="chat-header">
-                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--gap-sm)' }}>
-                  <div style={{
-                    width: '40px',
-                    height: '40px',
-                    borderRadius: '50%',
-                    background: 'linear-gradient(135deg, var(--accent), var(--accent-2))',
-                    color: 'white',
-                    display: 'grid',
-                    placeContent: 'center',
-                    fontWeight: 600
-                  }}>
-                    {getOtherUserName(selectedChat).charAt(0)}
-                  </div>
-                  <div>
-                    <div style={{ fontWeight: 700 }}>{getOtherUserName(selectedChat)}</div>
-                    <div style={{ fontSize: '14px', color: 'var(--muted)' }}>
-                      {isWsConnected ? 'онлайн' : 'оффлайн'}
-                    </div>
-                  </div>
-                </div>
-                <div className="header-nav">
-                  <button className="btn btn-ghost">⋮</button>
-                </div>
-              </div>
-              
-              <div className="messages">
-                {messages.length === 0 ? (
-                  <div style={{ textAlign: 'center', padding: 'var(--gap-lg)', color: 'var(--muted)' }}>
-                    Начните общение
-                  </div>
-                ) : (
-                  messages.map(message => (
-                    <div 
-                      key={message.id}
-                      className={`msg ${message.sender_id === user?.user_id ? 'sent' : 'received'}`}
-                      style={{ 
-                        maxWidth: '70%',
-                        padding: '10px',
-                        borderRadius: '12px',
-                        marginBottom: '8px'
-                      }}
-                    >
-                      {message.reply_to && (
-                        <div style={{
-                          fontSize: '12px',
-                          color: 'var(--muted)',
-                          borderLeft: '2px solid var(--accent)',
-                          paddingLeft: '8px',
-                          marginBottom: '4px'
-                        }}>
-                          Ответ на сообщение
-                        </div>
-                      )}
-                      
-                      <div>{message.content}</div>
-                      
-                      {message.attachments?.map(attachment => (
-                        <div key={attachment.id} style={{ marginTop: '8px' }}>
-                          {attachment.type === 'image' ? (
-                            <img 
-                              src={attachment.url} 
-                              alt={attachment.name} 
-                              style={{ 
-                                maxWidth: '100%', 
-                                borderRadius: '8px',
-                                maxHeight: '200px'
-                              }}
-                            />
-                          ) : (
-                            <div style={{
-                              padding: '8px',
-                              backgroundColor: 'var(--accent-light)',
-                              borderRadius: '8px',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '8px'
-                            }}>
-                              <span>📎</span>
-                              <span>{attachment.name}</span>
-                              <span style={{ fontSize: '12px', color: 'var(--muted)' }}>
-                                ({Math.round((attachment.size || 0) / 1024)} KB)
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                      
-                      <div style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        fontSize: '11px',
-                        color: message.sender_id === user?.user_id ? 'rgba(255,255,255,0.7)' : 'var(--muted)',
-                        marginTop: '4px'
-                      }}>
-                        <span>{formatDate(message.created_at)}</span>
-                        {message.sender_id === user?.user_id && (
-                          <span>{message.is_read ? '✓✓' : '✓'}</span>
-                        )}
-                      </div>
-                    </div>
-                  ))
-                )}
-                <div ref={messagesEndRef} />
-              </div>
-              
-              <div style={{ 
-                display: 'flex', 
-                gap: 'var(--gap-sm)', 
-                alignItems: 'flex-end',
-                borderTop: '1px solid var(--glass)',
-                paddingTop: 'var(--gap-sm)'
-              }}>
-                <button 
-                  className="btn btn-ghost"
-                  onClick={() => fileInputRef.current?.click()}
-                  style={{ flexShrink: 0 }}
-                >
-                  📎
-                </button>
-                
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  style={{ display: 'none' }}
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) {
-                      // Реализация загрузки файла
-                      console.log('Выбран файл:', file);
-                    }
-                    e.target.value = '';
-                  }}
-                />
-                
-                <div style={{ flex: 1, position: 'relative' }}>
-                  <textarea
-                    value={newMessage}
-                    onChange={(e) => setNewMessage(e.target.value)}
-                    onKeyPress={handleKeyPress}
-                    placeholder="Введите сообщение..."
-                    style={{
-                      width: '100%',
-                      minHeight: '44px',
-                      maxHeight: '120px',
-                      padding: '12px',
-                      paddingRight: '60px',
-                      borderRadius: '24px',
-                      border: '1px solid var(--glass)',
-                      backgroundColor: 'transparent',
-                      color: 'var(--text)',
-                      resize: 'none',
-                      fontFamily: 'inherit',
-                      fontSize: '14px'
-                    }}
-                  />
-                  
-                  <button
-                    className="btn btn-primary"
-                    onClick={sendMessage}
-                    disabled={!newMessage.trim() || !isWsConnected}
-                    style={{
-                      position: 'absolute',
-                      right: '8px',
-                      bottom: '8px',
-                      width: '36px',
-                      height: '36px',
-                      borderRadius: '50%',
-                      padding: 0,
-                      display: 'grid',
-                      placeContent: 'center'
-                    }}
-                  >
-                    ↗
-                  </button>
-                </div>
-              </div>
-            </>
-          ) : (
-            <div style={{ 
-              display: 'flex', 
-              flexDirection: 'column', 
-              alignItems: 'center', 
-              justifyContent: 'center',
-              height: '100%',
-              color: 'var(--muted)'
-            }}>
-              <div style={{ fontSize: '48px', marginBottom: 'var(--gap-md)' }}>💬</div>
-              <h3>Выберите чат</h3>
-              <p style={{ textAlign: 'center', maxWidth: '300px' }}>
-                Выберите существующий чат из списка или создайте новый
-              </p>
-              <button
-                className="btn btn-primary"
-                onClick={() => setShowCreateChatModal(true)}
-                style={{ marginTop: 'var(--gap-md)' }}
-              >
-                + Создать чат
-              </button>
-            </div>
-          )}
+        {/* Модальное окно создания чата */}
+        {renderCreateChatModal()}
+        
+        {/* Статус подключения */}
+        <div style={{
+          position: 'fixed',
+          bottom: '20px',
+          right: '20px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          padding: '8px 12px',
+          backgroundColor: 'var(--surface)',
+          borderRadius: 'var(--radius)',
+          boxShadow: 'var(--shadow-sm)',
+          border: '1px solid var(--glass)',
+          fontSize: '14px'
+        }}>
+          <div style={{
+            width: '8px',
+            height: '8px',
+            borderRadius: '50%',
+            backgroundColor: isWsConnected ? '#10B981' : '#EF4444',
+            animation: isWsConnected ? 'pulse 2s infinite' : 'none'
+          }} />
+          {isWsConnected ? 'Подключено' : 'Отключено'}
         </div>
       </div>
-      
-      {/* Модальное окно создания чата */}
-      {renderCreateChatModal()}
-      
-      {/* Статус подключения */}
-      <div style={{
-        position: 'fixed',
-        bottom: '20px',
-        right: '20px',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '8px',
-        padding: '8px 12px',
-        backgroundColor: 'var(--surface)',
-        borderRadius: 'var(--radius)',
-        boxShadow: 'var(--shadow-sm)',
-        border: '1px solid var(--glass)',
-        fontSize: '14px'
-      }}>
-        <div style={{
-          width: '8px',
-          height: '8px',
-          borderRadius: '50%',
-          backgroundColor: isWsConnected ? '#10B981' : '#EF4444',
-          animation: isWsConnected ? 'pulse 2s infinite' : 'none'
-        }} />
-        {isWsConnected ? 'Подключено' : 'Отключено'}
-      </div>
-    </div>
+    </>
   );
 };
 

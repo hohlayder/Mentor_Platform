@@ -2,14 +2,12 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom"
 import { Login } from "./pages/Login"
 import { Home } from "./pages/Home"
 import { Register } from "./pages/Register"
-import Profile from "./pages/ProfileTest";
+import Profile from "./pages/Profile";
 import CoursesPage from './pages/Courses'
 import { AuthProvider } from "./store/AuthContext";
 import CourseFormPage from "./pages/CourseFormPage";
-import EditProfilePage from './pages/ProfileEdit';
-import CoursePage from './pages/Course';
-import ChatPage from './pages/ChatPage';
-import ChatsPage from './pages/ChatsPage';
+import EditProfilePage from './pages/ProfileTest';
+import CoursePage from './pages/CourseTest';
 
 import Chats from './pages/Chats'; // Импортируем новый компонент
 
