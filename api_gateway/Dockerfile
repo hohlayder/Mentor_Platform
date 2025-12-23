@@ -22,6 +22,9 @@ RUN addgroup -g 1001 -S appuser && \
 
 RUN apk --no-cache add ca-certificates tzdata
 
+RUN mkdir -p /home/appuser/uploads/avatars && \
+    chown -R appuser:appuser /home/appuser/uploads
+    
 WORKDIR /home/appuser/
 
 COPY --from=builder --chown=appuser:appuser /app/main .
