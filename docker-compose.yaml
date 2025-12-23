@@ -15,6 +15,7 @@ services:
       - SESSION_SERVICE_URL=session-service:${SESSION_SERVICE_PORT}
       - POST_SERVICE_URL=post-service:${POST_SERVICE_PORT}
       - JWT_SECRET=${JWT_SECRET}
+      - UPLOAD_DIR=/home/appuser/uploads/avatars
     ports:
       - "${API_GATEWAY_PORT}:${API_GATEWAY_PORT}"
     depends_on:
@@ -24,6 +25,8 @@ services:
       - auth-service
       - session-service
       - post-service
+    volumes:
+      - uploads_data:/home/appuser/uploads
     networks:
       - ${NETWORK_NAME:-my-app-network}
 
@@ -407,6 +410,7 @@ volumes:
   post_data:
   notification_data:
   kafka_data:
+  uploads_data:
 
 networks:
   my-app-network:
