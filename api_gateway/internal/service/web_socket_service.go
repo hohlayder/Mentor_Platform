@@ -96,13 +96,23 @@ func (s *WebSocketService) HandleConnection(userID uuid.UUID, conn *websocket.Co
 
 // HandleDisconnection - идемпотентный метод для отключения
 func (s *WebSocketService) HandleDisconnection(userID uuid.UUID) error {
-    // 1. Останавливаем горутину
+    // 1. Проверяем, существует ли еще горутина для этого пользователя
+    s.mu.RLock()
+    _, exists := s.goroutines[userID]
+    s.mu.RUnlock()
+    
+    // Если горутины нет, значит соединение уже обработано
+    if !exists {
+        slog.Info("Connection already handled", "userID", userID)
+        return nil
+    }
+    
+    // 2. Останавливаем горутину
     s.stopGoroutine(userID)
     
-    // 2. Удаляем из репозитория (игнорируем ошибку, если уже удалено)
+    // 3. Удаляем из репозитория (игнорируем ошибку, если уже удалено)
     if err := s.clientRepo.DeleteByUserID(userID); err != nil {
-        slog.Warn("Failed to delete connection (might already be deleted)", 
-            "userID", userID, "error", err)
+        slog.Warn("Failed to delete connection", "userID", userID, "error", err)
     }
     
     log.Printf("User disconnected: %s", userID)
