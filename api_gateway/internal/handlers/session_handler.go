@@ -900,11 +900,10 @@ func (h *SessionHandler) ListSessionsByStudent(c *gin.Context) {
 // @Success 200 {object} domain.ListSlotsResponse "Список слотов и общее количество"
 // @Failure 400 {object} utils.ErrorResponse "Неверный ID ментора"
 // @Failure 401 {object} utils.ErrorResponse "Не авторизован"
-// @Failure 403 {object} utils.ErrorResponse "Нет прав доступа (не тот ментор)"
 // @Failure 500 {object} utils.ErrorResponse "Внутренняя ошибка сервера"
 // @Router /mentors/{mentor_id}/slots [get]
 func (h *SessionHandler) GetSlotsByMentor(c *gin.Context) {
-    userId, ok := utils.GetUserIdFromContext(c)
+    _, ok := utils.GetUserIdFromContext(c)
     if !ok {
         return
     }
@@ -914,14 +913,6 @@ func (h *SessionHandler) GetSlotsByMentor(c *gin.Context) {
         c.JSON(http.StatusBadRequest, utils.ErrorResponse{
             Error:   "VALIDATION_ERROR",
             Message: "Mentor ID is required",
-        })
-        return
-    }
-
-    if mentorID != userId {
-        c.JSON(http.StatusForbidden, utils.ErrorResponse{
-            Error:   "FORBIDDEN_ERROR",
-            Message: "You can only view your own slots",
         })
         return
     }
