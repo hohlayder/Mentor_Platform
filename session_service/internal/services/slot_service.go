@@ -18,6 +18,7 @@ type SlotRepository interface {
 	CheckSlotExists(ctx context.Context, slotId string) (bool, error)
 	UpdateSlotStatus(ctx context.Context, slotID string, status string) error
 	GetSessionBySlotID(ctx context.Context, slotID string) (*domain.Session, error)
+	GetSlotsByMentor(ctx context.Context, mentorID string) ([]domain.Slot, error)
 }
 
 type UserClient interface {
@@ -140,6 +141,20 @@ func (s *SlotService) DeleteSlot(ctx context.Context, slotId string) error {
 	}
 
 	return s.repo.DeleteSlot(ctx, slotId)
+}
+
+func (s *SlotService) GetSlotsByMentor(ctx context.Context, mentorID string) ([]domain.Slot, error) {
+    // Валидация
+    if mentorID == "" {
+        return nil, ErrInvalidMentorID
+    }
+
+    slots, err := s.repo.GetSlotsByMentor(ctx, mentorID)
+    if err != nil {
+        return nil, fmt.Errorf("failed to get slots: %w", err)
+    }
+
+    return slots, nil
 }
 
 func (s *SlotService) UpdateSlotStatus(ctx context.Context, slotID string, status string) error {
