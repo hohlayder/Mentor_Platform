@@ -432,7 +432,7 @@ const ProfilePage: React.FC = () => {
               <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
                 {isMentor && (
                   <span className="chip" style={{ background: 'var(--accent)', color: '#fff' }}>
-                    Ментор {profile.mentor?.rating && `⭐ ${profile.mentor.rating.toFixed(1)}`}
+                    Ментор
                   </span>
                 )}
                 {isStudent && (

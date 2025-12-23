@@ -300,7 +300,7 @@ const Chats: React.FC = () => {
         socket.onclose = () => {
           console.log('WebSocket отключен');
           setIsWsConnected(false);
-          setTimeout(() => connectWebSocket(), 3000);
+          setTimeout(() => connectWebSocket(), 5000);
         };
         
         socket.onerror = (error) => {
@@ -584,7 +584,6 @@ const Chats: React.FC = () => {
             />
             <div className="chips">
               <span className="chip active">Все</span>
-              <span className="chip">Непрочитанные</span>
             </div>
           </div>
           

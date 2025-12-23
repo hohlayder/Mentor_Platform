@@ -317,6 +317,7 @@ const CoursePage: React.FC = () => {
   // Загрузка слотов ментора
   const loadMentorSlots = useCallback(async () => {
     if (!course?.author_id) return;
+    console.log(course.author_id);
     
     setLoadingSlots(true);
     try {

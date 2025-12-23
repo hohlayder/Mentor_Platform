@@ -10,7 +10,7 @@ class WebSocketService {
   private token: string | null = null;
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 5;
-  private reconnectDelay = 1000;
+  private reconnectDelay = 3000;
   private messageHandlers: Map<string, ((data: any) => void)[]> = new Map();
   private connectionHandlers: ((connected: boolean) => void)[] = [];
 
@@ -159,6 +159,5 @@ class WebSocketService {
 }
 
 // Создаем глобальный экземпляр WebSocket сервиса
-// Замени URL на реальный адрес твоего WebSocket сервера
 const WS_URL = 'ws://localhost:8080/api/v1/ws';
 export const websocketService = new WebSocketService(WS_URL);
