@@ -83,6 +83,7 @@ func InitRoutes(handlers Handlers) *gin.Engine {
 				posts.GET("", handlers.PostHandler.ListPosts)
 				posts.GET("/:id/ratings", handlers.PostHandler.GetPostRatings)
 			}
+			public.GET("/mentors/:mentor_id/slots", handlers.SessionHandler.GetSlotsByMentor)
 		}
 
 		protected := api.Group("")
@@ -140,7 +141,7 @@ func InitRoutes(handlers Handlers) *gin.Engine {
 
 			protected.GET("/mentors/:mentor_id/sessions", handlers.SessionHandler.ListSessionsByMentor)
 			protected.GET("/students/:student_id/sessions", handlers.SessionHandler.ListSessionsByStudent)
-			protected.GET("/mentors/:mentor_id/slots", handlers.SessionHandler.GetSlotsByMentor)
+			
 		}
 	}
 	
