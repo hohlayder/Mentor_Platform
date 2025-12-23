@@ -380,7 +380,7 @@ const CoursePage: React.FC = () => {
   const canEdit = isAuthor && token;
   const canRate = !isAuthor && token;
   const statusInfo = course ? getStatusInfo(course.status) : getStatusInfo('');
-  const isStudent = profile?.student && token && user?.user_id === profile.student.user_id;
+  const isStudent = profile?.student && token;
   const isMentor = profile?.mentor && token && user?.user_id === profile.mentor.user_id;
 
   // Загрузка слотов ментора
