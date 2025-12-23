@@ -6,6 +6,8 @@ github.com/PuerkitoBio/urlesc v0.0.0-20170810143723-de5bf2ad4578 h1:d+Bc7a5rLufV
 github.com/PuerkitoBio/urlesc v0.0.0-20170810143723-de5bf2ad4578/go.mod h1:uGdkoq3SwY9Y+13GIhn11/XLaGBb4BfwItxLd5jeuXE=
 github.com/Sergey-1214/contracts_mentors v0.0.20 h1:smdRg6YyZCuMkcxzS290TAIXLG0zriMcetPjSIkmKRc=
 github.com/Sergey-1214/contracts_mentors v0.0.20/go.mod h1:pJLGjbbXDo4mJC6FxRpC055xzZBEQnCCCFOCR2z8nsE=
+github.com/Sergey-1214/contracts_mentors v0.0.21 h1:6xIJOSbQwWnyzfo8zljvCgqoFfJouQS8mAx8P9YBeqk=
+github.com/Sergey-1214/contracts_mentors v0.0.21/go.mod h1:FsAZug/tGZuqSG3i7T+Z9j57vnY049ESNb3hhM6/62M=
 github.com/bsm/ginkgo/v2 v2.12.0 h1:Ny8MWAHyOepLGlLKYmXG4IEkioBysk6GpaRTLC8zwWs=
 github.com/bsm/ginkgo/v2 v2.12.0/go.mod h1:SwYbGRRDovPVboqFv0tPTcG1sN61LM1Z4ARdbAV9g4c=
 github.com/bsm/gomega v1.27.10 h1:yeMWxP2pV2fG3FgAODIY8EiRE3dy0aeFYt4l7wh6yKA=

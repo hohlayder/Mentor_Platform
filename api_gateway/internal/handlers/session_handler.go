@@ -27,6 +27,8 @@ type SessionService interface {
 	
 	ListSessionsByMentor(ctx context.Context, mentorID string) ([]domain.SessionResponse, error)
 	ListSessionsByStudent(ctx context.Context, studentID string) ([]domain.SessionResponse, error)
+
+	GetSlotsByMentor(ctx context.Context, mentorID string) ([]domain.SlotResponse, error)
 }
 
 type SessionHandler struct {
@@ -885,4 +887,59 @@ func (h *SessionHandler) ListSessionsByStudent(c *gin.Context) {
 		Sessions: sessions,
 		Total:    int64(len(sessions)),
 	})
+}
+
+// GetSlotsByMentor получает список слотов ментора
+// @Summary Список слотов ментора
+// @Description Возвращает список всех временных слотов для конкретного ментора. Только сам ментор может просматривать свои слоты.
+// @Tags slots
+// @Accept json
+// @Produce json
+// @Param mentor_id path string true "ID ментора (UUID)"
+// @Security BearerAuth
+// @Success 200 {object} domain.ListSlotsResponse "Список слотов и общее количество"
+// @Failure 400 {object} utils.ErrorResponse "Неверный ID ментора"
+// @Failure 401 {object} utils.ErrorResponse "Не авторизован"
+// @Failure 403 {object} utils.ErrorResponse "Нет прав доступа (не тот ментор)"
+// @Failure 500 {object} utils.ErrorResponse "Внутренняя ошибка сервера"
+// @Router /mentors/{mentor_id}/slots [get]
+func (h *SessionHandler) GetSlotsByMentor(c *gin.Context) {
+    userId, ok := utils.GetUserIdFromContext(c)
+    if !ok {
+        return
+    }
+
+    mentorID := c.Param("mentor_id")
+    if mentorID == "" {
+        c.JSON(http.StatusBadRequest, utils.ErrorResponse{
+            Error:   "VALIDATION_ERROR",
+            Message: "Mentor ID is required",
+        })
+        return
+    }
+
+    if mentorID != userId {
+        c.JSON(http.StatusForbidden, utils.ErrorResponse{
+            Error:   "FORBIDDEN_ERROR",
+            Message: "You can only view your own slots",
+        })
+        return
+    }
+
+    slots, err := h.service.GetSlotsByMentor(c.Request.Context(), mentorID)
+    if err != nil {
+        if handleServiceError(c, err, "get slots by mentor") {
+            return
+        }
+        c.JSON(http.StatusInternalServerError, utils.ErrorResponse{
+            Error:   "INTERNAL_ERROR",
+            Message: "Failed to get slots",
+        })
+        return
+    }
+
+    c.JSON(http.StatusOK, domain.ListSlotsResponse{
+        Slots: slots,
+        Total: int64(len(slots)),
+    })
 }
