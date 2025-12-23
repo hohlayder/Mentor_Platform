@@ -9,7 +9,6 @@ import (
 
 	postsv1 "github.com/Sergey-1214/contracts_mentors/post/v1"
 	"github.com/hohlayder/Mentor_Platform/api_gateway/internal/domain"
-	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
 )
 
@@ -18,7 +17,7 @@ type PostClient interface {
 	GetPost(ctx context.Context, in *postsv1.GetPostRequest) (*postsv1.GetPostResponse, error)
 	ListPosts(ctx context.Context, in *postsv1.ListPostsRequest) (*postsv1.ListPostsResponse, error)
 	UpdatePost(ctx context.Context, in *postsv1.UpdatePostRequest) (*postsv1.UpdatePostResponse, error)
-	DeletePost(ctx context.Context, in *postsv1.DeletePostRequest) (*emptypb.Empty, error)
+	DeletePost(ctx context.Context, in *postsv1.DeletePostRequest) (*postsv1.DeletePostResponse, error)
 	RatePost(ctx context.Context, in *postsv1.RatePostRequest) (*postsv1.RatePostResponse, error)
 }
 

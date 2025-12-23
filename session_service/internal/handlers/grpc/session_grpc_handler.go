@@ -31,6 +31,7 @@ type SlotService interface {
 	UpdateSlot(ctx context.Context, slot *domain.SlotUpdate) error
 	DeleteSlot(ctx context.Context, slotId string) error
 	UpdateSlotStatus(ctx context.Context, slotID, status string) error
+	GetSlotsByMentor(ctx context.Context, mentorID string) ([]domain.Slot, error)
 }
 
 type SessionHandler struct {
@@ -416,6 +417,38 @@ func (h *SessionHandler) UpdateSlotStatus(ctx context.Context, req *sessionv1.Up
     
     return &sessionv1.UpdateSlotStatusResponse{
         Success: true,
+    }, nil
+}
+
+func (h *SessionHandler) GetSlotsByMentor(ctx context.Context, req *sessionv1.GetSlotsByMentorRequest) (*sessionv1.GetSlotsByMentorResponse, error) {
+    if req.GetMentorId() == "" {
+        return nil, status.Error(codes.InvalidArgument, "mentor_id is required")
+    }
+
+    // Вызываем метод сервиса
+    slots, err := h.slotService.GetSlotsByMentor(ctx, req.GetMentorId())
+    if err != nil {
+        return nil, convertSlotError(err)
+    }
+
+    // Конвертируем в proto
+    protoSlots := make([]*sessionv1.Slot, len(slots))
+    for i, slot := range slots {
+        protoSlots[i] = &sessionv1.Slot{
+            SlotId:          slot.SlotId,
+            MentorId:        slot.MentorId,
+            Title:           slot.Title,
+            Description:     stringFromPtr(slot.Description),
+            StartTime:       timestamppb.New(slot.StartTime),
+            DurationMinutes: slot.DurationMinutes,
+            Price:           slot.Price,
+            Currency:        slot.Currency,
+            Status:          convertToSlotStatus(slot.Status),
+        }
+    }
+
+    return &sessionv1.GetSlotsByMentorResponse{
+        Slots: protoSlots,
     }, nil
 }
 

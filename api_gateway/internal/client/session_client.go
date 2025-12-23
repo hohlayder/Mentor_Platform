@@ -68,6 +68,10 @@ func (c *SessionClient) RateSession(ctx context.Context, in *sessionv1.RateSessi
 	return c.Client.RateSession(ctx, in)
 }
 
+func (c *SessionClient) GetSlotsByMentor(ctx context.Context, in *sessionv1.GetSlotsByMentorRequest) (*sessionv1.GetSlotsByMentorResponse, error) {
+	return c.Client.GetSlotsByMentor(ctx, in)
+}
+
 func (c *SessionClient) Close() error {
 	if c.conn != nil {
 		return c.conn.Close()

@@ -22,6 +22,7 @@ type SessionClient interface {
 	ListSessionsByStudent(ctx context.Context, in *sessionv1.ListSessionsByStudentRequest) (*sessionv1.ListSessionsResponse, error)
 	UpdateSlotStatus(ctx context.Context, in *sessionv1.UpdateSlotStatusRequest) (*sessionv1.UpdateSlotStatusResponse, error)
 	RateSession(ctx context.Context, in *sessionv1.RateSessionRequest) (*sessionv1.RateSessionResponse, error) 
+	GetSlotsByMentor(ctx context.Context, in *sessionv1.GetSlotsByMentorRequest) (*sessionv1.GetSlotsByMentorResponse, error)
 }
 
 type SessionService struct {
@@ -291,6 +292,44 @@ func (s *SessionService) ListSessionsByStudent(ctx context.Context, studentID st
 	}
 
 	return sessions, nil
+}
+
+func (s *SessionService) GetSlotsByMentor(ctx context.Context, mentorID string) ([]domain.SlotResponse, error) {
+    resp, err := s.client.GetSlotsByMentor(ctx, &sessionv1.GetSlotsByMentorRequest{
+        MentorId: mentorID,
+    })
+    if err != nil {
+        slog.Error("Failed to get slots by mentor via gRPC", "error", err)
+        return nil, err
+    }
+
+    slots := make([]domain.SlotResponse, len(resp.Slots))
+    for i, slot := range resp.Slots {
+        slotResp := domain.SlotResponse{
+            ID:              slot.SlotId,
+            MentorID:        slot.MentorId,
+            Title:           slot.Title,
+            StartTime:       slot.StartTime.AsTime(),
+            DurationMinutes: slot.DurationMinutes,
+            Price:           slot.Price,
+            Currency:        slot.Currency,
+            Status:          convertFromProtoSlotStatus(slot.Status),
+        }
+        
+        if slot.Description != "" {
+            slotResp.Description = &slot.Description
+        }
+        if slot.CreatedAt != nil {
+            slotResp.CreatedAt = slot.CreatedAt.AsTime()
+        }
+        if slot.UpdatedAt != nil {
+            slotResp.UpdatedAt = slot.UpdatedAt.AsTime()
+        }
+        
+        slots[i] = slotResp
+    }
+
+    return slots, nil
 }
 
 func convertToProtoSlotStatus(status string) sessionv1.SlotStatus {
