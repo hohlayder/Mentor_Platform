@@ -903,11 +903,6 @@ func (h *SessionHandler) ListSessionsByStudent(c *gin.Context) {
 // @Failure 500 {object} utils.ErrorResponse "Внутренняя ошибка сервера"
 // @Router /mentors/{mentor_id}/slots [get]
 func (h *SessionHandler) GetSlotsByMentor(c *gin.Context) {
-    _, ok := utils.GetUserIdFromContext(c)
-    if !ok {
-        return
-    }
-
     mentorID := c.Param("mentor_id")
     if mentorID == "" {
         c.JSON(http.StatusBadRequest, utils.ErrorResponse{
