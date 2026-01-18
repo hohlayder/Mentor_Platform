@@ -47,6 +47,14 @@ func (c *PostClient) GetPostRatings(ctx context.Context, in *postsv1.GetPostRati
 	return c.Client.GetPostRatings(ctx, in)
 }
 
+func (c *PostClient) UploadPostImage(ctx context.Context, in *postsv1.UploadPostImageRequest) (*postsv1.UploadPostImageResponse, error) {
+	return c.Client.UploadPostImage(ctx, in)
+}
+
+func (c *PostClient) DeletePostImage(ctx context.Context, in *postsv1.DeletePostImageRequest) (*postsv1.DeletePostImageResponse, error) {
+	return c.Client.DeletePostImage(ctx, in)
+}
+
 func (c *PostClient) Close() error {
 	if c.conn != nil {
 		return c.conn.Close()
