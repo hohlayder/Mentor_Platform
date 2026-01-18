@@ -67,6 +67,7 @@ func InitRoutes(handlers Handlers) *gin.Engine {
 			files := public.Group("/files")
 			{
 				files.GET("/avatar/:filename", handlers.FileHandler.GetAvatar)
+				files.GET("/posts/avatar/:filename", handlers.FileHandler.GetPostAvatar)
 			}
 
 			auth := public.Group("/auth")
@@ -75,6 +76,11 @@ func InitRoutes(handlers Handlers) *gin.Engine {
 				auth.POST("/login", handlers.AuthHandler.Login)
 				auth.POST("/refresh", handlers.AuthHandler.RefreshToken)
 				auth.POST("/logout", handlers.AuthHandler.Logout)
+			}
+
+			user := public.Group("/users")
+			{
+				user.GET("/all", handlers.UserHandler.GetUserCount)
 			}
 			
 			posts := public.Group("/posts")
@@ -135,6 +141,8 @@ func InitRoutes(handlers Handlers) *gin.Engine {
 			}
 			files := protected.Group("/files")
 			{
+				files.POST("/posts/avatar/:post_id", handlers.FileHandler.UploadPostAvatar)
+				files.DELETE("/posts/avatar/:post_id", handlers.FileHandler.DeletePostAvatar)
 				files.POST("/avatar", handlers.FileHandler.UploadAvatar)
 				files.DELETE("/avatar", handlers.FileHandler.DeleteAvatar)
 			}
