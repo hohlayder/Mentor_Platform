@@ -1,0 +1,2 @@
+ALTER TABLE posts
+ADD COLUMN avatar_url VARCHAR(255);
