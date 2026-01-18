@@ -18,6 +18,7 @@ type UserProfileService interface {
 	CreateUser(ctx context.Context, name string, surname string, email string) (string, error)
 	GetUserById(ctx context.Context, id string) (*domain.User, error)
 	GetUserByEmail(ctx context.Context, email string) (*domain.User, error)
+	GetCountUser(ctx context.Context) (int64, error)
 	DeleteUser(ctx context.Context, id string) error
 	GetProfileById(ctx context.Context, id string) (*domain.UserProfile, error)
 	UpdateProfile(ctx context.Context, profile *domain.UpdateProfile) error
@@ -84,6 +85,19 @@ func (h *GRPCHandler) GetUserByEmail(ctx context.Context, req *userv1.GetUserByE
 			AvatarUrl: user.AvatarURL,
 			CreatedAt: timestamppb.New(user.CreatedAt),
 		},
+	}
+
+	return &resp, nil
+}
+
+func (h *GRPCHandler) GetUserCount(ctx context.Context, req *userv1.GetUserCountRequest) (*userv1.GetUserCountResponse, error) {
+	count, err := h.service.GetCountUser(ctx)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	resp := userv1.GetUserCountResponse{
+		CountUser: count,
 	}
 
 	return &resp, nil

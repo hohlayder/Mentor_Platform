@@ -114,3 +114,7 @@ type LearningSkillUpdate struct {
 	SkillName        string `json:"skill_name" validate:"required"`
 	ProficiencyLevel string `json:"proficiency_level" validate:"required"`
 }
+
+type UserCountResponse struct {
+	UserCount string `json:"user_count"`
+}

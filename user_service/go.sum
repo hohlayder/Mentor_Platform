@@ -7,6 +7,8 @@ github.com/Sergey-1214/contracts_mentors v0.0.13 h1:/ObKlZ2j/yEbjoi2v5IQOh1wc/CF
 github.com/Sergey-1214/contracts_mentors v0.0.13/go.mod h1:Xx9OdLITeP+igwFuzoAgss5haM3sG538DEpUi/AnQf8=
 github.com/Sergey-1214/contracts_mentors v0.0.20 h1:smdRg6YyZCuMkcxzS290TAIXLG0zriMcetPjSIkmKRc=
 github.com/Sergey-1214/contracts_mentors v0.0.20/go.mod h1:pJLGjbbXDo4mJC6FxRpC055xzZBEQnCCCFOCR2z8nsE=
+github.com/Sergey-1214/contracts_mentors v0.0.23 h1:iIdV+FPjTI4IuH6zA/H3LF8Ewny+v5cAL+E58zkQ3UI=
+github.com/Sergey-1214/contracts_mentors v0.0.23/go.mod h1:FsAZug/tGZuqSG3i7T+Z9j57vnY049ESNb3hhM6/62M=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/go-sql-driver/mysql v1.8.1/go.mod h1:wEBSXgmK//2ZFJyE+qWnIsVGmvmEKlqwuVSjsCm7DZg=
@@ -36,6 +38,8 @@ google.golang.org/grpc v1.76.0 h1:UnVkv1+uMLYXoIz6o7chp59WfQUYA2ex/BXQ9rHZu7A=
 google.golang.org/grpc v1.76.0/go.mod h1:Ju12QI8M6iQJtbcsV+awF5a4hfJMLi4X0JLo94ULZ6c=
 google.golang.org/protobuf v1.36.6 h1:z1NpPI8ku2WgiWnf+t9wTPsn6eP1L7ksHUlkfLvd9xY=
 google.golang.org/protobuf v1.36.6/go.mod h1:jduwjTPXsFjZGTmRluh+L6NjiWu7pchiJ2/5YcXBHnY=
+google.golang.org/protobuf v1.36.10 h1:AYd7cD/uASjIL6Q9LiTjz8JLcrh/88q5UObnmY3aOOE=
+google.golang.org/protobuf v1.36.10/go.mod h1:HTf+CrKn2C3g5S8VImy6tdcUvCska2kB7j23XfzDpco=
 gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=
 gopkg.in/yaml.v3 v3.0.1 h1:fxVm/GzAzEWqLHuvctI91KS9hhNmmWOoWu0XTYJS7CA=
 gopkg.in/yaml.v3 v3.0.1/go.mod h1:K4uyk7z7BCEPqu6E+C64Yfv1cQ7kz7rIZviUmN+EgEM=

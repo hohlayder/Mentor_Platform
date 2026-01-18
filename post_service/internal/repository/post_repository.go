@@ -16,6 +16,7 @@ import (
 type Post struct {
 	ID        string         `db:"id"`
 	AuthorId  string         `db:"author_id"`
+	AvatarURL *string         `db:"avatar_url"`
 	Title     string         `db:"title"`
 	Content   string         `db:"content"`
 	Tags      pq.StringArray `db:"tags"` // ВАЖНО: pq.StringArray для TEXT[]
@@ -46,6 +47,7 @@ type PostRepository interface {
 	List(ctx context.Context, params ListParams) ([]Post, int32, error)
 	Update(ctx context.Context, post *Post, fields []string) (*Post, error)
 	DeleteByID(ctx context.Context, id string) error
+	UpdateAvatarURL(ctx context.Context, authorID string, avatarURL string) error 
 }
 
 // postRepository — реализация репозитория на sqlx.
@@ -76,8 +78,8 @@ func (r *postRepository) Save(ctx context.Context, post *Post) error {
 	post.UpdatedAt = now
 
 	const query = `
-		INSERT INTO posts (id, author_id, title, content, tags, status, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		INSERT INTO posts (id, author_id, avatar_url, title, content, tags, status, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 	`
 
 	_, err := r.db.ExecContext(
@@ -85,6 +87,7 @@ func (r *postRepository) Save(ctx context.Context, post *Post) error {
 		query,
 		post.ID,
 		post.AuthorId,
+		post.AvatarURL,
 		post.Title,
 		post.Content,
 		post.Tags, // pq.StringArray
@@ -103,7 +106,7 @@ func (r *postRepository) GetByID(ctx context.Context, id string) (*Post, error) 
 	}
 
 	const query = `
-		SELECT id, author_id, title, content, tags, status, created_at, updated_at
+		SELECT id, author_id, avatar_url, title, content, tags, status, created_at, updated_at
 		FROM posts
 		WHERE id = $1
 	`
@@ -190,7 +193,7 @@ func (r *postRepository) List(ctx context.Context, params ListParams) ([]Post, i
 	offsetIdx := argIdx + 1
 
 	query := fmt.Sprintf(`
-		SELECT id, author_id, title, content, tags, status, created_at, updated_at
+		SELECT id, author_id, avatar_url, title, content, tags, status, created_at, updated_at
 		FROM posts
 		%s
 		ORDER BY %s %s
@@ -216,6 +219,7 @@ func (r *postRepository) Update(ctx context.Context, post *Post, fields []string
 	}
 
 	columnByField := map[string]string{
+		"avatar_url": "avatar_url",
 		"title":   "title",
 		"content": "content",
 		"tags":    "tags",
@@ -235,6 +239,9 @@ func (r *postRepository) Update(ctx context.Context, post *Post, fields []string
 		}
 
 		switch f {
+		case "avatar_url":
+			setParts = append(setParts, fmt.Sprintf("%s = $%d", col, argIndex))
+			args = append(args, post.AvatarURL)
 		case "title":
 			setParts = append(setParts, fmt.Sprintf("%s = $%d", col, argIndex))
 			args = append(args, post.Title)
@@ -264,7 +271,7 @@ func (r *postRepository) Update(ctx context.Context, post *Post, fields []string
 		UPDATE posts
 		SET %s
 		WHERE id = $1
-		RETURNING id, author_id, title, content, tags, status, created_at, updated_at
+		RETURNING id, author_id, avatar_url, title, content, tags, status, created_at, updated_at
 	`, joinWithComma(setParts))
 
 	var updated Post
@@ -278,6 +285,22 @@ func (r *postRepository) Update(ctx context.Context, post *Post, fields []string
 
 	return &updated, nil
 }
+
+func (r *postRepository) UpdateAvatarURL(ctx context.Context, authorID string, avatarURL string) error {
+	if r.db == nil {
+		return nil
+	}
+
+	const query = `
+		UPDATE posts
+		SET avatar_url = $1, updated_at = NOW()
+		WHERE author_id = $2
+	`
+
+	_, err := r.db.ExecContext(ctx, query, avatarURL, authorID)
+	return err
+}
+
 
 // DeleteByID — удаляет пост по ID.
 func (r *postRepository) DeleteByID(ctx context.Context, id string) error {

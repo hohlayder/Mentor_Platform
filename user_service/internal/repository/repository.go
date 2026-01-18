@@ -21,4 +21,5 @@ type UserRepo interface {
     GetUserByEmail(ctx context.Context, email string) (*domain.User, error)
     GetUserByID(ctx context.Context, id string) (*domain.User, error)
     DeleteUser(ctx context.Context, id string) error 
+    GetCountUser(ctx context.Context) (int64, error)
 }

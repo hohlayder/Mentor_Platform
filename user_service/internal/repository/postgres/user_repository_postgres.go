@@ -60,6 +60,17 @@ func (r *UserRepositoryPostgres) GetUserByID(ctx context.Context, id string) (*d
 	return &user, nil
 }
 
+func (r *UserRepositoryPostgres) GetCountUser(ctx context.Context) (int64, error) {
+	var count int64
+	query := `SELECT COUNT(id) FROM users`
+	err := r.db.GetContext(ctx, &count, query)
+	if err != nil {
+		return 0, err
+	}
+
+	return count, nil
+}
+
 func (r *UserRepositoryPostgres) DeleteUser(ctx context.Context, id string) error {
 	query := `DELETE FROM users WHERE id=$1`
 	_, err := r.db.ExecContext(ctx, query, id)

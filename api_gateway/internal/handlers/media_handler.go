@@ -4,15 +4,18 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 
 	userv1 "github.com/Sergey-1214/contracts_mentors/user/v1"
+    postsv1 "github.com/Sergey-1214/contracts_mentors/post/v1"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 
+	"github.com/hohlayder/Mentor_Platform/api_gateway/internal/domain"
 	"github.com/hohlayder/Mentor_Platform/api_gateway/internal/utils"
 )
 
@@ -21,22 +24,48 @@ type UserClient interface {
     UpdateProfile(ctx context.Context, in *userv1.UpdateProfileRequest) (*userv1.UpdateProfileResponse, error)
 }
 
-type FileHandler struct {
-    uploadDir string
-	client UserClient
+type PostClient interface {
+    GetPost(ctx context.Context, in *postsv1.GetPostRequest) (*postsv1.GetPostResponse, error)
+    UploadPostImage(ctx context.Context, req *postsv1.UploadPostImageRequest) (*postsv1.UploadPostImageResponse, error)
+    DeletePostImage(ctx context.Context, req *postsv1.DeletePostImageRequest) (*postsv1.DeletePostImageResponse, error)
 }
 
-func NewFileHandler(client UserClient) *FileHandler {
+type FileHandler struct {
+    uploadDirAvatar string
+    uploadDirPostImage string
+	client UserClient
+    postClient PostClient
+}
 
-    uploadDir := "/home/appuser/uploads/avatars"
-    os.MkdirAll(uploadDir, 0755)
-    
+func NewFileHandler(client UserClient, postClient PostClient) *FileHandler {
+
+    uploadDirAvatar := "/home/appuser/uploads/avatars"
+    uploadDirPostImage := "/home/appuser/uploads/posts"
+    os.MkdirAll(uploadDirAvatar, 0755)
+    os.MkdirAll(uploadDirPostImage, 0755)
     return &FileHandler{
-        uploadDir: uploadDir,
+        uploadDirAvatar: uploadDirAvatar,
+        uploadDirPostImage: uploadDirPostImage,
         client: client,
+        postClient: postClient,
     }
 }
 
+// UploadAvatar godoc
+// @Summary Загрузить аватар
+// @Description Загружает аватар пользователя и обновляет ссылку в профиле. Максимальный размер файла: 5MB. Разрешенные форматы: jpg, jpeg, png, gif, svg.
+// @Tags files
+// @Accept multipart/form-data
+// @Produce json
+// @Security BearerAuth
+// @Param avatar formData file true "Файл аватара" swaggertype:"string" format:"binary"
+// @Success 200 {object} domain.UploadAvatarResponse
+// @Failure 400 {object} utils.ErrorResponse
+// @Failure 401 {object} utils.ErrorResponse
+// @Failure 413 {object} utils.ErrorResponse "Файл слишком большой"
+// @Failure 415 {object} utils.ErrorResponse "Неподдерживаемый формат файла"
+// @Failure 500 {object} utils.ErrorResponse
+// @Router /files/avatar [post]
 func (h *FileHandler) UploadAvatar(c *gin.Context) {
     userId, ok := utils.GetUserIdFromContext(c)
 	if !ok {
@@ -45,18 +74,24 @@ func (h *FileHandler) UploadAvatar(c *gin.Context) {
 
     file, header, err := c.Request.FormFile("avatar")
     if err != nil {
-        c.JSON(400, gin.H{"error": "No file uploaded"})
+        c.JSON(http.StatusBadRequest, utils.ErrorResponse{
+            Error: "BAD_REQUEST",
+            Message: "No file uploaded",
+        })
         return
     }
     defer file.Close()
     
     ext := filepath.Ext(header.Filename)
     filename := fmt.Sprintf("%s_%s%s", userId, uuid.New().String()[:8], ext)
-    filepath := filepath.Join(h.uploadDir, filename)
+    filepath := filepath.Join(h.uploadDirAvatar, filename)
 
     out, err := os.Create(filepath)
     if err != nil {
-        c.JSON(500, gin.H{"error": "Failed to save file"})
+        c.JSON(http.StatusInternalServerError, utils.ErrorResponse{
+            Error: "INTERNAL_ERROR",
+            Message: "failed to save file",
+        })
         return
     }
     defer out.Close()
@@ -77,39 +112,80 @@ func (h *FileHandler) UploadAvatar(c *gin.Context) {
         return
     }
     
-    c.JSON(200, gin.H{
-        "url": fileURL,
-        "filename": filename,
-    })
+    c.JSON(200, domain.UploadAvatarResponse{
+		URL:      fileURL,
+		Filename: filename,
+	})
 }
 
+// GetAvatar godoc
+// @Summary Получить аватар
+// @Description Возвращает файл аватара по имени файла или дефолтный аватар
+// @Tags files
+// @Security BearerAuth
+// @Produce image/png,image/jpeg,image/gif,image/svg+xml
+// @Param filename path string true "Имя файла аватара"
+// @Success 200 {file} file "Файл аватара"
+// @Failure 400 {object} utils.ErrorResponse "Неверное имя файла"
+// @Failure 500 {object} utils.ErrorResponse "Ошибка сервера"
+// @Router /files/avatar/{filename} [get]
 func (h *FileHandler) GetAvatar(c *gin.Context) {
     filename := c.Param("filename")
     if strings.Contains(filename, "..") {
-        c.JSON(400, gin.H{"error": "Invalid filename"})
+        c.JSON(http.StatusBadRequest, utils.ErrorResponse{Error: "BAD_REQUEST", Message: "Invalid filename"})
         return
     }
     
-    filepath := filepath.Join(h.uploadDir, filename)
+    filename = filepath.Base(filename)
+    filepathStr := filepath.Join(h.uploadDirAvatar, filename)
+ 
+    c.Header("Cache-Control", "no-store, no-cache, must-revalidate")
+    c.Header("Pragma", "no-cache")
     
-    // Проверяем существование файла
-    if _, err := os.Stat(filepath); os.IsNotExist(err) {
-        // Возвращаем дефолтную аватарку
-        defaultPath := "./uploads/avatars/default.png"
-        if _, err := os.Stat(defaultPath); os.IsNotExist(err) {
-            // Создаем простую дефолтную аватарку
-            if err := h.createDefaultAvatar(defaultPath); err != nil {
-                c.JSON(500, gin.H{"error": "Failed to create default avatar"})
-                return
-            }
+    if _, err := os.Stat(filepathStr); os.IsNotExist(err) {
+        h.serveDefaultAvatar(c)
+        return
+    }
+
+    data, err := os.ReadFile(filepathStr)
+    if err != nil {
+        h.serveDefaultAvatar(c)
+        return
+    }
+
+    contentType := http.DetectContentType(data)
+    
+    if contentType == "application/octet-stream" || contentType == "text/plain" {
+        ext := strings.ToLower(filepath.Ext(filename))
+        switch ext {
+        case ".jpg", ".jpeg":
+            contentType = "image/jpeg"
+        case ".png":
+            contentType = "image/png"
+        case ".gif":
+            contentType = "image/gif"
+        case ".svg":
+            contentType = "image/svg+xml"
+        default:
+            contentType = "image/png"
         }
-        c.File(defaultPath)
-        return
     }
     
-    c.File(filepath)
+    c.Data(http.StatusOK, contentType, data)
 }
 
+// DeleteAvatar godoc
+// @Summary Удалить аватар
+// @Description Удаляет аватар пользователя и очищает ссылку в профиле
+// @Tags files
+// @Produce json
+// @Security BearerAuth
+// @Param filename query string true "Имя файла аватара"
+// @Success 200 {object} domain.DeleteAvatarResponse
+// @Failure 400 {object} utils.ErrorResponse "Не указано имя файла"
+// @Failure 401 {object} utils.ErrorResponse "Не авторизован"
+// @Failure 500 {object} utils.ErrorResponse "Ошибка сервера"
+// @Router /files/avatar [delete]
 func (h *FileHandler) DeleteAvatar(c *gin.Context) {
     userId, ok := utils.GetUserIdFromContext(c)
     if !ok {
@@ -118,22 +194,25 @@ func (h *FileHandler) DeleteAvatar(c *gin.Context) {
     
     filename := c.Query("filename")
     if filename == "" {
-        c.JSON(400, gin.H{"error": "filename is required"})
+        c.JSON(http.StatusBadRequest, utils.ErrorResponse{
+            Error: "BAD_REQUEST",
+            Message: "filename is empty",
+        })
         return
     }
-    
-    // Очищаем имя файла от потенциальных путей
+
     filename = filepath.Base(filename)
 
-    filepath := filepath.Join(h.uploadDir, filename)
+    filepath := filepath.Join(h.uploadDirAvatar, filename)
 
     if _, err := os.Stat(filepath); os.IsNotExist(err) {
-        // Файла нет, но все равно обновляем профиль
-        fmt.Printf("File %s not found, updating profile anyway\n", filename)
+        slog.Error("File not found, updating profile anyway\n", "filename", filename)
     } else {
-        // Файл существует - удаляем его
         if err := os.Remove(filepath); err != nil {
-            c.JSON(500, gin.H{"error": "Failed to delete file: " + err.Error()})
+            c.JSON(http.StatusInternalServerError, utils.ErrorResponse{
+                Error: "INTERNAL_ERROR",
+                Message: "failed to upload avatar",
+            })
             return
         }
     }
@@ -143,6 +222,7 @@ func (h *FileHandler) DeleteAvatar(c *gin.Context) {
         UserId: userId,
         AvatarUrl: &emptyUrl,
     }
+
     _, err := h.client.UpdateProfile(c.Request.Context(), &grpcReq)
     if err != nil {
         c.JSON(http.StatusInternalServerError, utils.ErrorResponse{
@@ -152,40 +232,230 @@ func (h *FileHandler) DeleteAvatar(c *gin.Context) {
     }
 
 
-    c.JSON(200, gin.H{"message": "Avatar deleted"})
+    c.JSON(http.StatusOK, domain.DeleteAvatarResponse{Message: "Avatar deleted"})
 }
 
-func (h *FileHandler) createDefaultAvatar(path string) error {
-    // Создаем директорию, если не существует
-    if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
-        return fmt.Errorf("failed to create directory: %v", err)
-    }
-    
+
+func (h *FileHandler) serveDefaultAvatar(c *gin.Context) {
+    slog.Info("Serving default SVG avatar")
+
     svg := `<?xml version="1.0" encoding="UTF-8"?>
     <svg width="200" height="200" xmlns="http://www.w3.org/2000/svg">
-        <rect width="200" height="200" fill="#4f46e5"/>
-        <text x="100" y="100" font-family="Arial" font-size="60" fill="white" 
-            text-anchor="middle" dominant-baseline="middle">?</text>
+        <defs>
+            <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#4f46e5"/>
+                <stop offset="100%" stop-color="#7c3aed"/>
+            </linearGradient>
+        </defs>
+        <rect width="200" height="200" fill="url(#grad)" rx="20"/>
+        <circle cx="100" cy="80" r="40" fill="white" opacity="0.8"/>
+        <circle cx="100" cy="140" r="60" fill="white" opacity="0.8"/>
+        <text x="100" y="110" font-family="Arial, sans-serif" font-size="50" 
+              fill="#4f46e5" text-anchor="middle" font-weight="bold">U</text>
     </svg>`
     
-    if err := os.WriteFile(path, []byte(svg), 0644); err != nil {
-        return fmt.Errorf("failed to write default avatar: %v", err)
-    }
-    
-    return nil
+    c.Header("Content-Type", "image/svg+xml")
+    c.String(http.StatusOK, svg)
 }
 
-func extractFilenameFromURL(url string) string {
-    // Удаляем префикс пути
-    prefix := "/api/v1/files/avatar/"
-    if !strings.HasPrefix(url, prefix) {
-        // Если URL не содержит префикс, пробуем извлечь последнюю часть
-        return filepath.Base(url)
+// UploadAvatar godoc
+// @Summary Загрузить аватар поста
+// @Description Загружает аватар поста и обновляет ссылку в профиле. Максимальный размер файла: 5MB. Разрешенные форматы: jpg, jpeg, png, gif, svg.
+// @Tags files
+// @Accept multipart/form-data
+// @Produce json
+// @Param post_id path string true "Post ID" example("12345")
+// @Security BearerAuth
+// @Param avatar formData file true "Файл аватара поста"
+// @Success 200 {object} domain.UploadAvatarResponse
+// @Failure 400 {object} utils.ErrorResponse
+// @Failure 401 {object} utils.ErrorResponse
+// @Failure 413 {object} utils.ErrorResponse "Файл слишком большой"
+// @Failure 415 {object} utils.ErrorResponse "Неподдерживаемый формат файла"
+// @Failure 500 {object} utils.ErrorResponse
+// @Router /files/posts/avatar/{post_id} [post]
+func (h *FileHandler) UploadPostAvatar(c *gin.Context) {
+    postId := c.Param("post_id")
+
+    if postId == "" {
+        c.JSON(http.StatusBadRequest, utils.ErrorResponse{
+            Error:   "BAD_REQUEST",
+            Message: "Post ID is required",
+        })
+        return
+    }
+
+    file, header, err := c.Request.FormFile("avatar")
+    if err != nil {
+        c.JSON(http.StatusBadRequest, utils.ErrorResponse{
+            Error:   "BAD_REQUEST",
+            Message: "No file to upload or incorrect field name. Use 'avatar' field",
+        })
+        return
+    }
+    defer file.Close()
+    
+    ext := filepath.Ext(header.Filename)
+    filename := fmt.Sprintf("%s_%s%s", postId, uuid.New().String()[:8], ext)
+    filepath := filepath.Join(h.uploadDirPostImage, filename)
+
+    out, err := os.Create(filepath)
+    if err != nil {
+        c.JSON(http.StatusInternalServerError, utils.ErrorResponse{
+            Error: "INTERNAL_ERROR",
+            Message: "failed to save file",
+        })
+        return
+    }
+    defer out.Close()
+    
+    io.Copy(out, file)
+
+    fileURL := fmt.Sprintf("/api/v1/files/posts/avatar/%s", filename)
+    
+    grpcReq := postsv1.UploadPostImageRequest{
+        PostId: postId,
+        ImageUrl: fileURL,
+    }
+    _, err = h.postClient.UploadPostImage(c.Request.Context(), &grpcReq)
+    if err != nil {
+        c.JSON(http.StatusInternalServerError, utils.ErrorResponse{
+            Error: "INTERNAL_ERROR",
+            Message: "Failed to upload post avatar",
+        })
     }
     
-    // Извлекаем часть после префикса
-    filename := strings.TrimPrefix(url, prefix)
+    c.JSON(http.StatusOK, domain.UploadAvatarResponse{
+		URL:      fileURL,
+		Filename: filename,
+	})
+}
+
+// GetAvatar godoc
+// @Summary Получить аватар
+// @Description Возвращает файл аватара по имени файла или дефолтный аватар
+// @Tags files
+// @Security BearerAuth
+// @Produce image/png,image/jpeg,image/gif,image/svg+xml
+// @Param filename path string true "Имя файла аватара"
+// @Success 200 {file} file "Файл аватара"
+// @Failure 400 {object} utils.ErrorResponse "Неверное имя файла"
+// @Failure 500 {object} utils.ErrorResponse "Ошибка сервера"
+// @Router /files/posts/avatar/{filename} [get]
+func (h *FileHandler) GetPostAvatar(c *gin.Context) {
+    filename := c.Param("filename")
+    if strings.Contains(filename, "..") {
+        c.JSON(http.StatusBadRequest, utils.ErrorResponse{Error: "BAD_REQUEST", Message: "Invalid filename"})
+        return
+    }
     
-    // Берем только имя файла (на случай, если там что-то лишнее)
-    return filepath.Base(filename)
+    filename = filepath.Base(filename)
+    filepathStr := filepath.Join(h.uploadDirPostImage, filename)
+
+    c.Header("Cache-Control", "no-store, no-cache, must-revalidate")
+    c.Header("Pragma", "no-cache")
+    
+    if _, err := os.Stat(filepathStr); os.IsNotExist(err) {
+        h.serveDefaultAvatar(c)
+        return
+    }
+
+    data, err := os.ReadFile(filepathStr)
+    if err != nil {
+        h.serveDefaultAvatar(c)
+        return
+    }
+
+    contentType := http.DetectContentType(data)
+
+    if contentType == "application/octet-stream" || contentType == "text/plain" {
+        ext := strings.ToLower(filepath.Ext(filename))
+        switch ext {
+        case ".jpg", ".jpeg":
+            contentType = "image/jpeg"
+        case ".png":
+            contentType = "image/png"
+        case ".gif":
+            contentType = "image/gif"
+        case ".svg":
+            contentType = "image/svg+xml"
+        default:
+            contentType = "image/png"
+        }
+    }
+    
+    c.Data(http.StatusOK, contentType, data)
+}
+
+// DeletePostAvatar godoc
+// @Summary Удалить аватар поста
+// @Description Удаляет аватар поста и очищает ссылку в профиле
+// @Tags files
+// @Produce json
+// @Security BearerAuth
+// @Param post_id path string true "Post ID"
+// @Success 200 {object} domain.DeleteAvatarResponse
+// @Failure 400 {object} utils.ErrorResponse "Не указан post_id"
+// @Failure 401 {object} utils.ErrorResponse "Не авторизован"
+// @Failure 500 {object} utils.ErrorResponse "Ошибка сервера"
+// @Router /files/posts/avatar/{post_id} [delete]
+func (h *FileHandler) DeletePostAvatar(c *gin.Context) {
+    postId := c.Param("post_id")
+    
+    if postId == "" {
+        c.JSON(http.StatusBadRequest, utils.ErrorResponse{
+            Error:   "BAD_REQUEST",
+            Message: "Post ID is required",
+        })
+        return
+    }
+
+    grpcReq := postsv1.GetPostRequest{
+        Id: postId,
+    }
+    
+    postResp, err := h.postClient.GetPost(c.Request.Context(), &grpcReq)
+    if err != nil {
+        c.JSON(http.StatusInternalServerError, utils.ErrorResponse{
+            Error:   "INTERNAL_ERROR",
+            Message: "Failed to get post info",
+        })
+        return
+    }
+
+    if postResp.Post.AvatarUrl == "" {
+        c.JSON(http.StatusOK, domain.DeleteAvatarResponse{
+            Message: "Post has no avatar",
+        })
+        return
+    }
+    
+    avatarURL := postResp.Post.AvatarUrl
+    filename := filepath.Base(avatarURL)
+    
+    filePath := filepath.Join(h.uploadDirPostImage, filename)
+    if _, err := os.Stat(filePath); err == nil {
+        if err := os.Remove(filePath); err != nil {
+            slog.Error("Failed to delete file", "error", err)
+        }
+    } else {
+        slog.Warn("File not found, may have been deleted already", "filename", filename)
+    }
+
+    deleteReq := postsv1.DeletePostImageRequest{
+        PostId: postId,
+    }
+    
+    _, err = h.postClient.DeletePostImage(c.Request.Context(), &deleteReq)
+    if err != nil {
+        c.JSON(http.StatusInternalServerError, utils.ErrorResponse{
+            Error:   "INTERNAL_ERROR",
+            Message: "Failed to update post profile",
+        })
+        return
+    }
+    
+    c.JSON(http.StatusOK, domain.DeleteAvatarResponse{
+        Message: "Post avatar deleted successfully",
+    })
 }
