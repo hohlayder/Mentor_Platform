@@ -27,6 +27,10 @@ func (s *UserProfileService) GetUserByEmail(ctx context.Context, email string) (
 	return s.repo.GetUserByEmail(ctx, email)
 }
 
+func (s *UserProfileService) GetCountUser(ctx context.Context) (int64, error) {
+	return s.repo.GetCountUser(ctx)
+}
+
 func (s *UserProfileService) DeleteUser(ctx context.Context, id string) error {
 	return s.repo.DeleteUser(ctx, id)
 }
