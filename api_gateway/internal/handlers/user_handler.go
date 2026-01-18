@@ -14,8 +14,9 @@ type UserService interface {
     CreateUser(ctx context.Context, req *domain.CreateUserRequest) (*domain.CreateUserResponse, error)
     GetUserByID(ctx context.Context, userID string) (*domain.User, error)
     GetUserByEmail(ctx context.Context, email string) (*domain.User, error)
+    GetUserCount(ctx context.Context) (int64, error)
     DeleteUser(ctx context.Context, userID string) (bool, error)
-
+    
     GetProfileById(ctx context.Context, userID string) (*domain.ProfileResponse, error)
     UpdateProfile(ctx context.Context, userID string, req domain.UpdateProfileRequest) (bool, error)
 }
@@ -72,6 +73,24 @@ func (h *UserHandler) GetUserByEmail(c *gin.Context) {
     }
     
     c.JSON(http.StatusOK, user)
+}
+
+// GetUserCount возвращает количество пользователей на сайте
+// @Summary Получить количество пользователей сайта
+// @Description Возвращает количество пользователей 
+// @Tags users
+// @Produce json
+// @Success 200 {object} domain.UserCountResponse
+// @Failure 500 {object} utils.ErrorResponse
+// @Router /users/all [get]
+func (h *UserHandler) GetUserCount(c *gin.Context) {
+    count, err := h.userService.GetUserCount(c.Request.Context())
+    if err != nil {
+        handleGRPCError(c, err)
+        return
+    }
+
+    c.JSON(http.StatusOK, count)
 }
 
 // DeleteUser удаляет пользователя
