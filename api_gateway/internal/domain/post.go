@@ -20,23 +20,23 @@ type GetPostResponse struct {
 }
 
 type Rating struct {
-	ID        string    `json:"id"`         
-	PostID    string    `json:"post_id"`    
-	UserID    string    `json:"user_id"`     
-	Rate      int32     `json:"rate"`      
-	Comment   string    `json:"comment,omitempty"` 
-	CreatedAt time.Time `json:"created_at"` 
+	ID        string    `json:"id"`
+	PostID    string    `json:"post_id"`
+	UserID    string    `json:"user_id"`
+	Rate      int32     `json:"rate"`
+	Comment   string    `json:"comment,omitempty"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 type ListPostsRequest struct {
-	PageToken  string   `form:"page_token"`
-	PageSize   int32    `form:"page_size" binding:"min=1,max=100"`
-	AuthorID   string   `form:"author_id"`
-	Status     string   `form:"status" binding:"omitempty,oneof=draft published archived"`
-	Tags       []string `form:"tags"`
-	SearchQuery string  `form:"search"`
-	SortField  string   `form:"sort_field" binding:"omitempty,oneof=created_at updated_at title"`
-	SortOrder  string   `form:"sort_order" binding:"omitempty,oneof=asc desc"`
+	PageToken   string   `form:"page_token"`
+	PageSize    int32    `form:"page_size" binding:"min=1,max=100"`
+	AuthorID    string   `form:"author_id"`
+	Status      string   `form:"status" binding:"omitempty,oneof=draft published archived"`
+	Tags        []string `form:"tags"`
+	SearchQuery string   `form:"search"`
+	SortField   string   `form:"sort_field" binding:"omitempty,oneof=created_at updated_at title"`
+	SortOrder   string   `form:"sort_order" binding:"omitempty,oneof=asc desc"`
 }
 
 type ListPostsResponse struct {
@@ -80,6 +80,7 @@ type RatePostResponse struct {
 type Post struct {
 	ID            string    `json:"id"`
 	AuthorID      string    `json:"author_id"`
+	AvatarURL     string    `json:"avatar_url"`
 	Title         string    `json:"title"`
 	Content       string    `json:"content"`
 	Tags          []string  `json:"tags"`
@@ -97,21 +98,20 @@ type ErrorResponse struct {
 }
 
 type GetPostRatingsRequest struct {
-	PageToken string `form:"page_token"`               // Токен пагинации
+	PageToken string `form:"page_token"`                        // Токен пагинации
 	PageSize  int32  `form:"page_size" binding:"min=1,max=100"` // Размер страницы
 }
 
 // GetPostRatingsResponse - ответ со списком отзывов
 type GetPostRatingsResponse struct {
-	Ratings       []Rating `json:"ratings"`              // Список оценок
+	Ratings       []Rating `json:"ratings"`                   // Список оценок
 	NextPageToken string   `json:"next_page_token,omitempty"` // Токен следующей страницы
-	TotalCount    int32    `json:"total_count"`          // Общее количество отзывов
-	AverageRating float32  `json:"average_rating"`       // Средний рейтинг
-	RatingsCount  int32    `json:"ratings_count"`        // Количество оценок
+	TotalCount    int32    `json:"total_count"`               // Общее количество отзывов
+	AverageRating float32  `json:"average_rating"`            // Средний рейтинг
+	RatingsCount  int32    `json:"ratings_count"`             // Количество оценок
 }
 
 // GetUserRatingResponse - ответ с оценкой конкретного пользователя
 type GetUserRatingResponse struct {
 	Rating *Rating `json:"rating,omitempty"` // Оценка пользователя (nil если нет оценки)
 }
-
