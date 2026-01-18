@@ -204,11 +204,11 @@ func (s *PostService) UpdatePost(ctx context.Context, req *postsv1.UpdatePostReq
 	fieldsToUpdate := make([]string, 0)
 
 	if mask == nil || len(mask.Paths) == 0 {
-		fieldsToUpdate = []string{"title", "content", "tags", "status"}
+		fieldsToUpdate = []string{"avatar_url", "title", "content", "tags", "status"}
 	} else {
 		for _, p := range mask.Paths {
 			switch p {
-			case "title", "content", "tags", "status":
+			case "avatar_url", "title", "content", "tags", "status":
 				fieldsToUpdate = append(fieldsToUpdate, p)
 			}
 		}
@@ -217,6 +217,13 @@ func (s *PostService) UpdatePost(ctx context.Context, req *postsv1.UpdatePostReq
 	reqPost := req.GetPost()
 	for _, f := range fieldsToUpdate {
 		switch f {
+		case "avatar_url": 
+            if reqPost.GetAvatarUrl() == "" {
+                current.AvatarURL = nil
+            } else {
+                avatarURL := reqPost.GetAvatarUrl()
+                current.AvatarURL = &avatarURL
+            }
 		case "title":
 			current.Title = reqPost.GetTitle()
 		case "content":
@@ -317,6 +324,87 @@ func (s *PostService) RatePost(ctx context.Context, req *postsv1.RatePostRequest
 	}, nil
 }
 
+func (s *PostService) UploadPostImage(ctx context.Context, req *postsv1.UploadPostImageRequest) (*postsv1.UploadPostImageResponse, error) {
+    postID := req.GetPostId()
+    if postID == "" {
+        return nil, status.Error(codes.InvalidArgument, "post_id is required")
+    }
+
+    imageURL := req.GetImageUrl()
+    if imageURL == "" {
+        return nil, status.Error(codes.InvalidArgument, "image_url is required")
+    }
+
+    // Проверяем существование поста
+    post, err := s.postRepository.GetByID(ctx, postID)
+    if err != nil {
+        if errors.Is(err, repository.ErrNotFound) {
+            return nil, status.Error(codes.NotFound, "post not found")
+        }
+        return nil, status.Errorf(codes.Internal, "failed to get post: %v", err)
+    }
+
+    // Обновляем изображение
+    avatarURL := imageURL
+    post.AvatarURL = &avatarURL
+    
+    updated, err := s.postRepository.Update(ctx, post, []string{"avatar_url"})
+    if err != nil {
+        return nil, status.Errorf(codes.Internal, "failed to update post image: %v", err)
+    }
+
+    avg, count, err := s.ratingRepository.GetAggregatedRating(ctx, postID)
+    if err != nil {
+        return nil, status.Errorf(codes.Internal, "failed to get rating: %v", err)
+    }
+
+    respPost := postToProto(updated)
+    respPost.AverageRating = avg
+    respPost.RatingsCount = count
+
+    return &postsv1.UploadPostImageResponse{
+        Post: respPost,
+    }, nil
+}
+
+// DeletePostImage - удаление изображения поста
+func (s *PostService) DeletePostImage(ctx context.Context, req *postsv1.DeletePostImageRequest) (*postsv1.DeletePostImageResponse, error) {
+    postID := req.GetPostId()
+    if postID == "" {
+        return nil, status.Error(codes.InvalidArgument, "post_id is required")
+    }
+
+    // Проверяем существование поста
+    post, err := s.postRepository.GetByID(ctx, postID)
+    if err != nil {
+        if errors.Is(err, repository.ErrNotFound) {
+            return nil, status.Error(codes.NotFound, "post not found")
+        }
+        return nil, status.Errorf(codes.Internal, "failed to get post: %v", err)
+    }
+
+    // Очищаем изображение
+    post.AvatarURL = nil
+    
+    updated, err := s.postRepository.Update(ctx, post, []string{"avatar_url"})
+    if err != nil {
+        return nil, status.Errorf(codes.Internal, "failed to delete post image: %v", err)
+    }
+
+    avg, count, err := s.ratingRepository.GetAggregatedRating(ctx, postID)
+    if err != nil {
+        return nil, status.Errorf(codes.Internal, "failed to get rating: %v", err)
+    }
+
+    respPost := postToProto(updated)
+    respPost.AverageRating = avg
+    respPost.RatingsCount = count
+
+    return &postsv1.DeletePostImageResponse{
+        Post: respPost,
+    }, nil
+}
+
 // -----------------------------------------------------------------------------
 // Helpers
 // -----------------------------------------------------------------------------
@@ -331,7 +419,7 @@ func postToProto(post *repository.Post) *postsv1.Post {
 		}
 	}
 
-	return &postsv1.Post{
+	postResp := &postsv1.Post{
 		Id:        post.ID,
 		AuthorId:  post.AuthorId,
 		Title:     post.Title,
@@ -341,6 +429,11 @@ func postToProto(post *repository.Post) *postsv1.Post {
 		CreatedAt: timestamppb.New(post.CreatedAt),
 		UpdatedAt: timestamppb.New(post.UpdatedAt),
 	}
+
+	if post.AvatarURL != nil {
+		postResp.AvatarUrl = *post.AvatarURL
+	}
+	return postResp
 }
 
 
@@ -416,4 +509,11 @@ func (s *PostService) GetPostRatings(ctx context.Context, req *postsv1.GetPostRa
 	}
 
 	return resp, nil
+}
+
+func stringPtr(s string) *string {
+    if s == "" {
+        return nil
+    }
+    return &s
 }
