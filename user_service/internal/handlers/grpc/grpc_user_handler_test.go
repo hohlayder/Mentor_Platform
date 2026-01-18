@@ -40,6 +40,14 @@ func (m *MockUserProfileService) GetUserByEmail(ctx context.Context, email strin
 	return args.Get(0).(*domain.User), args.Error(1)
 }
 
+func (m *MockUserProfileService) GetCountUser(ctx context.Context) (int64, error) {
+	args := m.Called(ctx)
+	if args.Get(0) == nil {
+		return 0, args.Error(1)
+	}
+	return args.Get(0).(int64), args.Error(1)
+}
+
 func (m *MockUserProfileService) DeleteUser(ctx context.Context, id string) error {
 	args := m.Called(ctx, id)
 	return args.Error(0)
