@@ -51,7 +51,7 @@ func main() {
 	sessionHandler := handlers.NewSessionHandler(sessionService)
 	postService := service.NewPostService(client.Post)
 	postHandler := handlers.NewPostHandler(postService)
-	fileHandler := handlers.NewFileHandler(client.User)
+	fileHandler := handlers.NewFileHandler(client.User, client.Post)
 	handler := handlers.NewHandler(*webSocketHandler, *userHandler, *authHandler, *chatHandler, *sessionHandler, *postHandler, *fileHandler)
 	router := handlers.InitRoutes(*handler)
 
