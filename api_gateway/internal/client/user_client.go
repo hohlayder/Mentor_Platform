@@ -31,6 +31,10 @@ func (c *UserClient) GetUserByEmail(ctx context.Context, in *userv1.GetUserByEma
     return c.Client.GetUserByEmail(ctx, in)
 }
 
+func (c *UserClient) GetUserCount(ctx context.Context, in *userv1.GetUserCountRequest) (*userv1.GetUserCountResponse, error) {
+	return c.Client.GetUserCount(ctx, in)
+}
+
 func (c *UserClient) DeleteUser(ctx context.Context, in *userv1.DeleteUserRequest) (*userv1.DeleteUserResponse, error) {
     return c.Client.DeleteUser(ctx, in)
 }
