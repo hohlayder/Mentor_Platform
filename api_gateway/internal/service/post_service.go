@@ -127,17 +127,17 @@ func (s *PostService) UpdatePost(ctx context.Context, postID string, req domain.
 		protoPost.Title = *req.Post.Title
 		fieldMaskPaths = append(fieldMaskPaths, "title")
 	}
-	
+
 	if req.Post.Content != nil {
 		protoPost.Content = *req.Post.Content
 		fieldMaskPaths = append(fieldMaskPaths, "content")
 	}
-	
+
 	if req.Post.Tags != nil {
 		protoPost.Tags = *req.Post.Tags
 		fieldMaskPaths = append(fieldMaskPaths, "tags")
 	}
-	
+
 	if req.Post.Status != nil {
 		upperStatus := strings.ToUpper(*req.Post.Status)
 		status, ok := postsv1.PostStatus_value[upperStatus]
@@ -201,9 +201,9 @@ func (s *PostService) RatePost(ctx context.Context, postID, userID string, req d
 	}
 
 	grpcReq := &postsv1.RatePostRequest{
-		PostId:  postID,
-		UserId:  userID,
-		Rate:    req.Rate,
+		PostId: postID,
+		UserId: userID,
+		Rate:   req.Rate,
 	}
 
 	if req.Comment != nil {
@@ -228,6 +228,7 @@ func convertPostFromProto(protoPost *postsv1.Post) *domain.Post {
 		ID:            protoPost.Id,
 		AuthorID:      protoPost.AuthorId,
 		Title:         protoPost.Title,
+		AvatarURL:     protoPost.AvatarUrl,
 		Content:       protoPost.Content,
 		Tags:          protoPost.Tags,
 		Status:        protoPost.Status.String(),
@@ -260,8 +261,6 @@ func convertListResponseFromProto(protoResp *postsv1.ListPostsResponse) *domain.
 	}
 }
 
-
-
 func (s *PostService) CheckPostOwnership(ctx context.Context, postID, authorID string) (bool, error) {
 	post, err := s.GetPost(ctx, postID)
 	if err != nil {
@@ -276,7 +275,6 @@ func (s *PostService) ValidatePostStatus(status string) bool {
 	_, ok := postsv1.PostStatus_value[statusUpper]
 	return ok
 }
-
 
 func (s *PostService) GetPostRatings(ctx context.Context, postID string, req domain.GetPostRatingsRequest) (*domain.GetPostRatingsResponse, error) {
 	if postID == "" {

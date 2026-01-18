@@ -11,6 +11,7 @@ type UserClient interface {
     CreateUser(ctx context.Context, in *userv1.CreateUserRequest) (*userv1.CreateUserResponse, error)
     GetUserById(ctx context.Context, in *userv1.GetUserByIdRequest) (*userv1.GetUserByIdResponse, error)
     GetUserByEmail(ctx context.Context, in *userv1.GetUserByEmailRequest) (*userv1.GetUserByEmailResponse, error)
+	GetUserCount(ctx context.Context, in *userv1.GetUserCountRequest) (*userv1.GetUserCountResponse, error)
     DeleteUser(ctx context.Context, in *userv1.DeleteUserRequest) (*userv1.DeleteUserResponse, error)
     GetProfileById(ctx context.Context, in *userv1.GetProfileByIdRequest) (*userv1.GetProfileByIdResponse, error)
     UpdateProfile(ctx context.Context, in *userv1.UpdateProfileRequest) (*userv1.UpdateProfileResponse, error)
@@ -81,6 +82,17 @@ func (s *UserService) GetUserByEmail(ctx context.Context, email string) (*domain
 		AvatarURL: grpcResp.User.AvatarUrl,
 		CreatedAt: grpcResp.User.CreatedAt.AsTime(),
 	}, nil
+}
+
+func (s *UserService) GetUserCount(ctx context.Context) (int64, error) {
+	grpcReq := userv1.GetUserCountRequest{}
+	
+	grpcResp, err := s.client.GetUserCount(ctx, &grpcReq)
+	if err != nil {
+		return 0, err
+	}
+
+	return grpcResp.CountUser, nil
 }
 
 func (s *UserService) DeleteUser(ctx context.Context, userId string) (bool, error) {
