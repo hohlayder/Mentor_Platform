@@ -55,6 +55,26 @@ func (c *PostClient) DeletePostImage(ctx context.Context, in *postsv1.DeletePost
 	return c.Client.DeletePostImage(ctx, in)
 }
 
+func (c *PostClient) AddInterestingPost(ctx context.Context, in *postsv1.AddInterestingPostRequest) (*postsv1.AddInterestingPostResponse, error) {
+	return c.Client.AddInterestingPost(ctx, in)
+}
+
+func (c *PostClient) RemoveInterestingPost(ctx context.Context, in *postsv1.RemoveInterestingPostRequest) (*postsv1.RemoveInterestingPostResponse, error) {
+	return c.Client.RemoveInterestingPost(ctx, in)
+}
+
+func (c *PostClient) GetUserInterestingPosts(ctx context.Context, in *postsv1.GetUserInterestingPostsRequest) (*postsv1.GetUserInterestingPostsResponse, error) {
+	return c.Client.GetUserInterestingPosts(ctx, in)
+}
+
+func (c *PostClient) GetInterestingUsersCount(ctx context.Context, in *postsv1.GetInterestingUsersCountRequest) (*postsv1.GetInterestingUsersCountResponse, error) {
+	return c.Client.GetInterestingUsersCount(ctx, in)
+}
+
+func (c *PostClient) GetUsersFavoritedMentorPosts(ctx context.Context, in *postsv1.GetUsersFavoritedMentorPostsRequest) (*postsv1.GetUsersFavoritedMentorPostsResponse, error) {
+	return c.Client.GetUsersFavoritedMentorPosts(ctx, in)
+}
+
 func (c *PostClient) Close() error {
 	if c.conn != nil {
 		return c.conn.Close()
