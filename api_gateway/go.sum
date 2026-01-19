@@ -14,6 +14,10 @@ github.com/Sergey-1214/contracts_mentors v0.0.23 h1:iIdV+FPjTI4IuH6zA/H3LF8Ewny+
 github.com/Sergey-1214/contracts_mentors v0.0.23/go.mod h1:FsAZug/tGZuqSG3i7T+Z9j57vnY049ESNb3hhM6/62M=
 github.com/Sergey-1214/contracts_mentors v0.0.25 h1:gyeQ2Udz3FM8JpOacFD9HB2YKigyr+lTV0tSEnCrqtQ=
 github.com/Sergey-1214/contracts_mentors v0.0.25/go.mod h1:FsAZug/tGZuqSG3i7T+Z9j57vnY049ESNb3hhM6/62M=
+github.com/Sergey-1214/contracts_mentors v0.0.26 h1:TEqin/xnhfc2WYIlO3eh5AkCg3HojNgOt11yhW+7VnM=
+github.com/Sergey-1214/contracts_mentors v0.0.26/go.mod h1:FsAZug/tGZuqSG3i7T+Z9j57vnY049ESNb3hhM6/62M=
+github.com/Sergey-1214/contracts_mentors v0.0.27 h1:xnGc1rcHlrAVcqlG1oJW0IZu+Xv3rbNhALJUEVl10HQ=
+github.com/Sergey-1214/contracts_mentors v0.0.27/go.mod h1:FsAZug/tGZuqSG3i7T+Z9j57vnY049ESNb3hhM6/62M=
 github.com/bsm/ginkgo/v2 v2.12.0 h1:Ny8MWAHyOepLGlLKYmXG4IEkioBysk6GpaRTLC8zwWs=
 github.com/bsm/ginkgo/v2 v2.12.0/go.mod h1:SwYbGRRDovPVboqFv0tPTcG1sN61LM1Z4ARdbAV9g4c=
 github.com/bsm/gomega v1.27.10 h1:yeMWxP2pV2fG3FgAODIY8EiRE3dy0aeFYt4l7wh6yKA=

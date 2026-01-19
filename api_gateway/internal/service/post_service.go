@@ -9,6 +9,8 @@ import (
 
 	postsv1 "github.com/Sergey-1214/contracts_mentors/post/v1"
 	"github.com/hohlayder/Mentor_Platform/api_gateway/internal/domain"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
 )
 
@@ -20,6 +22,11 @@ type PostClient interface {
 	DeletePost(ctx context.Context, in *postsv1.DeletePostRequest) (*postsv1.DeletePostResponse, error)
 	RatePost(ctx context.Context, in *postsv1.RatePostRequest) (*postsv1.RatePostResponse, error)
 	GetPostRatings(ctx context.Context, in *postsv1.GetPostRatingsRequest) (*postsv1.GetPostRatingsResponse, error)
+	AddInterestingPost(ctx context.Context, in *postsv1.AddInterestingPostRequest) (*postsv1.AddInterestingPostResponse, error)
+	RemoveInterestingPost(ctx context.Context, req *postsv1.RemoveInterestingPostRequest) (*postsv1.RemoveInterestingPostResponse, error)
+	GetUserInterestingPosts(ctx context.Context, req *postsv1.GetUserInterestingPostsRequest) (*postsv1.GetUserInterestingPostsResponse, error)
+	GetInterestingUsersCount(ctx context.Context, req *postsv1.GetInterestingUsersCountRequest) (*postsv1.GetInterestingUsersCountResponse, error)
+	GetUsersFavoritedMentorPosts(ctx context.Context, req *postsv1.GetUsersFavoritedMentorPostsRequest) (*postsv1.GetUsersFavoritedMentorPostsResponse, error)
 }
 
 type PostService struct {
@@ -31,7 +38,7 @@ func NewPostService(postClient PostClient) *PostService {
 }
 
 func (s *PostService) CreatePost(ctx context.Context, authorID string, req domain.CreatePostRequest) (*domain.Post, error) {
-	status, ok := postsv1.PostStatus_value[req.Status]
+	status, ok := postsv1.PostStatus_value[strings.ToUpper(req.Status)]
 	if !ok {
 		status = int32(postsv1.PostStatus_DRAFT)
 	}
@@ -298,6 +305,25 @@ func (s *PostService) GetPostRatings(ctx context.Context, postID string, req dom
 	return convertRatingsResponseFromProto(grpcResp), nil
 }
 
+func (s *PostService) AddInterestingPost(ctx context.Context, postID, userID string) error {
+	if postID == "" {
+		return errors.New("post ID is required")
+	}
+	if userID == "" {
+		return errors.New("user ID is required")
+	}
+
+	grpcReq := &postsv1.AddInterestingPostRequest{
+		PostId: postID,
+		UserId: userID,
+	}
+
+	_, err := s.postClient.AddInterestingPost(ctx, grpcReq)
+	
+	return err
+}
+
+
 func convertRatingsResponseFromProto(protoResp *postsv1.GetPostRatingsResponse) *domain.GetPostRatingsResponse {
 	if protoResp == nil {
 		return &domain.GetPostRatingsResponse{
@@ -332,4 +358,112 @@ func convertRatingFromProto(protoRating *postsv1.Rating) domain.Rating {
 		Comment:   protoRating.Comment,
 		CreatedAt: protoRating.CreatedAt.AsTime(),
 	}
+}
+
+func (s *PostService) RemoveFromFavorites(ctx context.Context, postID, userID string) error {
+	if postID == "" {
+		return errors.New("post ID is required")
+	}
+	if userID == "" {
+		return errors.New("user ID is required")
+	}
+
+	grpcReq := &postsv1.RemoveInterestingPostRequest{
+		PostId: postID,
+		UserId: userID,
+	}
+
+	_, err := s.postClient.RemoveInterestingPost(ctx, grpcReq)
+	if err != nil {
+		if st, ok := status.FromError(err); ok {
+			if st.Code() == codes.NotFound {
+				return errors.New("post not found in favorites")
+			}
+		}
+		return fmt.Errorf("failed to remove from favorites: %w", err)
+	}
+
+	return nil
+}
+
+func (s *PostService) GetFavoritePosts(ctx context.Context, userID string, req domain.GetFavoritePostsRequest) (*domain.GetFavoritePostsResponse, error) {
+	if userID == "" {
+		return nil, errors.New("user ID is required")
+	}
+
+	grpcReq := &postsv1.GetUserInterestingPostsRequest{
+		UserId:    userID,
+		PageToken: req.PageToken,
+		PageSize:  int32(req.PageSize),
+	}
+
+	grpcResp, err := s.postClient.GetUserInterestingPosts(ctx, grpcReq)
+	if err != nil {
+		slog.Error("Failed to get favorite posts via gRPC", "error", err, "user_id", userID)
+		return nil, fmt.Errorf("failed to get favorite posts: %w", err)
+	}
+
+	posts := make([]domain.Post, 0, len(grpcResp.Posts))
+	for _, protoPost := range grpcResp.Posts {
+		if post := convertPostFromProto(protoPost); post != nil {
+			posts = append(posts, *post)
+		}
+	}
+
+	return &domain.GetFavoritePostsResponse{
+		Posts:         posts,
+		NextPageToken: grpcResp.NextPageToken,
+		TotalCount:    grpcResp.TotalCount,
+	}, nil
+}
+
+func (s *PostService) GetInterestingUsersCount(ctx context.Context, postID string) (*domain.GetInterestingUsersCountResponse, error) {
+	if postID == "" {
+		return nil, errors.New("post ID is required")
+	}
+
+	// Проверяем существование поста через gRPC
+	grpcReq := &postsv1.GetPostRequest{Id: postID}
+	_, err := s.postClient.GetPost(ctx, grpcReq)
+	if err != nil {
+		if st, ok := status.FromError(err); ok && st.Code() == codes.NotFound {
+			return nil, fmt.Errorf("post not found: %w", err)
+		}
+		return nil, fmt.Errorf("failed to get post: %w", err)
+	}
+
+	// Получаем количество через gRPC
+	countReq := &postsv1.GetInterestingUsersCountRequest{PostId: postID}
+	countResp, err := s.postClient.GetInterestingUsersCount(ctx, countReq)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get interesting users count: %w", err)
+	}
+
+	return &domain.GetInterestingUsersCountResponse{
+		PostID:     countResp.PostId,
+		UsersCount: int64(countResp.UsersCount),
+	}, nil
+}
+
+func (s *PostService) GetUsersFavoritedMentorPosts(ctx context.Context, mentorID string) (*domain.GetUsersFavoritedMentorPostsResponse, error) {
+	if mentorID == "" {
+		return nil, errors.New("mentor ID is required")
+	}
+
+	grpcReq := &postsv1.GetUsersFavoritedMentorPostsRequest{
+		MentorId: mentorID,
+	}
+
+	grpcResp, err := s.postClient.GetUsersFavoritedMentorPosts(ctx, grpcReq)
+	if err != nil {
+		slog.Error("Failed to get users who favorited mentor's posts via gRPC",
+			"error", err,
+			"mentor_id", mentorID)
+		return nil, fmt.Errorf("failed to get statistics: %w", err)
+	}
+
+	return &domain.GetUsersFavoritedMentorPostsResponse{
+		MentorID:       grpcResp.MentorId,
+		UsersCount:     grpcResp.UsersCount,
+	}, nil
 }

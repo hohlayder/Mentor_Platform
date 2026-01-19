@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"strconv"
 
 	postsv1 "github.com/Sergey-1214/contracts_mentors/post/v1"
@@ -17,15 +18,17 @@ import (
 type PostService struct {
 	postsv1.UnimplementedPostServiceServer
 
-	postRepository   repository.PostRepository
-	ratingRepository repository.RatingRepository
+	postRepository     repository.PostRepository
+	ratingRepository   repository.RatingRepository
+	favoriteRepository repository.FavoriteRepository
 }
 
 // NewPostService - конструктор для PostService.
-func NewPostService(postRepo repository.PostRepository, ratingRepo repository.RatingRepository) *PostService {
+func NewPostService(postRepo repository.PostRepository, ratingRepo repository.RatingRepository, favoriteRepo repository.FavoriteRepository) *PostService {
 	return &PostService{
-		postRepository:   postRepo,
-		ratingRepository: ratingRepo,
+		postRepository:     postRepo,
+		ratingRepository:   ratingRepo,
+		favoriteRepository: favoriteRepo,
 	}
 }
 
@@ -42,6 +45,7 @@ func (s *PostService) CreatePost(ctx context.Context, req *postsv1.CreatePostReq
 		Status:   req.GetStatus().String(),
 	}
 
+	slog.Info("info status", "status", post.Status)
 	if err := s.postRepository.Save(ctx, post); err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to create post: %v", err)
 	}
@@ -217,13 +221,13 @@ func (s *PostService) UpdatePost(ctx context.Context, req *postsv1.UpdatePostReq
 	reqPost := req.GetPost()
 	for _, f := range fieldsToUpdate {
 		switch f {
-		case "avatar_url": 
-            if reqPost.GetAvatarUrl() == "" {
-                current.AvatarURL = nil
-            } else {
-                avatarURL := reqPost.GetAvatarUrl()
-                current.AvatarURL = &avatarURL
-            }
+		case "avatar_url":
+			if reqPost.GetAvatarUrl() == "" {
+				current.AvatarURL = nil
+			} else {
+				avatarURL := reqPost.GetAvatarUrl()
+				current.AvatarURL = &avatarURL
+			}
 		case "title":
 			current.Title = reqPost.GetTitle()
 		case "content":
@@ -325,84 +329,84 @@ func (s *PostService) RatePost(ctx context.Context, req *postsv1.RatePostRequest
 }
 
 func (s *PostService) UploadPostImage(ctx context.Context, req *postsv1.UploadPostImageRequest) (*postsv1.UploadPostImageResponse, error) {
-    postID := req.GetPostId()
-    if postID == "" {
-        return nil, status.Error(codes.InvalidArgument, "post_id is required")
-    }
+	postID := req.GetPostId()
+	if postID == "" {
+		return nil, status.Error(codes.InvalidArgument, "post_id is required")
+	}
 
-    imageURL := req.GetImageUrl()
-    if imageURL == "" {
-        return nil, status.Error(codes.InvalidArgument, "image_url is required")
-    }
+	imageURL := req.GetImageUrl()
+	if imageURL == "" {
+		return nil, status.Error(codes.InvalidArgument, "image_url is required")
+	}
 
-    // Проверяем существование поста
-    post, err := s.postRepository.GetByID(ctx, postID)
-    if err != nil {
-        if errors.Is(err, repository.ErrNotFound) {
-            return nil, status.Error(codes.NotFound, "post not found")
-        }
-        return nil, status.Errorf(codes.Internal, "failed to get post: %v", err)
-    }
+	// Проверяем существование поста
+	post, err := s.postRepository.GetByID(ctx, postID)
+	if err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return nil, status.Error(codes.NotFound, "post not found")
+		}
+		return nil, status.Errorf(codes.Internal, "failed to get post: %v", err)
+	}
 
-    // Обновляем изображение
-    avatarURL := imageURL
-    post.AvatarURL = &avatarURL
-    
-    updated, err := s.postRepository.Update(ctx, post, []string{"avatar_url"})
-    if err != nil {
-        return nil, status.Errorf(codes.Internal, "failed to update post image: %v", err)
-    }
+	// Обновляем изображение
+	avatarURL := imageURL
+	post.AvatarURL = &avatarURL
 
-    avg, count, err := s.ratingRepository.GetAggregatedRating(ctx, postID)
-    if err != nil {
-        return nil, status.Errorf(codes.Internal, "failed to get rating: %v", err)
-    }
+	updated, err := s.postRepository.Update(ctx, post, []string{"avatar_url"})
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to update post image: %v", err)
+	}
 
-    respPost := postToProto(updated)
-    respPost.AverageRating = avg
-    respPost.RatingsCount = count
+	avg, count, err := s.ratingRepository.GetAggregatedRating(ctx, postID)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to get rating: %v", err)
+	}
 
-    return &postsv1.UploadPostImageResponse{
-        Post: respPost,
-    }, nil
+	respPost := postToProto(updated)
+	respPost.AverageRating = avg
+	respPost.RatingsCount = count
+
+	return &postsv1.UploadPostImageResponse{
+		Post: respPost,
+	}, nil
 }
 
 // DeletePostImage - удаление изображения поста
 func (s *PostService) DeletePostImage(ctx context.Context, req *postsv1.DeletePostImageRequest) (*postsv1.DeletePostImageResponse, error) {
-    postID := req.GetPostId()
-    if postID == "" {
-        return nil, status.Error(codes.InvalidArgument, "post_id is required")
-    }
+	postID := req.GetPostId()
+	if postID == "" {
+		return nil, status.Error(codes.InvalidArgument, "post_id is required")
+	}
 
-    // Проверяем существование поста
-    post, err := s.postRepository.GetByID(ctx, postID)
-    if err != nil {
-        if errors.Is(err, repository.ErrNotFound) {
-            return nil, status.Error(codes.NotFound, "post not found")
-        }
-        return nil, status.Errorf(codes.Internal, "failed to get post: %v", err)
-    }
+	// Проверяем существование поста
+	post, err := s.postRepository.GetByID(ctx, postID)
+	if err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return nil, status.Error(codes.NotFound, "post not found")
+		}
+		return nil, status.Errorf(codes.Internal, "failed to get post: %v", err)
+	}
 
-    // Очищаем изображение
-    post.AvatarURL = nil
-    
-    updated, err := s.postRepository.Update(ctx, post, []string{"avatar_url"})
-    if err != nil {
-        return nil, status.Errorf(codes.Internal, "failed to delete post image: %v", err)
-    }
+	// Очищаем изображение
+	post.AvatarURL = nil
 
-    avg, count, err := s.ratingRepository.GetAggregatedRating(ctx, postID)
-    if err != nil {
-        return nil, status.Errorf(codes.Internal, "failed to get rating: %v", err)
-    }
+	updated, err := s.postRepository.Update(ctx, post, []string{"avatar_url"})
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to delete post image: %v", err)
+	}
 
-    respPost := postToProto(updated)
-    respPost.AverageRating = avg
-    respPost.RatingsCount = count
+	avg, count, err := s.ratingRepository.GetAggregatedRating(ctx, postID)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to get rating: %v", err)
+	}
 
-    return &postsv1.DeletePostImageResponse{
-        Post: respPost,
-    }, nil
+	respPost := postToProto(updated)
+	respPost.AverageRating = avg
+	respPost.RatingsCount = count
+
+	return &postsv1.DeletePostImageResponse{
+		Post: respPost,
+	}, nil
 }
 
 // -----------------------------------------------------------------------------
@@ -424,7 +428,7 @@ func postToProto(post *repository.Post) *postsv1.Post {
 		AuthorId:  post.AuthorId,
 		Title:     post.Title,
 		Content:   post.Content,
-		Tags:      []string(post.Tags), // pq.StringArray -> []string
+		Tags:      []string(post.Tags),
 		Status:    statusEnum,
 		CreatedAt: timestamppb.New(post.CreatedAt),
 		UpdatedAt: timestamppb.New(post.UpdatedAt),
@@ -436,15 +440,12 @@ func postToProto(post *repository.Post) *postsv1.Post {
 	return postResp
 }
 
-
-
 func (s *PostService) GetPostRatings(ctx context.Context, req *postsv1.GetPostRatingsRequest) (*postsv1.GetPostRatingsResponse, error) {
 	postID := req.GetPostId()
 	if postID == "" {
 		return nil, status.Error(codes.InvalidArgument, "post_id is required")
 	}
 
-	// Проверяем, существует ли пост
 	_, err := s.postRepository.GetByID(ctx, postID)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
@@ -453,7 +454,6 @@ func (s *PostService) GetPostRatings(ctx context.Context, req *postsv1.GetPostRa
 		return nil, status.Errorf(codes.Internal, "failed to get post: %v", err)
 	}
 
-	// Настраиваем пагинацию
 	pageSize := req.GetPageSize()
 	if pageSize <= 0 {
 		pageSize = 20
@@ -471,19 +471,16 @@ func (s *PostService) GetPostRatings(ctx context.Context, req *postsv1.GetPostRa
 		offset = val
 	}
 
-	// Получаем отзывы
 	ratings, total, err := s.ratingRepository.GetRatingsByPostID(ctx, postID, int(pageSize), offset)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get ratings: %v", err)
 	}
 
-	// Получаем агрегированные данные (средний рейтинг и количество)
 	avgRating, ratingsCount, err := s.ratingRepository.GetAggregatedRating(ctx, postID)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get aggregated rating: %v", err)
 	}
 
-	// Конвертируем в protobuf
 	protoRatings := make([]*postsv1.Rating, 0, len(ratings))
 	for _, r := range ratings {
 		protoRatings = append(protoRatings, &postsv1.Rating{
@@ -503,7 +500,6 @@ func (s *PostService) GetPostRatings(ctx context.Context, req *postsv1.GetPostRa
 		RatingsCount:  ratingsCount,
 	}
 
-	// Устанавливаем next_page_token если есть еще данные
 	if len(ratings) == int(pageSize) {
 		resp.NextPageToken = strconv.Itoa(offset + int(pageSize))
 	}
@@ -511,9 +507,171 @@ func (s *PostService) GetPostRatings(ctx context.Context, req *postsv1.GetPostRa
 	return resp, nil
 }
 
-func stringPtr(s string) *string {
-    if s == "" {
-        return nil
-    }
-    return &s
+func (s *PostService) AddInterestingPost(ctx context.Context, req *postsv1.AddInterestingPostRequest) (*postsv1.AddInterestingPostResponse, error) {
+	userID := req.GetUserId()
+	if userID == "" {
+		return nil, status.Error(codes.InvalidArgument, "user_id is required")
+	}
+
+	postID := req.GetPostId()
+	if postID == "" {
+		return nil, status.Error(codes.InvalidArgument, "post_id is required")
+	}
+
+	slog.Info("", "post_id", postID)
+	_, err := s.postRepository.GetByID(ctx, postID)
+	if err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return nil, status.Error(codes.NotFound, "post not found")
+		}
+		return nil, status.Errorf(codes.Internal, "failed to get post: %v", err)
+	}
+
+	post, err := s.postRepository.GetByID(ctx, postID)
+	if err == nil && post.Status != "PUBLISHED" {
+		return nil, status.Error(codes.FailedPrecondition, "can only add published posts to favorites")
+	}
+
+	err = s.favoriteRepository.AddFavorite(ctx, userID, postID)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to add to favorites: %v", err)
+	}
+
+	return &postsv1.AddInterestingPostResponse{
+		Success: true,
+	}, nil
+}
+
+func (s *PostService) RemoveInterestingPost(ctx context.Context, req *postsv1.RemoveInterestingPostRequest) (*postsv1.RemoveInterestingPostResponse, error) {
+	userID := req.GetUserId()
+	if userID == "" {
+		return nil, status.Error(codes.InvalidArgument, "user_id is required")
+	}
+
+	postID := req.GetPostId()
+	if postID == "" {
+		return nil, status.Error(codes.InvalidArgument, "post_id is required")
+	}
+
+	err := s.favoriteRepository.RemoveFavorite(ctx, userID, postID)
+	if err != nil {
+		if err.Error() == "favorite not found" {
+			return &postsv1.RemoveInterestingPostResponse{
+				Success: true,
+			}, nil
+		}
+		return nil, status.Errorf(codes.Internal, "failed to remove from favorites: %v", err)
+	}
+
+	return &postsv1.RemoveInterestingPostResponse{
+		Success: true,
+	}, nil
+}
+
+func (s *PostService) GetInterestingUsersCount(ctx context.Context, req *postsv1.GetInterestingUsersCountRequest) (*postsv1.GetInterestingUsersCountResponse, error) {
+	postID := req.GetPostId()
+	if postID == "" {
+		return nil, status.Error(codes.InvalidArgument, "post_id is required")
+	}
+
+	_, err := s.postRepository.GetByID(ctx, postID)
+	if err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return nil, status.Error(codes.NotFound, "post not found")
+		}
+		return nil, status.Errorf(codes.Internal, "failed to get post: %v", err)
+	}
+
+	count, err := s.favoriteRepository.CountFavoritesByPostID(ctx, postID)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to get favorites count: %v", err)
+	}
+
+	return &postsv1.GetInterestingUsersCountResponse{
+		PostId:     postID,
+		UsersCount: count,
+	}, nil
+}
+
+func (s *PostService) GetUserInterestingPosts(ctx context.Context, req *postsv1.GetUserInterestingPostsRequest) (*postsv1.GetUserInterestingPostsResponse, error) {
+	userID := req.GetUserId()
+	if userID == "" {
+		return nil, status.Error(codes.InvalidArgument, "user_id is required")
+	}
+
+	pageSize := req.GetPageSize()
+	if pageSize <= 0 {
+		pageSize = 20
+	}
+	if pageSize > 100 {
+		pageSize = 100
+	}
+
+	var offset int
+	if token := req.GetPageToken(); token != "" {
+		val, err := strconv.Atoi(token)
+		if err != nil || val < 0 {
+			return nil, status.Error(codes.InvalidArgument, "invalid page_token")
+		}
+		offset = val
+	}
+
+	posts, total, err := s.favoriteRepository.GetFavoritePosts(ctx, userID, int(pageSize), offset)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to get favorite posts: %v", err)
+	}
+
+	postIDs := make([]string, 0, len(posts))
+	for i := range posts {
+		postIDs = append(postIDs, posts[i].ID)
+	}
+
+	ratingMap, err := s.ratingRepository.GetAggregatedRatingsForPosts(ctx, postIDs)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to get ratings: %v", err)
+	}
+
+	protoPosts := make([]*postsv1.Post, 0, len(posts))
+	for i := range posts {
+		p := postToProto(&posts[i])
+
+		if agg, ok := ratingMap[posts[i].ID]; ok {
+			p.AverageRating = agg.AverageRating
+			p.RatingsCount = agg.RatingsCount
+		}
+
+		protoPosts = append(protoPosts, p)
+	}
+
+	response := &postsv1.GetUserInterestingPostsResponse{
+		Posts:         protoPosts,
+		TotalCount:    total,
+		NextPageToken: "",
+	}
+
+	if len(posts) == int(pageSize) {
+		response.NextPageToken = strconv.Itoa(offset + int(pageSize))
+	}
+
+	return response, nil
+}
+
+func (s *PostService) GetUsersFavoritedMentorPosts(ctx context.Context, req *postsv1.GetUsersFavoritedMentorPostsRequest) (*postsv1.GetUsersFavoritedMentorPostsResponse, error) {
+	mentorID := req.GetMentorId()
+	if mentorID == "" {
+		return nil, status.Error(codes.InvalidArgument, "mentor_id is required")
+	}
+
+	usersCount, err := s.favoriteRepository.GetCountFavouriteByMentor(ctx, mentorID)
+	if err != nil {
+		slog.Error("failed to get count of users who favorited mentor's posts",
+			"mentor_id", mentorID,
+			"error", err)
+		return nil, status.Errorf(codes.Internal, "failed to get users count: %v", err)
+	}
+
+	return &postsv1.GetUsersFavoritedMentorPostsResponse{
+		MentorId:       mentorID,
+		UsersCount:     usersCount,
+	}, nil
 }

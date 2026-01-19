@@ -53,7 +53,8 @@ func main() {
 
 	postRepo := repository.NewPostRepository(db)
 	ratingRepo := repository.NewRatingRepository(db)
-	postService := service.NewPostService(postRepo, ratingRepo)
+	favouriteRepo := repository.NewFavoriteRepository(db)
+	postService := service.NewPostService(postRepo, ratingRepo, favouriteRepo)
 
 	addr := ":" + grpcPort
 

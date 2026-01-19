@@ -22,6 +22,10 @@ type MockUserService struct {
 	mock.Mock
 }
 
+type MockPostService struct {
+	mock.Mock
+}
+
 func (m *MockUserService) CreateUser(ctx context.Context, req *domain.CreateUserRequest) (*domain.CreateUserResponse, error) {
 	args := m.Called(ctx, req)
 	if args.Get(0) == nil {
@@ -72,6 +76,14 @@ func (m *MockUserService) UpdateProfile(ctx context.Context, userID string, req 
 	return args.Bool(0), args.Error(1)
 }
 
+func (m *MockPostService) GetFavoritePosts(ctx context.Context, userID string, req domain.GetFavoritePostsRequest) (*domain.GetFavoritePostsResponse, error) {
+	args := m.Called(ctx, userID, req)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*domain.GetFavoritePostsResponse), args.Error(1)
+}
+
 func TestUserHandler_GetUserByID(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
@@ -110,7 +122,8 @@ func TestUserHandler_GetUserByID(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mockService := new(MockUserService)
-			handler := NewUserHandler(mockService)
+			mockPostService := new(MockPostService)
+			handler := NewUserHandler(mockService, mockPostService)
 
 			mockService.On("GetUserByID", mock.Anything, tt.userID).Return(tt.mockUser, tt.mockError)
 
@@ -179,7 +192,8 @@ func TestUserHandler_GetUserByEmail(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mockService := new(MockUserService)
-			handler := NewUserHandler(mockService)
+			mockPostService := new(MockPostService)
+			handler := NewUserHandler(mockService, mockPostService)
 
 			mockService.On("GetUserByEmail", mock.Anything, tt.email).Return(tt.mockUser, tt.mockError)
 
@@ -258,7 +272,8 @@ func TestUserHandler_DeleteUser(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mockService := new(MockUserService)
-			handler := NewUserHandler(mockService)
+			mockPostService := new(MockPostService)
+			handler := NewUserHandler(mockService, mockPostService)
 
 			if tt.contextUserID == tt.userID && tt.expectedStatus != http.StatusForbidden && tt.contextUserID != "" {
 				mockService.On("DeleteUser", mock.Anything, tt.userID).Return(tt.mockSuccess, tt.mockError)
@@ -356,10 +371,11 @@ func TestUserHandler_GetProfile(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockService := new(MockUserService)
-			handler := NewUserHandler(mockService)
+			mockUserService := new(MockUserService)
+			mockPostService := new(MockPostService)
+			handler := NewUserHandler(mockUserService, mockPostService)
 
-			mockService.On("GetProfileById", mock.Anything, tt.userID).Return(tt.mockProfile, tt.mockError)
+			mockUserService.On("GetProfileById", mock.Anything, tt.userID).Return(tt.mockProfile, tt.mockError)
 
 			w := httptest.NewRecorder()
 			c, _ := gin.CreateTestContext(w)
@@ -383,7 +399,7 @@ func TestUserHandler_GetProfile(t *testing.T) {
 				assert.Equal(t, "INTERNAL_ERROR", response.Error)
 			}
 
-			mockService.AssertExpectations(t)
+			mockUserService.AssertExpectations(t)
 		})
 	}
 }
@@ -472,7 +488,8 @@ func TestUserHandler_UpdateProfile(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mockService := new(MockUserService)
-			handler := NewUserHandler(mockService)
+			mockPostService := new(MockPostService)
+			handler := NewUserHandler(mockService, mockPostService)
 
 			// Настраиваем мок только если нужно
 			tt.setupMock(mockService, tt.userID, tt.requestBody)
@@ -533,3 +550,4 @@ func TestUserHandler_UpdateProfile(t *testing.T) {
 		})
 	}
 }
+	

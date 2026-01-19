@@ -21,13 +21,18 @@ type UserService interface {
     UpdateProfile(ctx context.Context, userID string, req domain.UpdateProfileRequest) (bool, error)
 }
 
+type PostService interface {
+    GetFavoritePosts(ctx context.Context, userID string, req domain.GetFavoritePostsRequest) (*domain.GetFavoritePostsResponse, error)
+}
 type UserHandler struct {
     userService UserService
+    postService PostService
 }
 
-func NewUserHandler(userService UserService) *UserHandler {
+func NewUserHandler(userService UserService, postService PostService) *UserHandler {
     return &UserHandler{
         userService: userService,
+        postService: postService,
     }
 }
 
@@ -142,7 +147,7 @@ func (h *UserHandler) DeleteUser(c *gin.Context) {
 // @Tags profiles
 // @Produce json
 // @Param id path string true "User ID"
-// @Success 200 {object} domain.ProfileResponse
+// @Success 200 {object} domain.ProfileWithPostsResponse
 // @Failure 404 {object} utils.ErrorResponse
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /profiles/{id} [get]
@@ -154,8 +159,21 @@ func (h *UserHandler) GetProfile(c *gin.Context) {
         handleGRPCError(c, err)
         return
     }
+
+    posts, err := h.postService.GetFavoritePosts(c.Request.Context(), userID, domain.GetFavoritePostsRequest{
+        PageSize: 10,
+    })
+    if err != nil {
+        handleGRPCError(c, err)
+        return 
+    }
+
+    profileWithPostsInterest := domain.ProfileWithPostsResponse{
+        Profile: profile,
+        Posts: posts,
+    }
     
-    c.JSON(http.StatusOK, profile)
+    c.JSON(http.StatusOK, profileWithPostsInterest)
 }
 
 // UpdateProfile обновляет профиль пользователя

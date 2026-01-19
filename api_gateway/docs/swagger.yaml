@@ -1,6 +1,11 @@
 basePath: /api/v1
 definitions:
-  domain.Attachment:
+  github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.AddToFavoritesResponse:
+    properties:
+      success:
+        type: boolean
+    type: object
+  github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.Attachment:
     properties:
       created_at:
         type: string
@@ -21,7 +26,7 @@ definitions:
       width:
         type: integer
     type: object
-  domain.ChatResponse:
+  github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.ChatResponse:
     properties:
       created_at:
         type: string
@@ -29,7 +34,7 @@ definitions:
         example: 123e4567-e89b-12d3-a456-426614174002
         type: string
       last_message:
-        $ref: '#/definitions/domain.Message'
+        $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.Message'
       unread_count:
         example: 5
         type: integer
@@ -42,7 +47,7 @@ definitions:
         example: 123e4567-e89b-12d3-a456-426614174001
         type: string
     type: object
-  domain.CreateChatRequest:
+  github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.CreateChatRequest:
     properties:
       other_user_id:
         example: 123e4567-e89b-12d3-a456-426614174001
@@ -50,16 +55,43 @@ definitions:
     required:
     - other_user_id
     type: object
-  domain.CreateChatResponse:
+  github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.CreateChatResponse:
     properties:
       chat_id:
         example: 123e4567-e89b-12d3-a456-426614174002
         type: string
     type: object
-  domain.CreateSessionRequest:
+  github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.CreatePostRequest:
+    properties:
+      content:
+        minLength: 1
+        type: string
+      status:
+        enum:
+        - draft
+        - published
+        - archived
+        type: string
+      tags:
+        items:
+          type: string
+        type: array
+      title:
+        maxLength: 255
+        minLength: 1
+        type: string
+    required:
+    - content
+    - title
+    type: object
+  github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.CreatePostResponse:
+    properties:
+      post:
+        $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.Post'
+    type: object
+  github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.CreateSessionRequest:
     properties:
       payment_status:
-        description: '"pending", "paid", "failed"'
         type: string
       slot_id:
         type: string
@@ -69,26 +101,30 @@ definitions:
     - slot_id
     - student_id
     type: object
-  domain.CreateSlotRequest:
+  github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.CreateSlotRequest:
     properties:
       currency:
         type: string
       description:
+        maxLength: 1000
         type: string
       duration_minutes:
-        minimum: 1
+        maximum: 240
+        minimum: 15
         type: integer
       mentor_id:
         type: string
       price:
+        maximum: 1000000
         minimum: 0
         type: integer
       start_time:
         type: string
       status:
-        description: '"available", "booked", "closed"'
         type: string
       title:
+        maxLength: 255
+        minLength: 3
         type: string
     required:
     - duration_minutes
@@ -96,7 +132,7 @@ definitions:
     - start_time
     - title
     type: object
-  domain.Cursor:
+  github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.Cursor:
     properties:
       created_at:
         type: string
@@ -104,31 +140,75 @@ definitions:
         example: 123e4567-e89b-12d3-a456-426614174004
         type: string
     type: object
-  domain.GetChatByIdResponse:
+  github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.DeleteAvatarResponse:
+    properties:
+      message:
+        type: string
+    type: object
+  github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.DeletePostResponse:
+    properties:
+      success:
+        type: boolean
+    type: object
+  github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.ErrorResponse:
+    properties:
+      details:
+        type: string
+      error:
+        type: string
+      message:
+        type: string
+    type: object
+  github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.GetChatByIdResponse:
     properties:
       chat:
-        $ref: '#/definitions/domain.ChatResponse'
+        $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.ChatResponse'
     type: object
-  domain.GetChatMessagesResponse:
+  github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.GetChatMessagesResponse:
     properties:
       has_more:
         example: true
         type: boolean
       messages:
         items:
-          $ref: '#/definitions/domain.Message'
+          $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.Message'
         type: array
       next_cursor:
-        $ref: '#/definitions/domain.Cursor'
+        $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.Cursor'
     type: object
-  domain.GetUserChatsResponse:
+  github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.GetPostRatingsResponse:
+    properties:
+      average_rating:
+        description: Средний рейтинг
+        type: number
+      next_page_token:
+        description: Токен следующей страницы
+        type: string
+      ratings:
+        description: Список оценок
+        items:
+          $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.Rating'
+        type: array
+      ratings_count:
+        description: Количество оценок
+        type: integer
+      total_count:
+        description: Общее количество отзывов
+        type: integer
+    type: object
+  github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.GetPostResponse:
+    properties:
+      post:
+        $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.Post'
+    type: object
+  github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.GetUserChatsResponse:
     properties:
       chats:
         items:
-          $ref: '#/definitions/domain.ChatResponse'
+          $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.ChatResponse'
         type: array
     type: object
-  domain.LearningSkill:
+  github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.LearningSkill:
     properties:
       created_at:
         type: string
@@ -141,7 +221,7 @@ definitions:
       user_id:
         type: string
     type: object
-  domain.LearningSkillUpdate:
+  github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.LearningSkillUpdate:
     properties:
       proficiency_level:
         type: string
@@ -151,23 +231,43 @@ definitions:
     - proficiency_level
     - skill_name
     type: object
-  domain.LearningSkillsUpdate:
+  github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.LearningSkillsUpdate:
     properties:
       learning_skills:
         items:
-          $ref: '#/definitions/domain.LearningSkillUpdate'
+          $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.LearningSkillUpdate'
         type: array
     type: object
-  domain.ListSessionsResponse:
+  github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.ListPostsResponse:
+    properties:
+      next_page_token:
+        type: string
+      posts:
+        items:
+          $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.Post'
+        type: array
+      total_count:
+        type: integer
+    type: object
+  github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.ListSessionsResponse:
     properties:
       sessions:
         items:
-          $ref: '#/definitions/domain.SessionResponse'
+          $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.SessionResponse'
         type: array
       total:
         type: integer
     type: object
-  domain.LoginRequest:
+  github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.ListSlotsResponse:
+    properties:
+      slots:
+        items:
+          $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.SlotResponse'
+        type: array
+      total:
+        type: integer
+    type: object
+  github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.LoginRequest:
     properties:
       email:
         example: john.doe@example.com
@@ -179,7 +279,7 @@ definitions:
     - email
     - password
     type: object
-  domain.LoginResponse:
+  github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.LoginResponse:
     properties:
       access_token:
         example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
@@ -190,7 +290,7 @@ definitions:
         example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
         type: string
     type: object
-  domain.LogoutRequest:
+  github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.LogoutRequest:
     properties:
       refresh_token:
         example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
@@ -198,13 +298,13 @@ definitions:
     required:
     - refresh_token
     type: object
-  domain.LogoutResponse:
+  github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.LogoutResponse:
     properties:
       success:
         example: true
         type: boolean
     type: object
-  domain.MarkMessagesReadRequest:
+  github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.MarkMessagesReadRequest:
     properties:
       chat_id:
         type: string
@@ -218,13 +318,13 @@ definitions:
     required:
     - message_ids
     type: object
-  domain.MarkMessagesReadResponse:
+  github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.MarkMessagesReadResponse:
     properties:
       success:
         example: true
         type: boolean
     type: object
-  domain.MentorProfile:
+  github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.MentorProfile:
     properties:
       created_at:
         type: string
@@ -237,18 +337,18 @@ definitions:
       withdrawal_address:
         type: string
     type: object
-  domain.MentorUpdate:
+  github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.MentorUpdate:
     properties:
       description:
         type: string
       withdrawal_address:
         type: string
     type: object
-  domain.Message:
+  github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.Message:
     properties:
       attachments:
         items:
-          $ref: '#/definitions/domain.Attachment'
+          $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.Attachment'
         type: array
       chat_id:
         type: string
@@ -265,7 +365,7 @@ definitions:
       is_read:
         type: boolean
       message_type:
-        $ref: '#/definitions/domain.MessageType'
+        $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.MessageType'
       read_at:
         type: string
       reply_to:
@@ -275,7 +375,7 @@ definitions:
       updated_at:
         type: string
     type: object
-  domain.MessageType:
+  github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.MessageType:
     enum:
     - text
     - image
@@ -287,35 +387,118 @@ definitions:
     - MessageTypeImage
     - MessageTypeFile
     - MessageTypeVoice
-  domain.ProfileResponse:
+  github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.Post:
+    properties:
+      author_id:
+        type: string
+      avatar_url:
+        type: string
+      average_rating:
+        type: number
+      content:
+        type: string
+      created_at:
+        type: string
+      id:
+        type: string
+      ratings_count:
+        type: integer
+      status:
+        type: string
+      tags:
+        items:
+          type: string
+        type: array
+      title:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.PostUpdate:
+    properties:
+      content:
+        type: string
+      id:
+        type: string
+      status:
+        enum:
+        - draft
+        - published
+        - archived
+        type: string
+      tags:
+        items:
+          type: string
+        type: array
+      title:
+        type: string
+    required:
+    - id
+    type: object
+  github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.ProfileResponse:
     properties:
       learning_skills:
         items:
-          $ref: '#/definitions/domain.LearningSkill'
+          $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.LearningSkill'
         type: array
       mentor:
-        $ref: '#/definitions/domain.MentorProfile'
+        $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.MentorProfile'
       student:
-        $ref: '#/definitions/domain.StudentProfile'
+        $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.StudentProfile'
       teaching_skills:
         items:
-          $ref: '#/definitions/domain.TeachingSkill'
+          $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.TeachingSkill'
         type: array
       user:
-        $ref: '#/definitions/domain.User'
+        $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.User'
     type: object
-  domain.RateSessionRequest:
+  github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.RatePostRequest:
+    properties:
+      comment:
+        type: string
+      rate:
+        maximum: 5
+        minimum: 1
+        type: integer
+      user_id:
+        type: string
+    required:
+    - rate
+    - user_id
+    type: object
+  github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.RatePostResponse:
+    properties:
+      post:
+        $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.Post'
+    type: object
+  github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.RateSessionRequest:
     properties:
       rating:
         maximum: 5
         minimum: 1
         type: integer
       review:
+        maxLength: 1000
         type: string
     required:
     - rating
     type: object
-  domain.RefreshRequest:
+  github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.Rating:
+    properties:
+      comment:
+        type: string
+      created_at:
+        type: string
+      id:
+        type: string
+      post_id:
+        type: string
+      rate:
+        type: integer
+      user_id:
+        type: string
+    type: object
+  github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.RefreshRequest:
     properties:
       refresh_token:
         example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
@@ -323,7 +506,7 @@ definitions:
     required:
     - refresh_token
     type: object
-  domain.RefreshResponse:
+  github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.RefreshResponse:
     properties:
       access_token:
         example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
@@ -334,7 +517,7 @@ definitions:
         example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
         type: string
     type: object
-  domain.RegisterRequest:
+  github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.RegisterRequest:
     properties:
       email:
         example: john.doe@example.com
@@ -355,13 +538,13 @@ definitions:
     - password
     - surname
     type: object
-  domain.RegisterResponse:
+  github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.RegisterResponse:
     properties:
       id:
         example: 123e4567-e89b-12d3-a456-426614174000
         type: string
     type: object
-  domain.SessionResponse:
+  github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.SessionResponse:
     properties:
       created_at:
         type: string
@@ -380,7 +563,7 @@ definitions:
       updated_at:
         type: string
     type: object
-  domain.SlotResponse:
+  github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.SlotResponse:
     properties:
       created_at:
         type: string
@@ -405,7 +588,7 @@ definitions:
       updated_at:
         type: string
     type: object
-  domain.StudentProfile:
+  github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.StudentProfile:
     properties:
       created_at:
         type: string
@@ -416,14 +599,14 @@ definitions:
       user_id:
         type: string
     type: object
-  domain.StudentUpdate:
+  github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.StudentUpdate:
     properties:
       learning_goals:
         type: string
       preferred_learning_style:
         type: string
     type: object
-  domain.TeachingSkill:
+  github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.TeachingSkill:
     properties:
       created_at:
         type: string
@@ -438,7 +621,7 @@ definitions:
       years_of_experience:
         type: integer
     type: object
-  domain.TeachingSkillUpdate:
+  github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.TeachingSkillUpdate:
     properties:
       proficiency_level:
         type: string
@@ -450,14 +633,26 @@ definitions:
     - proficiency_level
     - skill_name
     type: object
-  domain.TeachingSkillsUpdate:
+  github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.TeachingSkillsUpdate:
     properties:
       teaching_skills:
         items:
-          $ref: '#/definitions/domain.TeachingSkillUpdate'
+          $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.TeachingSkillUpdate'
         type: array
     type: object
-  domain.UpdateProfileRequest:
+  github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.UpdatePostRequest:
+    properties:
+      post:
+        $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.PostUpdate'
+    required:
+    - post
+    type: object
+  github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.UpdatePostResponse:
+    properties:
+      post:
+        $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.Post'
+    type: object
+  github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.UpdateProfileRequest:
     properties:
       avatar_url:
         type: string
@@ -468,15 +663,15 @@ definitions:
       last_name:
         type: string
       learning_skills:
-        $ref: '#/definitions/domain.LearningSkillsUpdate'
+        $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.LearningSkillsUpdate'
       mentor_data:
-        $ref: '#/definitions/domain.MentorUpdate'
+        $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.MentorUpdate'
       student_data:
-        $ref: '#/definitions/domain.StudentUpdate'
+        $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.StudentUpdate'
       teaching_skills:
-        $ref: '#/definitions/domain.TeachingSkillsUpdate'
+        $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.TeachingSkillsUpdate'
     type: object
-  domain.UpdateSessionRequest:
+  github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.UpdateSessionRequest:
     properties:
       payment_status:
         type: string
@@ -485,39 +680,50 @@ definitions:
         minimum: 1
         type: integer
       review:
+        maxLength: 1000
         type: string
       student_id:
         type: string
     type: object
-  domain.UpdateSlotRequest:
+  github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.UpdateSlotRequest:
     properties:
       currency:
         type: string
       description:
+        maxLength: 1000
         type: string
       duration_minutes:
+        maximum: 240
+        minimum: 15
         type: integer
       price:
+        maximum: 1000000
+        minimum: 0
         type: integer
       start_time:
         type: string
       status:
         type: string
       title:
+        maxLength: 255
+        minLength: 3
         type: string
     type: object
-  domain.UpdateSlotStatusRequest:
+  github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.UpdateSlotStatusRequest:
     properties:
       status:
-        enum:
-        - available
-        - booked
-        - closed
         type: string
     required:
     - status
     type: object
-  domain.User:
+  github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.UploadAvatarResponse:
+    properties:
+      filename:
+        type: string
+      url:
+        type: string
+    type: object
+  github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.User:
     properties:
       avatar_url:
         type: string
@@ -532,7 +738,12 @@ definitions:
       user_id:
         type: string
     type: object
-  utils.ErrorResponse:
+  github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.UserCountResponse:
+    properties:
+      user_count:
+        type: string
+    type: object
+  github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse:
     properties:
       details:
         type: string
@@ -541,7 +752,7 @@ definitions:
       message:
         type: string
     type: object
-  utils.SuccessResponse:
+  github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.SuccessResponse:
     properties:
       message:
         type: string
@@ -566,26 +777,26 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/domain.LoginRequest'
+          $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.LoginRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/domain.LoginResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.LoginResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
       summary: Вход в систему
       tags:
       - auth
@@ -600,26 +811,26 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/domain.LogoutRequest'
+          $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.LogoutRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/domain.LogoutResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.LogoutResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Выход из системы
@@ -636,26 +847,26 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/domain.RefreshRequest'
+          $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.RefreshRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/domain.RefreshResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.RefreshResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Обновление токена
@@ -672,22 +883,22 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/domain.RegisterRequest'
+          $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.RegisterRequest'
       produces:
       - application/json
       responses:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/domain.RegisterResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.RegisterResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
       summary: Регистрация пользователя
       tags:
       - auth
@@ -711,23 +922,23 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/domain.GetUserChatsResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.GetUserChatsResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
         "403":
           description: Forbidden
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Получить чаты пользователя
@@ -743,26 +954,26 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/domain.CreateChatRequest'
+          $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.CreateChatRequest'
       produces:
       - application/json
       responses:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/domain.CreateChatResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.CreateChatResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Создать чат
@@ -783,23 +994,23 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/domain.GetChatByIdResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.GetChatByIdResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
         "403":
           description: Forbidden
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Получить чат по ID
@@ -829,23 +1040,23 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/domain.GetChatMessagesResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.GetChatMessagesResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
         "403":
           description: Forbidden
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Получить сообщения чата
@@ -863,35 +1074,257 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/domain.MarkMessagesReadRequest'
+          $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.MarkMessagesReadRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/domain.MarkMessagesReadResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.MarkMessagesReadResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
         "403":
           description: Forbidden
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Пометить сообщения как прочитанные
       tags:
       - chats
+  /files/avatar:
+    delete:
+      description: Удаляет аватар пользователя и очищает ссылку в профиле
+      parameters:
+      - description: Имя файла аватара
+        in: query
+        name: filename
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.DeleteAvatarResponse'
+        "400":
+          description: Не указано имя файла
+          schema:
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
+        "401":
+          description: Не авторизован
+          schema:
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
+        "500":
+          description: Ошибка сервера
+          schema:
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Удалить аватар
+      tags:
+      - files
+    post:
+      consumes:
+      - multipart/form-data
+      description: 'Загружает аватар пользователя и обновляет ссылку в профиле. Максимальный
+        размер файла: 5MB. Разрешенные форматы: jpg, jpeg, png, gif, svg.'
+      parameters:
+      - description: Файл аватара
+        in: formData
+        name: avatar
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.UploadAvatarResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
+        "413":
+          description: Файл слишком большой
+          schema:
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
+        "415":
+          description: Неподдерживаемый формат файла
+          schema:
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Загрузить аватар
+      tags:
+      - files
+  /files/avatar/{filename}:
+    get:
+      description: Возвращает файл аватара по имени файла или дефолтный аватар
+      parameters:
+      - description: Имя файла аватара
+        in: path
+        name: filename
+        required: true
+        type: string
+      produces:
+      - image/png
+      - image/jpeg
+      - image/gif
+      - image/svg+xml
+      responses:
+        "200":
+          description: Файл аватара
+          schema:
+            type: file
+        "400":
+          description: Неверное имя файла
+          schema:
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
+        "500":
+          description: Ошибка сервера
+          schema:
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Получить аватар
+      tags:
+      - files
+  /files/posts/avatar/{filename}:
+    get:
+      description: Возвращает файл аватара по имени файла или дефолтный аватар
+      parameters:
+      - description: Имя файла аватара
+        in: path
+        name: filename
+        required: true
+        type: string
+      produces:
+      - image/png
+      - image/jpeg
+      - image/gif
+      - image/svg+xml
+      responses:
+        "200":
+          description: Файл аватара
+          schema:
+            type: file
+        "400":
+          description: Неверное имя файла
+          schema:
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
+        "500":
+          description: Ошибка сервера
+          schema:
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Получить аватар
+      tags:
+      - files
+  /files/posts/avatar/{post_id}:
+    delete:
+      description: Удаляет аватар поста и очищает ссылку в профиле
+      parameters:
+      - description: Post ID
+        in: path
+        name: post_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.DeleteAvatarResponse'
+        "400":
+          description: Не указан post_id
+          schema:
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
+        "401":
+          description: Не авторизован
+          schema:
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
+        "500":
+          description: Ошибка сервера
+          schema:
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Удалить аватар поста
+      tags:
+      - files
+    post:
+      consumes:
+      - multipart/form-data
+      description: 'Загружает аватар поста и обновляет ссылку в профиле. Максимальный
+        размер файла: 5MB. Разрешенные форматы: jpg, jpeg, png, gif, svg.'
+      parameters:
+      - description: Post ID
+        example: '"12345"'
+        in: path
+        name: post_id
+        required: true
+        type: string
+      - description: Файл аватара поста
+        in: formData
+        name: avatar
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.UploadAvatarResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
+        "413":
+          description: Файл слишком большой
+          schema:
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
+        "415":
+          description: Неподдерживаемый формат файла
+          schema:
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Загрузить аватар поста
+      tags:
+      - files
   /mentors/{mentor_id}/sessions:
     get:
       consumes:
@@ -910,28 +1343,427 @@ paths:
         "200":
           description: Список сессий и общее количество
           schema:
-            $ref: '#/definitions/domain.ListSessionsResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.ListSessionsResponse'
         "400":
           description: Неверный ID ментора
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
         "401":
           description: Не авторизован
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
         "403":
           description: Нет прав доступа (не тот ментор)
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
         "500":
           description: Внутренняя ошибка сервера
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Список сессий ментора
       tags:
       - sessions
+  /mentors/{mentor_id}/slots:
+    get:
+      consumes:
+      - application/json
+      description: Возвращает список всех временных слотов для конкретного ментора.
+        Только сам ментор может просматривать свои слоты.
+      parameters:
+      - description: ID ментора (UUID)
+        in: path
+        name: mentor_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Список слотов и общее количество
+          schema:
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.ListSlotsResponse'
+        "400":
+          description: Неверный ID ментора
+          schema:
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
+        "401":
+          description: Не авторизован
+          schema:
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Список слотов ментора
+      tags:
+      - slots
+  /posts:
+    get:
+      description: Возвращает список постов с фильтрацией и пагинацией
+      parameters:
+      - description: Токен пагинации
+        in: query
+        name: page_token
+        type: string
+      - default: 20
+        description: Размер страницы
+        in: query
+        maximum: 100
+        minimum: 1
+        name: page_size
+        type: integer
+      - description: ID автора
+        in: query
+        name: author_id
+        type: string
+      - description: Статус поста
+        enum:
+        - draft
+        - published
+        - archived
+        in: query
+        name: status
+        type: string
+      - collectionFormat: csv
+        description: Теги
+        in: query
+        items:
+          type: string
+        name: tags
+        type: array
+      - description: Поисковый запрос
+        in: query
+        name: search
+        type: string
+      - default: created_at
+        description: Поле сортировки
+        enum:
+        - created_at
+        - updated_at
+        - title
+        in: query
+        name: sort_field
+        type: string
+      - default: desc
+        description: Порядок сортировки
+        enum:
+        - asc
+        - desc
+        in: query
+        name: sort_order
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.ListPostsResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.ErrorResponse'
+      summary: Получить список постов
+      tags:
+      - posts
+    post:
+      consumes:
+      - application/json
+      description: Создает новый пост
+      parameters:
+      - description: Данные для создания поста
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.CreatePostRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.CreatePostResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Создать пост
+      tags:
+      - posts
+  /posts/{id}:
+    delete:
+      description: Удаляет пост по его идентификатору
+      parameters:
+      - description: ID поста
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.DeletePostResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Удалить пост
+      tags:
+      - posts
+    get:
+      description: Возвращает информацию о посте по его идентификатору
+      parameters:
+      - description: ID поста
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.GetPostResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.ErrorResponse'
+      summary: Получить пост по ID
+      tags:
+      - posts
+    put:
+      consumes:
+      - application/json
+      description: Обновляет информацию о посте
+      parameters:
+      - description: ID поста
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Данные для обновления
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.UpdatePostRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.UpdatePostResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Обновить пост
+      tags:
+      - posts
+  /posts/{id}/favorite:
+    post:
+      consumes:
+      - application/json
+      description: Добавляет пост в список избранных постов пользователя. Можно добавлять
+        только опубликованные посты.
+      parameters:
+      - description: ID поста
+        example: '"550e8400-e29b-41d4-a716-446655440000"'
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.AddToFavoritesResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.ErrorResponse'
+        "404":
+          description: Пост не найден
+          schema:
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.ErrorResponse'
+        "409":
+          description: Пост уже в избранном
+          schema:
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.ErrorResponse'
+        "412":
+          description: Пост не опубликован
+          schema:
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Добавить пост в избранное
+      tags:
+      - posts
+  /posts/{id}/rate:
+    post:
+      consumes:
+      - application/json
+      description: Добавляет оценку к посту
+      parameters:
+      - description: ID поста
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Данные для оценки
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.RatePostRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.RatePostResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Оценить пост
+      tags:
+      - posts
+  /posts/{id}/ratings:
+    get:
+      description: Возвращает список отзывов и рейтингов для поста с пагинацией
+      parameters:
+      - description: ID поста
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Токен пагинации
+        in: query
+        name: page_token
+        type: string
+      - default: 20
+        description: Размер страницы
+        in: query
+        maximum: 100
+        minimum: 1
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.GetPostRatingsResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.ErrorResponse'
+      summary: Получить отзывы поста
+      tags:
+      - posts
   /profiles/{id}:
     get:
       description: Возвращает полную информацию о профиле пользователя включая менторские/студенческие
@@ -948,15 +1780,15 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/domain.ProfileResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.ProfileResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
       summary: Получить профиль
       tags:
       - profiles
@@ -976,34 +1808,34 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/domain.UpdateProfileRequest'
+          $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.UpdateProfileRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/utils.SuccessResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.SuccessResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
         "403":
           description: Forbidden
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Обновить профиль
@@ -1021,7 +1853,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/domain.CreateSessionRequest'
+          $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.CreateSessionRequest'
       produces:
       - application/json
       responses:
@@ -1033,27 +1865,27 @@ paths:
         "400":
           description: Неверные входные данные
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
         "401":
           description: Не авторизован
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
         "403":
           description: Нет прав доступа (не студент или слот недоступен)
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
         "404":
           description: Слот не найден
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
         "409":
           description: Конфликт (сессия уже существует)
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
         "500":
           description: Внутренняя ошибка сервера
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Создать сессию
@@ -1077,27 +1909,27 @@ paths:
         "200":
           description: Успешное удаление
           schema:
-            $ref: '#/definitions/utils.SuccessResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.SuccessResponse'
         "400":
           description: Неверный ID сессии
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
         "401":
           description: Не авторизован
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
         "403":
           description: Нет прав доступа
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
         "404":
           description: Сессия не найден
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
         "500":
           description: Внутренняя ошибка сервера
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Удалить сессию
@@ -1119,23 +1951,23 @@ paths:
         "200":
           description: Информация о сессии
           schema:
-            $ref: '#/definitions/domain.SessionResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.SessionResponse'
         "400":
           description: Неверный ID сессии
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
         "401":
           description: Не авторизован
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
         "404":
           description: Сессия не найден
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
         "500":
           description: Внутренняя ошибка сервера
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Получить информацию о сессии
@@ -1157,34 +1989,34 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/domain.UpdateSessionRequest'
+          $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.UpdateSessionRequest'
       produces:
       - application/json
       responses:
         "200":
           description: Успешное обновление
           schema:
-            $ref: '#/definitions/utils.SuccessResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.SuccessResponse'
         "400":
           description: Неверные входные данные
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
         "401":
           description: Не авторизован
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
         "403":
           description: Нет прав доступа
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
         "404":
           description: Сессия не найден
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
         "500":
           description: Внутренняя ошибка сервера
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Обновить сессию
@@ -1207,34 +2039,34 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/domain.RateSessionRequest'
+          $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.RateSessionRequest'
       produces:
       - application/json
       responses:
         "200":
           description: Успешная оценка
           schema:
-            $ref: '#/definitions/utils.SuccessResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.SuccessResponse'
         "400":
           description: Неверные входные данные (оценка вне диапазона 1-5)
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
         "401":
           description: Не авторизован
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
         "403":
           description: Нет прав доступа
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
         "404":
           description: Сессия не найден
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
         "500":
           description: Внутренняя ошибка сервера
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Оценить сессию
@@ -1251,7 +2083,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/domain.CreateSlotRequest'
+          $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.CreateSlotRequest'
       produces:
       - application/json
       responses:
@@ -1263,27 +2095,27 @@ paths:
         "400":
           description: Неверные входные данные
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
         "401":
           description: Не авторизован
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
         "403":
           description: Нет прав доступа
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
         "404":
           description: Ресурс не найден
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
         "409":
           description: Конфликт (уже существует)
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
         "500":
           description: Внутренняя ошибка сервера
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Создать слот
@@ -1307,27 +2139,27 @@ paths:
         "200":
           description: Успешное удаление
           schema:
-            $ref: '#/definitions/utils.SuccessResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.SuccessResponse'
         "400":
           description: Неверный ID слота
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
         "401":
           description: Не авторизован
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
         "403":
           description: Нет прав доступа (не владелец)
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
         "404":
           description: Слот не найден
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
         "500":
           description: Внутренняя ошибка сервера
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Удалить слот
@@ -1349,23 +2181,23 @@ paths:
         "200":
           description: Информация о слоте
           schema:
-            $ref: '#/definitions/domain.SlotResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.SlotResponse'
         "400":
           description: Неверный ID слота
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
         "401":
           description: Не авторизован
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
         "404":
           description: Слот не найден
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
         "500":
           description: Внутренняя ошибка сервера
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Получить информацию о слоте
@@ -1387,34 +2219,34 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/domain.UpdateSlotRequest'
+          $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.UpdateSlotRequest'
       produces:
       - application/json
       responses:
         "200":
           description: Успешное обновление
           schema:
-            $ref: '#/definitions/utils.SuccessResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.SuccessResponse'
         "400":
           description: Неверные входные данные
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
         "401":
           description: Не авторизован
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
         "403":
           description: Нет прав доступа (не владелец)
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
         "404":
           description: Слот не найден
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
         "500":
           description: Внутренняя ошибка сервера
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Обновить слот
@@ -1437,34 +2269,34 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/domain.UpdateSlotStatusRequest'
+          $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.UpdateSlotStatusRequest'
       produces:
       - application/json
       responses:
         "200":
           description: Успешное обновление статуса
           schema:
-            $ref: '#/definitions/utils.SuccessResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.SuccessResponse'
         "400":
           description: Неверные входные данные или недопустимый статус
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
         "401":
           description: Не авторизован
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
         "403":
           description: Нет прав доступа (не владелец)
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
         "404":
           description: Слот не найден
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
         "500":
           description: Внутренняя ошибка сервера
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Обновить статус слота
@@ -1488,23 +2320,23 @@ paths:
         "200":
           description: Список сессий и общее количество
           schema:
-            $ref: '#/definitions/domain.ListSessionsResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.ListSessionsResponse'
         "400":
           description: Неверный ID студента
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
         "401":
           description: Не авторизован
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
         "403":
           description: Нет прав доступа (не тот студент)
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
         "500":
           description: Внутренняя ошибка сервера
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Список сессий студента
@@ -1525,19 +2357,19 @@ paths:
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
         "403":
           description: Forbidden
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Удалить пользователя
@@ -1557,16 +2389,33 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/domain.User'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.User'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
       summary: Получить пользователя по ID
+      tags:
+      - users
+  /users/all:
+    get:
+      description: Возвращает количество пользователей
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.UserCountResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
+      summary: Получить количество пользователей сайта
       tags:
       - users
   /users/email/{email}:
@@ -1584,15 +2433,15 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/domain.User'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_domain.User'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/utils.ErrorResponse'
+            $ref: '#/definitions/github_com_hohlayder_Mentor_Platform_api_gateway_internal_utils.ErrorResponse'
       summary: Получить пользователя по email
       tags:
       - users

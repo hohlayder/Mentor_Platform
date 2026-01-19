@@ -118,3 +118,8 @@ type LearningSkillUpdate struct {
 type UserCountResponse struct {
 	UserCount string `json:"user_count"`
 }
+
+type ProfileWithPostsResponse struct {
+	Profile *ProfileResponse
+	Posts *GetFavoritePostsResponse
+}
