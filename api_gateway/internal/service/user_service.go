@@ -189,6 +189,7 @@ func (s *UserService) GetProfileById(ctx context.Context, userId string) (*domai
 		learningSkills = append(learningSkills, learningSkill)
 	}
 
+	
 	return &domain.ProfileResponse{
 		User: user,
 		Mentor: mentor,
