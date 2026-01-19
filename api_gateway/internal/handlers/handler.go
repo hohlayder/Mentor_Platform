@@ -78,16 +78,22 @@ func InitRoutes(handlers Handlers) *gin.Engine {
 				auth.POST("/logout", handlers.AuthHandler.Logout)
 			}
 
-			user := public.Group("/users")
+			users := public.Group("/users")
 			{
-				user.GET("/all", handlers.UserHandler.GetUserCount)
+				users.GET("/:id", handlers.UserHandler.GetUserByID)
+				users.GET("/email/:email", handlers.UserHandler.GetUserByEmail)
+				users.GET("/all", handlers.UserHandler.GetUserCount)
 			}
-			
+			profiles := public.Group("/profiles")
+			{
+				profiles.GET("/:id", handlers.UserHandler.GetProfile)
+			}
 			posts := public.Group("/posts")
 			{
 				posts.GET("/:id", handlers.PostHandler.GetPost)
 				posts.GET("", handlers.PostHandler.ListPosts)
 				posts.GET("/:id/ratings", handlers.PostHandler.GetPostRatings)
+				posts.GET("/:id/favorite/count", handlers.PostHandler.GetInterestingUsersCount)
 			}
 			public.GET("/mentors/:mentor_id/slots", handlers.SessionHandler.GetSlotsByMentor)
 		}
@@ -97,14 +103,11 @@ func InitRoutes(handlers Handlers) *gin.Engine {
 		{
 			users := protected.Group("/users")
 			{
-				users.GET("/:id", handlers.UserHandler.GetUserByID)
-				users.GET("/email/:email", handlers.UserHandler.GetUserByEmail)
 				users.DELETE("/:id", handlers.UserHandler.DeleteUser)
 			}
 
 			profiles := protected.Group("/profiles")
 			{
-				profiles.GET("/:id", handlers.UserHandler.GetProfile)
 				profiles.PUT("/:id", handlers.UserHandler.UpdateProfile)
 			}
 
@@ -135,9 +138,12 @@ func InitRoutes(handlers Handlers) *gin.Engine {
 			posts := protected.Group("/posts")
 			{
 				posts.POST("", handlers.PostHandler.CreatePost)
+				posts.GET("/favorite", handlers.PostHandler.GetFavoritePosts)
 				posts.PUT("/:id", handlers.PostHandler.UpdatePost)
 				posts.DELETE("/:id", handlers.PostHandler.DeletePost)
 				posts.POST("/:id/rate", handlers.PostHandler.RatePost)
+				posts.POST("/:id/favorite", handlers.PostHandler.AddToFavorites)
+				posts.DELETE("/:id/favorite", handlers.PostHandler.AddToFavorites)
 			}
 			files := protected.Group("/files")
 			{
@@ -148,6 +154,7 @@ func InitRoutes(handlers Handlers) *gin.Engine {
 			}
 
 			protected.GET("/mentors/:mentor_id/sessions", handlers.SessionHandler.ListSessionsByMentor)
+			protected.GET("/mentors/:mentor_id/favorited-by", handlers.PostHandler.GetUsersFavoritedMentorPosts)
 			protected.GET("/students/:student_id/sessions", handlers.SessionHandler.ListSessionsByStudent)
 			
 		}
