@@ -115,3 +115,33 @@ type GetPostRatingsResponse struct {
 type GetUserRatingResponse struct {
 	Rating *Rating `json:"rating,omitempty"` // Оценка пользователя (nil если нет оценки)
 }
+
+type AddToFavoritesResponse struct {
+	Success bool `json:"success"`
+}
+
+type RemoveFromFavoritesResponse struct {
+	Success bool `json:"success"`
+}
+
+type GetFavoritePostsRequest struct {
+	PageToken string `form:"page_token"`
+	PageSize  int    `form:"page_size"`
+}
+
+type GetFavoritePostsResponse struct {
+	Posts         []Post `json:"posts"`
+	NextPageToken string `json:"next_page_token,omitempty"`
+	TotalCount    int32  `json:"total_count"`
+}
+
+type GetInterestingUsersCountResponse struct {
+    PostID     string `json:"post_id"`
+    UsersCount int64  `json:"users_count"`
+}
+
+type GetUsersFavoritedMentorPostsResponse struct {
+	MentorID       string `json:"mentor_id"`
+	UsersCount     int64  `json:"users_count"`      
+	TotalFavorites int64  `json:"total_favorites"` 
+}
