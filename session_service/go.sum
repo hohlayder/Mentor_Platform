@@ -4,6 +4,10 @@ github.com/Sergey-1214/contracts_mentors v0.0.20 h1:smdRg6YyZCuMkcxzS290TAIXLG0z
 github.com/Sergey-1214/contracts_mentors v0.0.20/go.mod h1:pJLGjbbXDo4mJC6FxRpC055xzZBEQnCCCFOCR2z8nsE=
 github.com/Sergey-1214/contracts_mentors v0.0.21 h1:6xIJOSbQwWnyzfo8zljvCgqoFfJouQS8mAx8P9YBeqk=
 github.com/Sergey-1214/contracts_mentors v0.0.21/go.mod h1:FsAZug/tGZuqSG3i7T+Z9j57vnY049ESNb3hhM6/62M=
+github.com/Sergey-1214/contracts_mentors v0.0.28 h1:fTTqlig2iYSflV6NKkjWqKR4k2aJ+kTjuSGrQ44cZ1Y=
+github.com/Sergey-1214/contracts_mentors v0.0.28/go.mod h1:FsAZug/tGZuqSG3i7T+Z9j57vnY049ESNb3hhM6/62M=
+github.com/Sergey-1214/contracts_mentors v0.0.29 h1:csCcnHV28Wet/BGFZtEGS/pcmU0sAEUARp+yMgvUJNY=
+github.com/Sergey-1214/contracts_mentors v0.0.29/go.mod h1:FsAZug/tGZuqSG3i7T+Z9j57vnY049ESNb3hhM6/62M=
 github.com/go-logr/logr v1.4.3 h1:CjnDlHq8ikf6E492q6eKboGOC0T8CDaOvkHCIg8idEI=
 github.com/go-logr/logr v1.4.3/go.mod h1:9T104GzyrTigFIr8wt5mBrctHMim0Nb2HLGrmQ40KvY=
 github.com/go-logr/stdr v1.2.2 h1:hSWxHoqTgW2S2qGc0LTAI563KZ5YKYRhT3MFKZMbjag=
