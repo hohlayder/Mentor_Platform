@@ -155,8 +155,8 @@ func InitRoutes(handlers Handlers) *gin.Engine {
 
 			protected.GET("/mentors/:mentor_id/sessions", handlers.SessionHandler.ListSessionsByMentor)
 			protected.GET("/mentors/:mentor_id/favorited-by", handlers.PostHandler.GetUsersFavoritedMentorPosts)
-			protected.GET("/students/:student_id/sessions", handlers.SessionHandler.ListSessionsByStudent)
-			
+			protected.GET("/mentors/:mentor_id/payment-amount", handlers.SessionHandler.GetMentorPaymentAmount)
+			protected.GET("/students/:student_id/sessions", handlers.SessionHandler.ListSessionsByStudent)	
 		}
 	}
 	
