@@ -326,6 +326,20 @@ func (r *SessionRepository) RateSession(ctx context.Context, sessionID string, r
 	return nil
 }
 
+func (r *SessionRepository) GetPaymentAmount(ctx context.Context, mentor_id string) (int64, error) {
+	var paymentAmount int64
+	query := `SELECT COALESCE(SUM(price), 0) FROM sessions se
+				JOIN slots sl ON se.slot_id = sl.id
+				WHERE mentor_id = $1 AND payment_status = 'paid'`
+
+	err := r.db.GetContext(ctx, &paymentAmount, query, mentor_id)
+	if err != nil {
+		return 0, fmt.Errorf("failed to get payment amount: %w", err)
+	}
+
+	return paymentAmount, nil
+}
+
 func toNullInt32(value *int32) interface{} {
 	if value == nil {
 		return nil
@@ -339,3 +353,4 @@ func toNullString(value *string) interface{} {
 	}
 	return *value
 }
+

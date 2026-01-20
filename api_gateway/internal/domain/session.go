@@ -82,3 +82,8 @@ type ListSlotsResponse struct {
 	Slots []SlotResponse `json:"slots"`
 	Total int64          `json:"total,omitempty"`
 }
+
+type GetMentorPaymentAmountResponse struct {
+	MentorID      string `json:"mentor_id"`
+	TotalAmount   int64  `json:"total_amount"`   
+}

@@ -29,6 +29,7 @@ type SessionService interface {
 	ListSessionsByStudent(ctx context.Context, studentID string) ([]domain.SessionResponse, error)
 
 	GetSlotsByMentor(ctx context.Context, mentorID string) ([]domain.SlotResponse, error)
+	GetMentorPaymentAmount(ctx context.Context, mentorID string) (*domain.GetMentorPaymentAmountResponse, error)
 }
 
 type SessionHandler struct {
@@ -928,4 +929,75 @@ func (h *SessionHandler) GetSlotsByMentor(c *gin.Context) {
         Slots: slots,
         Total: int64(len(slots)),
     })
+}
+
+// GetMentorPaymentAmount возвращает общую сумму оплаченных сессий ментора
+// @Summary Получить сумму оплаченных сессий ментора
+// @Description Возвращает общую сумму всех оплаченных сессий для указанного ментора
+// @Tags sessions
+// @Produce json
+// @Param mentor_id path string true "ID ментора"
+// @Security BearerAuth
+// @Success 200 {object} domain.GetMentorPaymentAmountResponse
+// @Failure 400 {object} domain.ErrorResponse
+// @Failure 401 {object} domain.ErrorResponse
+// @Failure 403 {object} domain.ErrorResponse "Нет прав доступа"
+// @Failure 404 {object} domain.ErrorResponse "Ментор не найден"
+// @Failure 500 {object} domain.ErrorResponse
+// @Router /mentors/{mentor_id}/payment-amount [get]
+func (h *SessionHandler) GetMentorPaymentAmount(c *gin.Context) {
+	mentorID := c.Param("mentor_id")
+	if mentorID == "" {
+		c.JSON(http.StatusBadRequest, domain.ErrorResponse{
+			Error:   "VALIDATION_ERROR",
+			Message: "Mentor ID is required",
+		})
+		return
+	}
+
+	currentUserID, exists := utils.GetUserIdFromContext(c)
+	if !exists {
+		return
+	}
+
+	isAuthorized := currentUserID == mentorID
+	if !isAuthorized {
+		c.JSON(http.StatusForbidden, domain.ErrorResponse{
+			Error:   "FORBIDDEN",
+			Message: "You don't have permission to view this information",
+		})
+		return
+	}
+
+	resp, err := h.service.GetMentorPaymentAmount(c.Request.Context(), mentorID)
+	if err != nil {
+		if st, ok := status.FromError(err); ok {
+			switch st.Code() {
+			case codes.InvalidArgument:
+				c.JSON(http.StatusBadRequest, domain.ErrorResponse{
+					Error:   "VALIDATION_ERROR",
+					Message: st.Message(),
+				})
+				return
+			case codes.NotFound:
+				c.JSON(http.StatusNotFound, domain.ErrorResponse{
+					Error:   "NOT_FOUND",
+					Message: "Mentor not found",
+				})
+				return
+			}
+		}
+
+		slog.Error("Failed to get mentor payment amount",
+			"error", err,
+			"mentor_id", mentorID,
+			"user_id", currentUserID)
+		c.JSON(http.StatusInternalServerError, domain.ErrorResponse{
+			Error:   "INTERNAL_ERROR",
+			Message: "Failed to get payment statistics",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, resp)
 }

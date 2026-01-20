@@ -72,6 +72,10 @@ func (c *SessionClient) GetSlotsByMentor(ctx context.Context, in *sessionv1.GetS
 	return c.Client.GetSlotsByMentor(ctx, in)
 }
 
+func (c SessionClient) GetMentorPaymentAmount(ctx context.Context, in *sessionv1.GetMentorPaymentAmountRequest) (*sessionv1.GetMentorPaymentAmountResponse, error) {
+	return c.Client.GetMentorPaymentAmount(ctx, in)
+}
+
 func (c *SessionClient) Close() error {
 	if c.conn != nil {
 		return c.conn.Close()

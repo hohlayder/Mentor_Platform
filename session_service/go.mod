@@ -14,7 +14,7 @@ require (
 )
 
 require (
-	github.com/Sergey-1214/contracts_mentors v0.0.21
+	github.com/Sergey-1214/contracts_mentors v0.0.29
 	github.com/segmentio/kafka-go v0.4.49
 	golang.org/x/net v0.41.0 // indirect
 	golang.org/x/sys v0.33.0 // indirect
