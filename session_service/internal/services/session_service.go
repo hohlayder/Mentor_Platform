@@ -26,6 +26,7 @@ type SessionRepository interface {
 	ListSessionsByMentor(ctx context.Context, mentorID string) ([]domain.Session, error)
 	ListSessionsByStudent(ctx context.Context, studentID string) ([]domain.Session, error)
 	RateSession(ctx context.Context, sessionID string, rating int32, review string) error
+	GetPaymentAmount(ctx context.Context, mentor_id string) (int64, error)
 }
 
 type SessionService struct {
@@ -133,4 +134,12 @@ func (s *SessionService) RateSession(ctx context.Context, req domain.RateSession
 	}
 
 	return s.repo.RateSession(ctx, req.SessionID, req.Rating, req.Review)
+}
+
+func (s *SessionService) GetPaymentAmount(ctx context.Context, mentor_id string) (int64, error) {
+	if mentor_id == "" {
+		return 0, ErrInvalidMentorID
+	}
+
+	return s.repo.GetPaymentAmount(ctx, mentor_id)
 }
