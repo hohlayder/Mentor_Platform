@@ -23,6 +23,7 @@ type SessionService interface {
 	ListSessionsByMentor(ctx context.Context, mentorID string) ([]domain.Session, error)
 	ListSessionsByStudent(ctx context.Context, studentID string) ([]domain.Session, error)
 	RateSession(ctx context.Context, req domain.RateSessionRequest) error
+	GetPaymentAmount(ctx context.Context, mentor_id string) (int64, error)
 }
 
 type SlotService interface {
@@ -450,6 +451,25 @@ func (h *SessionHandler) GetSlotsByMentor(ctx context.Context, req *sessionv1.Ge
     return &sessionv1.GetSlotsByMentorResponse{
         Slots: protoSlots,
     }, nil
+}
+
+func (h *SessionHandler) GetMentorPaymentAmount(ctx context.Context, req *sessionv1.GetMentorPaymentAmountRequest) (*sessionv1.GetMentorPaymentAmountResponse, error) {
+	mentorID := req.GetMentorId()
+	if mentorID == "" {
+		return nil, status.Error(codes.InvalidArgument, "mentor_id is required")
+	}
+	
+	totalAmount, err := h.sessionService.GetPaymentAmount(ctx, mentorID)
+	if err != nil {
+		slog.Error("failed to get mentor payment amount",
+			"mentor_id", mentorID,
+			"error", err)
+		return nil, status.Errorf(codes.Internal, "failed to get payment amount: %v", err)
+	}
+	return &sessionv1.GetMentorPaymentAmountResponse{
+		MentorId:      mentorID,
+		TotalAmount:   totalAmount,
+	}, nil
 }
 
 func convertSlotError(err error) error {
