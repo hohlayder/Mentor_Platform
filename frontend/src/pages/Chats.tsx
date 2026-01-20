@@ -1,6 +1,8 @@
 // src/pages/Chats.tsx
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '../store/AuthContext';
+import { useWebSocket } from '../services/useWebSocket';
+import { IncomingMessage } from '../services/websocket';
 
 // Типы на основе ваших API и WebSocket документации
 interface User {
@@ -17,24 +19,9 @@ interface Chat {
   user2_id: string;
   created_at: string;
   updated_at: string;
-  last_message?: Message;
+  last_message?: IncomingMessage;
   unread_count: number;
   other_user?: User;
-}
-
-interface Message {
-  id: string;
-  chat_id: string;
-  sender_id: string;
-  content: string;
-  reply_to?: string;
-  message_type: 'text' | 'image' | 'file' | 'audio' | 'video';
-  attachments?: Attachment[];
-  created_at: string;
-  updated_at: string;
-  is_edited: boolean;
-  is_read: boolean;
-  read_at?: string;
 }
 
 interface Attachment {
@@ -47,23 +34,33 @@ interface Attachment {
   height?: number;
 }
 
-interface WebSocketMessage {
-  chat_id: string;
-  content: string;
-  message_type: 'text' | 'image' | 'file' | 'audio' | 'video';
-  reply_to?: string;
-  attachments?: Attachment[];
+interface ChatMessagesResponse {
+  messages: IncomingMessage[];
+  next_cursor?: {
+    id: string;
+    created_at: string;
+  };
+  has_more: boolean;
 }
 
 const Chats: React.FC = () => {
   const { token, user } = useAuth();
+  const { 
+    isConnected, 
+    connect, 
+    disconnect, 
+    sendTextMessage, 
+    onChatMessage 
+  } = useWebSocket();
+  
   const [chats, setChats] = useState<Chat[]>([]);
   const [selectedChat, setSelectedChat] = useState<Chat | null>(null);
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<IncomingMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [isLoading, setIsLoading] = useState(true);
-  const [ws, setWs] = useState<WebSocket | null>(null);
-  const [isWsConnected, setIsWsConnected] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [hasMore, setHasMore] = useState(true);
   
   // Состояния для создания чата по email
   const [showCreateChatModal, setShowCreateChatModal] = useState(false);
@@ -73,7 +70,52 @@ const Chats: React.FC = () => {
   const [createChatError, setCreateChatError] = useState<string | null>(null);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Подключение WebSocket при наличии токена
+  useEffect(() => {
+    if (token) {
+      connect(token);
+    }
+
+    return () => {
+      disconnect();
+    };
+  }, [token, connect, disconnect]);
+
+  // Обработка входящих сообщений через WebSocket
+  useEffect(() => {
+    const unsubscribe = onChatMessage((message: IncomingMessage) => {
+      console.log('Получено сообщение через WebSocket:', message);
+      
+      // Проверяем, что это сообщение для текущего чата
+      if (selectedChat?.id === message.chat_id) {
+        // Добавляем новое сообщение в конец списка
+        setMessages(prev => [...prev, message]);
+        
+        // Помечаем как прочитанное, если оно от другого пользователя
+        if (message.sender_id !== user?.user_id) {
+          markAsRead([message.id], message.chat_id);
+        }
+      }
+      
+      // Обновляем список чатов
+      setChats(prev => prev.map(chat => {
+        if (chat.id === message.chat_id) {
+          return { 
+            ...chat, 
+            last_message: message,
+            updated_at: new Date().toISOString(),
+            unread_count: chat.id === selectedChat?.id ? chat.unread_count : chat.unread_count + 1
+          };
+        }
+        return chat;
+      }));
+    });
+
+    return unsubscribe;
+  }, [selectedChat, user, onChatMessage]);
 
   // Загрузка списка чатов
   const loadChats = useCallback(async () => {
@@ -120,6 +162,115 @@ const Chats: React.FC = () => {
       console.error('Ошибка загрузки чатов:', error);
     }
   }, [token, user]);
+
+  // Загрузка сообщений чата (с пагинацией) - УПРОЩЕННАЯ ВЕРСИЯ
+  const loadMessages = useCallback(async (chatId: string, cursor?: string | null, isLoadMore: boolean = false) => {
+    if (!token) return;
+    
+    console.log('Загрузка сообщений:', { chatId, cursor: cursor || 'нет', isLoadMore });
+    
+    if (isLoadMore) {
+      setIsLoadingMore(true);
+    } else {
+      setIsLoading(true);
+    }
+    
+    try {
+      // Формируем URL запроса
+      let url = `http://localhost:8080/api/v1/chats/messages?chat_id=${chatId}&limit=50`;
+      
+      // ПРОСТО ПЕРЕДАЕМ КУРСОР КАК ЕСТЬ
+      if (cursor) {
+        url += `&cursor=${cursor}`;
+      }
+      
+      console.log('Запрос по URL:', url);
+      
+      const response = await fetch(url, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      
+      const data: ChatMessagesResponse = await response.json();
+      console.log('Получены данные:', { 
+        сообщений: data.messages?.length,
+        естьЕще: data.has_more,
+        курсор: data.next_cursor?.id || 'нет'
+      });
+      
+      // СОХРАНЯЕМ КУРСОР ПРОСТО КАК СТРОКУ
+      setNextCursor(data.next_cursor?.id || null);
+      setHasMore(data.has_more);
+      
+      // Добавляем сообщения
+      if (isLoadMore) {
+        // При подгрузке старых сообщений добавляем их в начало
+        setMessages(prev => [...data.messages, ...prev]);
+      } else {
+        // При первой загрузке устанавливаем сообщения
+        setMessages(data.messages);
+      }
+      
+      // Помечаем как прочитанные
+      const unreadMessages = data.messages
+        ?.filter(msg => !msg.is_read && msg.sender_id !== user?.user_id) || [];
+      
+      if (unreadMessages.length > 0) {
+        const unreadIds = unreadMessages.map(msg => msg.id);
+        await markAsRead(unreadIds, chatId);
+      }
+      
+    } catch (error) {
+      console.error('Ошибка загрузки сообщений:', error);
+      // Показываем пользователю ошибку
+      if (!isLoadMore) {
+        setMessages([]);
+      }
+    } finally {
+      if (isLoadMore) {
+        setIsLoadingMore(false);
+      } else {
+        setIsLoading(false);
+      }
+    }
+  }, [token, user]);
+
+  // Подгрузка старых сообщений при прокрутке вверх
+  const loadMoreMessages = useCallback(() => {
+    if (!selectedChat || !hasMore || !nextCursor || isLoadingMore) {
+      return;
+    }
+    
+    console.log('Загружаем старые сообщения с курсором:', nextCursor);
+    loadMessages(selectedChat.id, nextCursor, true);
+  }, [selectedChat, hasMore, nextCursor, isLoadingMore, loadMessages]);
+
+  // Обработчик прокрутки контейнера сообщений
+  const handleScroll = useCallback(() => {
+    const container = messagesContainerRef.current;
+    if (!container || isLoadingMore || !hasMore) {
+      return;
+    }
+    
+    // Если прокрутили близко к верху (первые 200px)
+    if (container.scrollTop < 200) {
+      loadMoreMessages();
+    }
+  }, [isLoadingMore, hasMore, loadMoreMessages]);
+
+  // Добавляем обработчик прокрутки
+  useEffect(() => {
+    const container = messagesContainerRef.current;
+    if (!container) return;
+    
+    container.addEventListener('scroll', handleScroll);
+    return () => container.removeEventListener('scroll', handleScroll);
+  }, [handleScroll]);
 
   // Поиск пользователя по email
   const searchUserByEmail = async (email: string) => {
@@ -220,153 +371,9 @@ const Chats: React.FC = () => {
     }
   };
 
-  // Загрузка сообщений чата
-  const loadMessages = useCallback(async (chatId: string) => {
-    if (!token) return;
-    
-    try {
-      const response = await fetch(
-        `http://localhost:8080/api/v1/chats/messages?chat_id=${chatId}&limit=50`,
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
-        }
-      );
-      
-      if (response.ok) {
-        const data = await response.json();
-        setMessages(data.messages || []);
-        
-        // Помечаем сообщения как прочитанные
-        const unreadIds = data.messages
-          ?.filter((msg: Message) => !msg.is_read && msg.sender_id !== user?.user_id)
-          .map((msg: Message) => msg.id) || [];
-        
-        if (unreadIds.length > 0) {
-          await fetch('http://localhost:8080/api/v1/chats/messages/read', {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              chat_id: chatId,
-              message_ids: unreadIds,
-            }),
-          });
-        }
-      }
-    } catch (error) {
-      console.error('Ошибка загрузки сообщений:', error);
-    }
-  }, [token, user]);
-
-  // Инициализация WebSocket
-  useEffect(() => {
-    if (!token) return;
-    
-    const connectWebSocket = () => {
-      try {
-        const wsUrl = `ws://localhost:8080/api/v1/ws?token=${encodeURIComponent(token)}`;
-        const socket = new WebSocket(wsUrl);
-        
-        socket.onopen = () => {
-          console.log('WebSocket подключен');
-          setIsWsConnected(true);
-        };
-        
-        socket.onmessage = (event) => {
-          try {
-            const message = JSON.parse(event.data) as Message;
-            console.log('Получено сообщение:', message);
-            
-            setMessages(prev => [...prev, message]);
-            
-            setChats(prev => prev.map(chat => 
-              chat.id === message.chat_id 
-                ? { ...chat, last_message: message, unread_count: chat.unread_count + 1 }
-                : chat
-            ));
-            
-            if (selectedChat?.id === message.chat_id && message.sender_id !== user?.user_id) {
-              markAsRead([message.id], message.chat_id);
-            }
-          } catch (error) {
-            console.error('Ошибка парсинга сообщения:', error);
-          }
-        };
-        
-        socket.onclose = () => {
-          console.log('WebSocket отключен');
-          setIsWsConnected(false);
-          setTimeout(() => connectWebSocket(), 5000);
-        };
-        
-        socket.onerror = (error) => {
-          console.error('WebSocket ошибка:', error);
-        };
-        
-        setWs(socket);
-        
-        return () => {
-          socket.close();
-        };
-      } catch (error) {
-        console.error('Ошибка создания WebSocket:', error);
-      }
-    };
-    
-    connectWebSocket();
-  }, [token, selectedChat, user]);
-
-  // Загрузка начальных данных
-  useEffect(() => {
-    const initialize = async () => {
-      setIsLoading(true);
-      await loadChats();
-      setIsLoading(false);
-    };
-    
-    initialize();
-  }, [loadChats]);
-
-  // Прокрутка к последнему сообщению
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
-
-  // Отправка сообщения
-  const sendMessage = async () => {
-    if (!newMessage.trim() || !selectedChat || !ws || ws.readyState !== WebSocket.OPEN) return;
-    
-    const message: WebSocketMessage = {
-      chat_id: selectedChat.id,
-      content: newMessage,
-      message_type: 'text',
-    };
-    
-    ws.send(JSON.stringify(message));
-    setNewMessage('');
-    
-    const tempMessage: Message = {
-      id: `temp-${Date.now()}`,
-      chat_id: selectedChat.id,
-      sender_id: user?.user_id || '',
-      content: newMessage,
-      message_type: 'text',
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      is_edited: false,
-      is_read: true,
-    };
-    
-    setMessages(prev => [...prev, tempMessage]);
-  };
-
   // Пометить как прочитанное
   const markAsRead = async (messageIds: string[], chatId: string) => {
-    if (!token) return;
+    if (!token || messageIds.length === 0) return;
     
     try {
       await fetch('http://localhost:8080/api/v1/chats/messages/read', {
@@ -381,8 +388,9 @@ const Chats: React.FC = () => {
         }),
       });
       
+      // Обновляем локальное состояние
       setMessages(prev => prev.map(msg =>
-        messageIds.includes(msg.id) ? { ...msg, is_read: true } : msg
+        messageIds.includes(msg.id) ? { ...msg, is_read: true, read_at: new Date().toISOString() } : msg
       ));
       
       setChats(prev => prev.map(chat =>
@@ -390,6 +398,47 @@ const Chats: React.FC = () => {
       ));
     } catch (error) {
       console.error('Ошибка отметки сообщений:', error);
+    }
+  };
+
+  // Отправка сообщения через WebSocket
+  const sendMessage = async () => {
+    if (!newMessage.trim() || !selectedChat || !isConnected || !user) return;
+    
+    // Создаем временное сообщение для немедленного отображения
+    const tempMessage: IncomingMessage = {
+      id: `temp-${Date.now()}`,
+      chat_id: selectedChat.id,
+      sender_id: user.user_id,
+      content: newMessage,
+      message_type: 'text',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      is_edited: false,
+      is_read: true,
+    };
+    
+    // Добавляем временное сообщение в список
+    setMessages(prev => [...prev, tempMessage]);
+    setNewMessage('');
+    
+    // Прокручиваем к последнему сообщению
+    setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, 100);
+    
+    // Отправляем сообщение через WebSocket
+    try {
+      sendTextMessage(selectedChat.id, newMessage);
+    } catch (error) {
+      console.error('Ошибка отправки сообщения:', error);
+      
+      // Показываем ошибку пользователю
+      setMessages(prev => prev.map(msg =>
+        msg.id === tempMessage.id 
+          ? { ...msg, content: `${msg.content} (не доставлено)` }
+          : msg
+      ));
     }
   };
 
@@ -424,6 +473,37 @@ const Chats: React.FC = () => {
       sendMessage();
     }
   };
+
+  // Загрузка начальных данных
+  useEffect(() => {
+    const initialize = async () => {
+      setIsLoading(true);
+      await loadChats();
+      setIsLoading(false);
+    };
+    
+    initialize();
+  }, [loadChats]);
+
+  // Прокрутка к последнему сообщению при загрузке новых сообщений
+  useEffect(() => {
+    if (messages.length > 0) {
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      }, 100);
+    }
+  }, [messages]);
+
+  // Сброс состояния при смене чата
+  useEffect(() => {
+    if (selectedChat) {
+      console.log('Смена чата, сбрасываем состояние');
+      setNextCursor(null);
+      setHasMore(true);
+      // Загружаем сообщения без курсора (первые 50)
+      loadMessages(selectedChat.id);
+    }
+  }, [selectedChat?.id, loadMessages]);
 
   // Модальное окно создания чата
   const renderCreateChatModal = () => {
@@ -621,7 +701,6 @@ const Chats: React.FC = () => {
                   }}
                   onClick={() => {
                     setSelectedChat(chat);
-                    loadMessages(chat.id);
                   }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -680,7 +759,7 @@ const Chats: React.FC = () => {
                   <div>
                     <div style={{ fontWeight: 700 }}>{getOtherUserName(selectedChat)}</div>
                     <div style={{ fontSize: '14px', color: 'var(--muted)' }}>
-                      {isWsConnected ? 'онлайн' : 'оффлайн'}
+                      {isConnected ? 'онлайн' : 'оффлайн'}
                     </div>
                   </div>
                 </div>
@@ -689,8 +768,52 @@ const Chats: React.FC = () => {
                 </div>
               </div>
               
-              <div className="messages">
-                {messages.length === 0 ? (
+              {/* Контейнер сообщений с обработкой прокрутки */}
+              <div 
+                className="messages" 
+                ref={messagesContainerRef}
+                style={{ 
+                  position: 'relative',
+                  overflowY: 'auto',
+                  flex: 1,
+                  padding: 'var(--gap-md)',
+                  maxHeight: 'calc(100vh - 200px)'
+                }}
+              >
+                {/* Кнопка для загрузки старых сообщений */}
+                {hasMore && !isLoadingMore && nextCursor && (
+                  <div style={{ 
+                    textAlign: 'center', 
+                    padding: '10px',
+                    marginBottom: '10px'
+                  }}>
+                    <button
+                      className="btn btn-outline"
+                      onClick={loadMoreMessages}
+                      style={{ 
+                        fontSize: '12px',
+                        padding: '5px 10px',
+                        opacity: 0.7
+                      }}
+                    >
+                      Загрузить предыдущие сообщения
+                    </button>
+                  </div>
+                )}
+                
+                {/* Индикатор загрузки старых сообщений */}
+                {isLoadingMore && (
+                  <div style={{ 
+                    textAlign: 'center', 
+                    padding: '10px',
+                    color: 'var(--muted)',
+                    fontSize: '14px'
+                  }}>
+                    Загрузка предыдущих сообщений...
+                  </div>
+                )}
+                
+                {messages.length === 0 && !isLoading ? (
                   <div style={{ textAlign: 'center', padding: 'var(--gap-lg)', color: 'var(--muted)' }}>
                     Начните общение
                   </div>
@@ -703,13 +826,16 @@ const Chats: React.FC = () => {
                         maxWidth: '70%',
                         padding: '10px',
                         borderRadius: '12px',
-                        marginBottom: '8px'
+                        marginBottom: '8px',
+                        alignSelf: message.sender_id === user?.user_id ? 'flex-end' : 'flex-start',
+                        backgroundColor: message.sender_id === user?.user_id ? 'var(--accent)' : 'var(--surface)',
+                        color: message.sender_id === user?.user_id ? 'white' : 'var(--text)',
                       }}
                     >
                       {message.reply_to && (
                         <div style={{
                           fontSize: '12px',
-                          color: 'var(--muted)',
+                          color: message.sender_id === user?.user_id ? 'rgba(255,255,255,0.7)' : 'var(--muted)',
                           borderLeft: '2px solid var(--accent)',
                           paddingLeft: '8px',
                           marginBottom: '4px'
@@ -735,7 +861,7 @@ const Chats: React.FC = () => {
                           ) : (
                             <div style={{
                               padding: '8px',
-                              backgroundColor: 'var(--accent-light)',
+                              backgroundColor: message.sender_id === user?.user_id ? 'rgba(255,255,255,0.1)' : 'var(--accent-light)',
                               borderRadius: '8px',
                               display: 'flex',
                               alignItems: 'center',
@@ -743,7 +869,10 @@ const Chats: React.FC = () => {
                             }}>
                               <span>📎</span>
                               <span>{attachment.name}</span>
-                              <span style={{ fontSize: '12px', color: 'var(--muted)' }}>
+                              <span style={{ 
+                                fontSize: '12px', 
+                                color: message.sender_id === user?.user_id ? 'rgba(255,255,255,0.7)' : 'var(--muted)' 
+                              }}>
                                 ({Math.round((attachment.size || 0) / 1024)} KB)
                               </span>
                             </div>
@@ -791,7 +920,6 @@ const Chats: React.FC = () => {
                   onChange={(e) => {
                     const file = e.target.files?.[0];
                     if (file) {
-                      // Реализация загрузки файла
                       console.log('Выбран файл:', file);
                     }
                     e.target.value = '';
@@ -823,7 +951,7 @@ const Chats: React.FC = () => {
                   <button
                     className="btn btn-primary"
                     onClick={sendMessage}
-                    disabled={!newMessage.trim() || !isWsConnected}
+                    disabled={!newMessage.trim() || !isConnected}
                     style={{
                       position: 'absolute',
                       right: '8px',
@@ -889,10 +1017,10 @@ const Chats: React.FC = () => {
           width: '8px',
           height: '8px',
           borderRadius: '50%',
-          backgroundColor: isWsConnected ? '#10B981' : '#EF4444',
-          animation: isWsConnected ? 'pulse 2s infinite' : 'none'
+          backgroundColor: isConnected ? '#10B981' : '#EF4444',
+          animation: isConnected ? 'pulse 2s infinite' : 'none'
         }} />
-        {isWsConnected ? 'Подключено' : 'Отключено'}
+        {isConnected ? 'Подключено' : 'Отключено'}
       </div>
     </div>
   );

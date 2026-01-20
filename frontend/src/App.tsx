@@ -6,7 +6,7 @@ import Profile from "./pages/Profile";
 import CoursesPage from './pages/Courses'
 import { AuthProvider } from "./store/AuthContext";
 import CourseFormPage from "./pages/CourseFormPage";
-import EditProfilePage from './pages/ProfileTest';
+import EditProfilePage from './pages/ProfileEdit';
 import CoursePage from './pages/CourseTest';
 
 import Chats from './pages/Chats'; // Импортируем новый компонент

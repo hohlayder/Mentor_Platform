@@ -1,30 +1,88 @@
-// src/pages/ProfilePage.tsx (обновленная версия)
 import React, { useState, useEffect } from 'react'
 import { useParams, useNavigate, useLocation, Link } from 'react-router-dom'
 import { useAuth } from '../store/AuthContext'
 
-// Типы
+// Типы для ответа API
+interface APIProfileResponse {
+  Profile?: {
+    user?: {
+      user_id: string
+      first_name: string
+      last_name: string
+      email: string
+      avatar_url?: string | null
+      created_at: string
+    }
+    mentor?: {
+      user_id: string
+      description?: string | null
+      rating?: number | null
+      withdrawal_address?: string | null
+      created_at: string
+    }
+    student?: {
+      user_id: string
+      learning_goals?: string | null
+      preferred_learning_style?: string | null
+      created_at: string
+    }
+    teaching_skills?: any[] | null
+    learning_skills?: any[] | null
+  }
+  profile?: {  // Добавляем вариант с маленькой буквы
+    user?: {
+      user_id: string
+      first_name: string
+      last_name: string
+      email: string
+      avatar_url?: string | null
+      created_at: string
+    }
+    mentor?: {
+      user_id: string
+      description?: string | null
+      rating?: number | null
+      withdrawal_address?: string | null
+      created_at: string
+    }
+    student?: {
+      user_id: string
+      learning_goals?: string | null
+      preferred_learning_style?: string | null
+      created_at: string
+    }
+    teaching_skills?: any[] | null
+    learning_skills?: any[] | null
+  }
+  Posts?: {
+    posts: any[]
+    next_page_token?: string
+    total_count: number
+  }
+}
+
+// Типы для использования в компоненте
 interface User {
   user_id: string
-  email: string
   first_name: string
   last_name: string
-  avatar_url?: string
+  email: string
+  avatar_url?: string | null
   created_at: string
 }
 
 interface MentorProfile {
   user_id: string
-  description?: string
-  rating?: number
-  withdrawal_address?: string
+  description?: string | null
+  rating?: number | null
+  withdrawal_address?: string | null
   created_at: string
 }
 
 interface StudentProfile {
   user_id: string
-  learning_goals?: string
-  preferred_learning_style?: string
+  learning_goals?: string | null
+  preferred_learning_style?: string | null
   created_at: string
 }
 
@@ -32,7 +90,7 @@ interface TeachingSkill {
   skill_id: string
   skill_name: string
   proficiency_level: string
-  years_of_experience?: number
+  years_of_experience?: number | null
   user_id: string
   created_at: string
 }
@@ -45,14 +103,6 @@ interface LearningSkill {
   created_at: string
 }
 
-interface ProfileResponse {
-  user: User
-  mentor?: MentorProfile
-  student?: StudentProfile
-  teaching_skills?: TeachingSkill[]
-  learning_skills?: LearningSkill[]
-}
-
 interface Post {
   id: string
   title: string
@@ -60,10 +110,20 @@ interface Post {
   author_id: string
   status: 'draft' | 'published' | 'archived'
   tags: string[]
-  average_rating?: number
-  ratings_count?: number
+  average_rating?: number | null
+  ratings_count?: number | null
   created_at: string
   updated_at: string
+  author_name?: string | null
+  avatar_url?: string | null
+}
+
+interface ProfileResponse {
+  user?: User | null
+  mentor?: MentorProfile | null
+  student?: StudentProfile | null
+  teaching_skills?: TeachingSkill[]
+  learning_skills?: LearningSkill[]
 }
 
 // Хук для управления темой
@@ -89,31 +149,54 @@ const ProfilePage: React.FC = () => {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const location = useLocation()
-  const { user, token, logout } = useAuth()
+  const { user: authUser, token, logout } = useAuth()
   const { theme, toggleTheme } = useTheme()
 
   const [profile, setProfile] = useState<ProfileResponse | null>(null)
   const [mentorCourses, setMentorCourses] = useState<Post[]>([])
+  const [likedPosts, setLikedPosts] = useState<Post[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState<'mentor' | 'student'>('mentor')
-  const [redirectAttempted, setRedirectAttempted] = useState(false)
 
-  // Проверяем, находится ли пользователь на маршруте /profile без ID
   const isProfileRoot = location.pathname === '/profile' || location.pathname === '/profile/'
 
-  // ПРОСТАЯ логика редиректа - только один раз
+  // Функция для получения правильного URL аватара
+  const getAvatarUrl = (avatarUrl: string | null | undefined): string => {
+    if (!avatarUrl) return ''
+    
+    // Если URL уже полный (http или https)
+    if (avatarUrl.startsWith('http')) {
+      return avatarUrl
+    }
+    
+    // Если это имя файла
+    if (avatarUrl && !avatarUrl.includes('/')) {
+      return `http://localhost:8080/api/v1/files/avatar/${avatarUrl}`
+    }
+    
+    // Если это относительный путь
+    if (avatarUrl.startsWith('/')) {
+      return `http://localhost:8080${avatarUrl}`
+    }
+    
+    // Если это путь без префикса http
+    if (avatarUrl.startsWith('files/avatar/')) {
+      return `http://localhost:8080/api/v1/${avatarUrl}`
+    }
+    
+    return avatarUrl
+  }
+
   useEffect(() => {
     if (isProfileRoot) {
-      if (token && user?.user_id) {
-        navigate(`/profile/${user.user_id}`, { replace: true })
+      if (token && authUser?.user_id) {
+        navigate(`/profile/${authUser.user_id}`, { replace: true })
       } else {
         navigate('/login', { replace: true })
       }
     }
-  }, [isProfileRoot, token, user, navigate])
+  }, [isProfileRoot, token, authUser, navigate])
 
-  // Загрузка профиля и курсов
   useEffect(() => {
     if (!id || isProfileRoot) {
       return
@@ -124,7 +207,6 @@ const ProfilePage: React.FC = () => {
       setError(null)
 
       try {
-        // Подготавливаем заголовки
         const headers: Record<string, string> = {
           'Content-Type': 'application/json'
         }
@@ -133,6 +215,8 @@ const ProfilePage: React.FC = () => {
         if (currentToken) {
           headers['Authorization'] = `Bearer ${currentToken}`
         }
+
+        console.log(`Loading profile for ID: ${id}`);
 
         // 1. Загружаем профиль
         const profileResponse = await fetch(
@@ -143,33 +227,160 @@ const ProfilePage: React.FC = () => {
           }
         )
         
+        console.log('Profile response status:', profileResponse.status);
+        
         if (!profileResponse.ok) {
-          throw new Error(`HTTP ${profileResponse.status}`)
+          const errorText = await profileResponse.text();
+          console.error('Profile response error:', errorText);
+          throw new Error(`HTTP ${profileResponse.status}: ${errorText || 'Неизвестная ошибка'}`);
         }
         
-        const profileData: ProfileResponse = await profileResponse.json()
-        setProfile(profileData)
-
-        // 2. Загружаем курсы ментора (если он ментор)
+        const responseText = await profileResponse.text();
+        console.log('Profile response text:', responseText);
+        
+        let apiData: APIProfileResponse;
+        try {
+          apiData = JSON.parse(responseText);
+        } catch (parseError) {
+          console.error('Failed to parse JSON:', parseError);
+          throw new Error('Некорректный ответ от сервера');
+        }
+        
+        console.log('Parsed profile data:', apiData);
+        
+        // Проверяем структуру данных
+        if (!apiData || typeof apiData !== 'object') {
+          console.error('Invalid profile data structure:', apiData);
+          throw new Error('Неверная структура профиля');
+        }
+        
+        // Исправление: используем любой вариант (с большой или маленькой буквы)
+        const profileData = apiData.Profile || apiData.profile;
+        
+        // Проверяем наличие данных профиля
+        if (!profileData) {
+          console.error('No Profile or profile data found:', apiData);
+          throw new Error('Отсутствуют данные профиля');
+        }
+        
+        // Преобразуем данные из API в наш формат
+        const normalizedData: ProfileResponse = {};
+        
+        // user
+        if (profileData.user) {
+          normalizedData.user = {
+            user_id: profileData.user.user_id || '',
+            first_name: profileData.user.first_name || '',
+            last_name: profileData.user.last_name || '',
+            email: profileData.user.email || '',
+            avatar_url: getAvatarUrl(profileData.user.avatar_url || null),
+            created_at: profileData.user.created_at || ''
+          };
+        } else {
+          console.error('No user data in profileData:', profileData);
+          throw new Error('Отсутствуют данные пользователя');
+        }
+        
+        // mentor
         if (profileData.mentor) {
+          normalizedData.mentor = {
+            user_id: profileData.mentor.user_id || '',
+            description: profileData.mentor.description || null,
+            rating: profileData.mentor.rating || null,
+            withdrawal_address: profileData.mentor.withdrawal_address || null,
+            created_at: profileData.mentor.created_at || ''
+          };
+        }
+        
+        // student
+        if (profileData.student) {
+          normalizedData.student = {
+            user_id: profileData.student.user_id || '',
+            learning_goals: profileData.student.learning_goals || null,
+            preferred_learning_style: profileData.student.preferred_learning_style || null,
+            created_at: profileData.student.created_at || ''
+          };
+        }
+        
+        // teaching_skills
+        if (profileData.teaching_skills && Array.isArray(profileData.teaching_skills)) {
+          normalizedData.teaching_skills = profileData.teaching_skills.map((skill: any) => ({
+            skill_id: skill.skill_id || '',
+            skill_name: skill.skill_name || '',
+            proficiency_level: skill.proficiency_level || '',
+            years_of_experience: skill.years_of_experience || null,
+            user_id: skill.user_id || '',
+            created_at: skill.created_at || ''
+          }));
+        }
+        
+        // learning_skills
+        if (profileData.learning_skills && Array.isArray(profileData.learning_skills)) {
+          normalizedData.learning_skills = profileData.learning_skills.map((skill: any) => ({
+            skill_id: skill.skill_id || '',
+            skill_name: skill.skill_name || '',
+            proficiency_level: skill.proficiency_level || '',
+            user_id: skill.user_id || '',
+            created_at: skill.created_at || ''
+          }));
+        }
+        
+        console.log('Normalized profile data:', normalizedData);
+        setProfile(normalizedData);
+
+        // 2. Сохраняем понравившиеся посты из Posts
+        if (apiData.Posts?.posts && Array.isArray(apiData.Posts.posts)) {
+          const transformedPosts: Post[] = apiData.Posts.posts.map((post: any) => ({
+            id: post.id || '',
+            title: post.title || '',
+            content: post.content || '',
+            author_id: post.author_id || '',
+            status: post.status || 'published',
+            tags: post.tags || [],
+            average_rating: post.average_rating || null,
+            ratings_count: post.ratings_count || null,
+            created_at: post.created_at || '',
+            updated_at: post.updated_at || '',
+            author_name: post.author_name || null,
+            avatar_url: getAvatarUrl(post.avatar_url || null)
+          }));
+          console.log('Transformed liked posts:', transformedPosts);
+          setLikedPosts(transformedPosts);
+        } else {
+          console.log('No liked posts found or empty array');
+        }
+
+        // 3. Загружаем курсы, созданные пользователем
+        const userId = normalizedData.user?.user_id || id;
+        if (normalizedData.mentor || normalizedData.user) {
           try {
-            // Параметры запроса согласно Swagger
             const params = new URLSearchParams({
-              author_id: id,
+              author_id: userId,
               status: 'published',
               page_size: '20',
               sort_field: 'created_at',
               sort_order: 'desc'
-            })
+            });
 
+            console.log('Loading courses with params:', params.toString());
+            
             const coursesResponse = await fetch(
               `http://localhost:8080/api/v1/posts?${params}`,
               { headers }
             )
 
+            console.log('Courses response status:', coursesResponse.status);
+            
             if (coursesResponse.ok) {
-              const coursesData = await coursesResponse.json()
-              setMentorCourses(coursesData.posts || [])
+              const coursesData = await coursesResponse.json();
+              console.log('Courses data:', coursesData);
+              const coursesWithAvatar = (coursesData.posts || []).map((post: any) => ({
+                ...post,
+                avatar_url: getAvatarUrl(post.avatar_url || null)
+              }));
+              setMentorCourses(coursesWithAvatar);
+            } else {
+              console.warn('Не удалось загрузить курсы:', coursesResponse.status);
             }
           } catch (courseErr) {
             console.error('Error loading courses:', courseErr)
@@ -184,7 +395,7 @@ const ProfilePage: React.FC = () => {
         } else if (err.message?.includes('404')) {
           setError('Профиль не найден')
         } else {
-          setError('Ошибка загрузки профиля')
+          setError(`Ошибка загрузки профиля: ${err.message}`)
         }
       } finally {
         setLoading(false)
@@ -194,157 +405,127 @@ const ProfilePage: React.FC = () => {
     loadProfile()
   }, [id, token, isProfileRoot])
 
-  // Обработка выхода
   const handleLogout = () => {
     logout();
   };
 
-  // Если на /profile и редирект не сработал
-  if (isProfileRoot) {
-    return (
-      <div className="container">
-        {/* Header */}
-        <header className="header">
-          <Link to="/" className="brand">
-            <div className="logo">M</div>Mentor Fellowship
-          </Link>
-          <div className="header-nav">
-            <button onClick={toggleTheme} className="btn btn-ghost">
-              {theme === 'light' ? '🌙' : '☀️'} Тема
-            </button>
-            {token && user ? (
-              <>
-                <Link to={`/profile/${user.user_id}`} className="btn btn-ghost">
-                  {user.first_name || 'Профиль'}
-                </Link>
-                <button onClick={handleLogout} className="btn btn-ghost">Выйти</button>
-              </>
-            ) : (
-              <>
-                <Link to="/login" className="btn btn-ghost">Войти</Link>
-                <Link to="/signup" className="btn btn-primary">Регистрация</Link>
-              </>
-            )}
-          </div>
-        </header>
-        
-        <div style={{ textAlign: 'center', padding: '60px 20px' }}>
-          <div className="logo" style={{ 
-            margin: '0 auto 20px', 
-            animation: 'pulse 1.5s infinite'
-          }}>
-            <span>↻</span>
-          </div>
-          <p style={{ color: 'var(--muted)' }}>Перенаправление...</p>
+  // Функция для отображения загрузки
+  const renderLoading = () => (
+    <div className="container">
+      <header className="header">
+        <Link to="/" className="brand">
+          <div className="logo">M</div>Mentor Fellowship
+        </Link>
+        <div className="header-nav">
+          <button onClick={toggleTheme} className="btn btn-ghost">
+            {theme === 'light' ? '🌙' : '☀️'} Тема
+          </button>
+          {token && authUser ? (
+            <>
+              <Link to="/courses" className="btn btn-ghost">Курсы</Link>
+              <Link to="/chats" className="btn btn-ghost">Сообщения</Link>
+              <Link to={`/profile/${authUser.user_id}`} className="btn btn-ghost">
+                {authUser.first_name || 'Профиль'}
+              </Link>
+              <button onClick={handleLogout} className="btn btn-ghost">Выйти</button>
+            </>
+          ) : (
+            <>
+              <Link to="/login" className="btn btn-ghost">Войти</Link>
+              <Link to="/signup" className="btn btn-primary">Регистрация</Link>
+            </>
+          )}
+        </div>
+      </header>
+      
+      <div style={{ textAlign: 'center', padding: '60px 20px' }}>
+        <div className="logo" style={{ 
+          margin: '0 auto 20px', 
+          animation: 'pulse 1.5s infinite'
+        }}>
+          <span>⏳</span>
+        </div>
+        <p style={{ color: 'var(--muted)' }}>Загрузка профиля...</p>
+      </div>
+    </div>
+  )
+
+  // Функция для отображения ошибки
+  const renderError = () => (
+    <div className="container">
+      <header className="header">
+        <Link to="/" className="brand">
+          <div className="logo">M</div>Mentor Fellowship
+        </Link>
+        <div className="header-nav">
+          <button onClick={toggleTheme} className="btn btn-ghost">
+            {theme === 'light' ? '🌙' : '☀️'} Тема
+          </button>
+          {token && authUser ? (
+            <>
+              <Link to="/courses" className="btn btn-ghost">Курсы</Link>
+              <Link to="/chats" className="btn btn-ghost">Сообщения</Link>
+              <Link to={`/profile/${authUser.user_id}`} className="btn btn-ghost">
+                {authUser.first_name || 'Профиль'}
+              </Link>
+              <button onClick={handleLogout} className="btn btn-ghost">Выйти</button>
+            </>
+          ) : (
+            <>
+              <Link to="/login" className="btn btn-ghost">Войти</Link>
+              <Link to="/signup" className="btn btn-primary">Регистрация</Link>
+            </>
+          )}
+        </div>
+      </header>
+      
+      <div style={{ textAlign: 'center', padding: '60px 20px' }}>
+        <div className="logo" style={{ margin: '0 auto 20px', background: '#ef4444' }}>
+          <span>⚠️</span>
+        </div>
+        <h3 style={{ margin: '0 0 12px 0' }}>Ошибка</h3>
+        <p style={{ color: 'var(--muted)', marginBottom: '20px' }}>
+          {error || 'Профиль не найден'}
+        </p>
+        <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
+          <button
+            className="btn btn-primary"
+            onClick={() => window.location.reload()}
+          >
+            Попробовать снова
+          </button>
+          <button
+            className="btn btn-ghost"
+            onClick={() => navigate('/')}
+          >
+            На главную
+          </button>
         </div>
       </div>
-    )
+    </div>
+  )
+
+  if (isProfileRoot) {
+    return renderLoading()
   }
 
   if (loading) {
-    return (
-      <div className="container">
-        {/* Header */}
-        <header className="header">
-          <Link to="/" className="brand">
-            <div className="logo">M</div>Mentor Fellowship
-          </Link>
-          <div className="header-nav">
-            <button onClick={toggleTheme} className="btn btn-ghost">
-              {theme === 'light' ? '🌙' : '☀️'} Тема
-            </button>
-            {token && user ? (
-              <>
-                <Link to="/courses" className="btn btn-ghost">Курсы</Link>
-                <Link to="/chats" className="btn btn-ghost">Сообщения</Link>
-                <Link to={`/profile/${user.user_id}`} className="btn btn-ghost">
-                  {user.first_name || 'Профиль'}
-                </Link>
-                <button onClick={handleLogout} className="btn btn-ghost">Выйти</button>
-              </>
-            ) : (
-              <>
-                <Link to="/login" className="btn btn-ghost">Войти</Link>
-                <Link to="/signup" className="btn btn-primary">Регистрация</Link>
-              </>
-            )}
-          </div>
-        </header>
-        
-        <div style={{ textAlign: 'center', padding: '60px 20px' }}>
-          <div className="logo" style={{ 
-            margin: '0 auto 20px', 
-            animation: 'pulse 1.5s infinite'
-          }}>
-            <span>⏳</span>
-          </div>
-          <p style={{ color: 'var(--muted)' }}>Загрузка профиля...</p>
-        </div>
-      </div>
-    )
+    return renderLoading()
   }
 
-  if (error || !profile) {
-    return (
-      <div className="container">
-        {/* Header */}
-        <header className="header">
-          <Link to="/" className="brand">
-            <div className="logo">M</div>Mentor Fellowship
-          </Link>
-          <div className="header-nav">
-            <button onClick={toggleTheme} className="btn btn-ghost">
-              {theme === 'light' ? '🌙' : '☀️'} Тема
-            </button>
-            {token && user ? (
-              <>
-                <Link to="/courses" className="btn btn-ghost">Курсы</Link>
-                <Link to="/chats" className="btn btn-ghost">Сообщения</Link>
-                <Link to={`/profile/${user.user_id}`} className="btn btn-ghost">
-                  {user.first_name || 'Профиль'}
-                </Link>
-                <button onClick={handleLogout} className="btn btn-ghost">Выйти</button>
-              </>
-            ) : (
-              <>
-                <Link to="/login" className="btn btn-ghost">Войти</Link>
-                <Link to="/signup" className="btn btn-primary">Регистрация</Link>
-              </>
-            )}
-          </div>
-        </header>
-        
-        <div style={{ textAlign: 'center', padding: '60px 20px' }}>
-          <div className="logo" style={{ margin: '0 auto 20px', background: '#ef4444' }}>
-            <span>⚠️</span>
-          </div>
-          <h3 style={{ margin: '0 0 12px 0' }}>Ошибка</h3>
-          <p style={{ color: 'var(--muted)', marginBottom: '20px' }}>
-            {error || 'Профиль не найден'}
-          </p>
-          <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
-            <button
-              className="btn btn-primary"
-              onClick={() => window.location.reload()}
-            >
-              Попробовать снова
-            </button>
-            <button
-              className="btn btn-ghost"
-              onClick={() => navigate('/')}
-            >
-              На главную
-            </button>
-          </div>
-        </div>
-      </div>
-    )
+  if (error || !profile || !profile.user) {
+    return renderError()
   }
 
-  // Проверяем, просматривает ли пользователь свой профиль
-  const isOwnProfile = user?.user_id === id
+  const isOwnProfile = authUser?.user_id === id
   const isMentor = !!profile.mentor
   const isStudent = !!profile.student
+
+  // Безопасное получение данных
+  const userName = `${profile.user.first_name || ''} ${profile.user.last_name || ''}`.trim() || 'Пользователь'
+  const userEmail = profile.user.email || ''
+  const userInitials = `${profile.user.first_name?.[0] || ''}${profile.user.last_name?.[0] || ''}` || 'U'
+  const userAvatarUrl = getAvatarUrl(profile.user.avatar_url)
 
   return (
     <div className="container">
@@ -357,12 +538,12 @@ const ProfilePage: React.FC = () => {
           <button onClick={toggleTheme} className="btn btn-ghost">
             {theme === 'light' ? '🌙' : '☀️'} Тема
           </button>
-          {token && user ? (
+          {token && authUser ? (
             <>
               <Link to="/courses" className="btn btn-ghost">Курсы</Link>
               <Link to="/chats" className="btn btn-ghost">Сообщения</Link>
-              <Link to={`/profile/${user.user_id}`} className="btn btn-ghost">
-                {user.first_name || 'Профиль'}
+              <Link to={`/profile/${authUser.user_id}`} className="btn btn-ghost">
+                {authUser.first_name || 'Профиль'}
               </Link>
               <button onClick={handleLogout} className="btn btn-ghost">Выйти</button>
             </>
@@ -385,7 +566,7 @@ const ProfilePage: React.FC = () => {
       </nav>
 
       <h1 style={{ fontSize: '32px', fontWeight: 700, marginBottom: '32px' }}>
-        {isOwnProfile ? 'Мой профиль' : `${profile.user.first_name} ${profile.user.last_name}`}
+        {isOwnProfile ? 'Мой профиль' : userName}
       </h1>
 
       {/* Заголовок профиля */}
@@ -397,23 +578,36 @@ const ProfilePage: React.FC = () => {
             height: '80px', 
             borderRadius: '50%',
             overflow: 'hidden',
-            background: profile.user.avatar_url ? 'transparent' : 'linear-gradient(135deg, var(--accent), var(--accent-2))',
+            background: userAvatarUrl ? 'transparent' : 'linear-gradient(135deg, var(--accent), var(--accent-2))',
             display: 'grid',
             placeContent: 'center'
           }}>
-            {profile.user.avatar_url ? (
+            {userAvatarUrl ? (
               <img
-                src={profile.user.avatar_url}
-                alt={profile.user.first_name}
+                src={userAvatarUrl}
+                alt={userName}
                 style={{
                   width: '100%',
                   height: '100%',
                   objectFit: 'cover'
                 }}
+                onError={(e) => {
+                  // Если изображение не загружается, показываем инициалы
+                  e.currentTarget.style.display = 'none';
+                  const parent = e.currentTarget.parentElement;
+                  if (parent) {
+                    const span = document.createElement('span');
+                    span.style.fontSize = '24px';
+                    span.style.color = '#fff';
+                    span.style.fontWeight = '600';
+                    span.textContent = userInitials;
+                    parent.appendChild(span);
+                  }
+                }}
               />
             ) : (
               <span style={{ fontSize: '24px', color: '#fff', fontWeight: 600 }}>
-                {profile.user.first_name?.[0]}{profile.user.last_name?.[0]}
+                {userInitials}
               </span>
             )}
           </div>
@@ -421,13 +615,13 @@ const ProfilePage: React.FC = () => {
           {/* Основная информация */}
           <div style={{ flex: 1, minWidth: '200px' }}>
             <h2 className="title" style={{ margin: '0 0 4px 0' }}>
-              {profile.user.first_name} {profile.user.last_name}
+              {userName}
             </h2>
             <p className="meta" style={{ margin: '0 0 8px 0' }}>
-              {profile.user.email}
+              {userEmail}
             </p>
 
-            {/* Бейджи ролей и действия */}
+            {/* Бейджи ролей */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
               <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
                 {isMentor && (
@@ -445,22 +639,18 @@ const ProfilePage: React.FC = () => {
               {/* Кнопки действий */}
               <div style={{ display: 'flex', gap: '8px' }}>
                 {isOwnProfile && (
-                  <>
-                    <button 
-                      className="btn btn-outline"
-                      onClick={() => navigate(`/profile/${id}/edit`)}
-                    >
-                      Редактировать профиль
-                    </button>
-                  </>
+                  <button 
+                    className="btn btn-outline"
+                    onClick={() => navigate(`/profile/${id}/edit`)}
+                  >
+                    Редактировать профиль
+                  </button>
                 )}
-                {/* Кнопка "Написать" для не-своих профилей */}
                 {!isOwnProfile && token && (
                   <button 
                     className="btn btn-primary"
                     onClick={async () => {
                       try {
-                        // Сначала проверяем существующий чат
                         const chatsResponse = await fetch('http://localhost:8080/api/v1/chats?limit=20&offset=0', {
                           headers: {
                             'Authorization': `Bearer ${token}`,
@@ -469,18 +659,14 @@ const ProfilePage: React.FC = () => {
                         
                         if (chatsResponse.ok) {
                           const chatsData = await chatsResponse.json();
-                          
-                          // Ищем существующий чат с этим пользователем
                           const existingChat = chatsData.chats?.find((chat: any) => 
-                            (chat.user1_id === profile.user.user_id && chat.user2_id === user?.user_id) ||
-                            (chat.user2_id === profile.user.user_id && chat.user1_id === user?.user_id)
+                            (chat.user1_id === profile.user?.user_id && chat.user2_id === authUser?.user_id) ||
+                            (chat.user2_id === profile.user?.user_id && chat.user1_id === authUser?.user_id)
                           );
                           
                           if (existingChat) {
-                            // Переходим к существующему чату
                             navigate(`/chats?chat=${existingChat.id}`);
                           } else {
-                            // Создаем новый чат
                             const createResponse = await fetch('http://localhost:8080/api/v1/chats', {
                               method: 'POST',
                               headers: {
@@ -488,17 +674,13 @@ const ProfilePage: React.FC = () => {
                                 'Content-Type': 'application/json',
                               },
                               body: JSON.stringify({
-                                other_user_id: profile.user.user_id,
+                                other_user_id: profile.user?.user_id,
                               }),
                             });
                             
                             if (createResponse.ok) {
                               const chatData = await createResponse.json();
-                              // Переходим к новому чату
                               navigate(`/chats?chat=${chatData.chat_id}`);
-                            } else {
-                              const errorData = await createResponse.json();
-                              alert(`Ошибка создания чата: ${errorData.message || 'Неизвестная ошибка'}`);
                             }
                           }
                         }
@@ -506,11 +688,6 @@ const ProfilePage: React.FC = () => {
                         console.error('Ошибка при создании чата:', error);
                         alert('Ошибка при создании чата. Попробуйте позже.');
                       }
-                    }}
-                    style={{ 
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '6px'
                     }}
                   >
                     Написать
@@ -521,7 +698,6 @@ const ProfilePage: React.FC = () => {
           </div>
         </div>
 
-        {/* Описание ментора */}
         {profile.mentor?.description && (
           <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid var(--glass)' }}>
             <p style={{ margin: 0, color: 'var(--text)' }}>
@@ -534,13 +710,12 @@ const ProfilePage: React.FC = () => {
       {/* Навыки */}
       {(profile.teaching_skills?.length || profile.learning_skills?.length) && (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '24px' }}>
-          {/* Навыки преподавания */}
           {profile.teaching_skills && profile.teaching_skills.length > 0 && (
             <div className="card">
               <h3 style={{ margin: '0 0 12px 0' }}>Навыки преподавания</h3>
               <div className="chips">
-                {profile.teaching_skills.map((skill) => (
-                  <div key={skill.skill_id} className="chip">
+                {profile.teaching_skills.map((skill, index) => (
+                  <div key={skill.skill_id || `skill-${index}`} className="chip">
                     {skill.skill_name}
                     <span style={{ fontSize: '12px', marginLeft: '4px', opacity: 0.8 }}>
                       ({skill.proficiency_level})
@@ -552,13 +727,12 @@ const ProfilePage: React.FC = () => {
             </div>
           )}
 
-          {/* Навыки обучения */}
           {profile.learning_skills && profile.learning_skills.length > 0 && (
             <div className="card">
               <h3 style={{ margin: '0 0 12px 0' }}>Навыки обучения</h3>
               <div className="chips">
-                {profile.learning_skills.map((skill) => (
-                  <div key={skill.skill_id} className="chip">
+                {profile.learning_skills.map((skill, index) => (
+                  <div key={skill.skill_id || `learn-skill-${index}`} className="chip">
                     {skill.skill_name}
                     <span style={{ fontSize: '12px', marginLeft: '4px', opacity: 0.8 }}>
                       ({skill.proficiency_level})
@@ -571,12 +745,69 @@ const ProfilePage: React.FC = () => {
         </div>
       )}
 
+      {/* Понравившиеся посты */}
+      {likedPosts.length > 0 && (
+        <div className="card" style={{ marginBottom: '24px' }}>
+          <h3 style={{ margin: '0 0 16px 0' }}>
+            {isOwnProfile ? 'Мне понравилось' : 'Понравившиеся посты'}
+            <span className="meta" style={{ marginLeft: '8px', fontWeight: 'normal' }}>
+              ({likedPosts.length})
+            </span>
+          </h3>
+
+          <div className="courses-grid">
+            {likedPosts.map((post) => (
+              <div 
+                key={post.id} 
+                className="course"
+                onClick={() => navigate(`/courses/${post.id}`)}
+                style={{ cursor: 'pointer' }}
+              >
+                <div
+                  className="thumb"
+                  style={{
+                    background: `linear-gradient(135deg, #f59e0b, #d97706)`,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#fff',
+                    fontWeight: 'bold',
+                    fontSize: '24px'
+                  }}>
+                  {post.title?.[0] || '❤️'}
+                </div>
+                <div className="c-body">
+                  <div className="title" style={{ fontSize: '16px', marginBottom: '8px' }}>
+                    {post.title || 'Без названия'}
+                  </div>
+                  <div className="meta" style={{ fontSize: '12px', marginBottom: '8px' }}>
+                    {post.tags?.slice(0, 2).map(tag => `#${tag}`).join(' ') || ''}
+                    {post.tags?.length > 2 && '...'}
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span className="meta">
+                      {post.average_rating
+                        ? `⭐ ${post.average_rating.toFixed(1)} (${post.ratings_count || 0})`
+                        : 'Нет оценок'
+                      }
+                    </span>
+                    <span className="meta" style={{ fontSize: '11px' }}>
+                      {post.created_at ? new Date(post.created_at).toLocaleDateString('ru-RU') : 'Дата неизвестна'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Курсы ментора */}
       {isMentor && (
         <div className="card" style={{ marginBottom: '24px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
             <h3 style={{ margin: 0 }}>
-              Курсы {isOwnProfile ? 'которые я веду' : 'пользователя'} ({mentorCourses.length})
+              {isOwnProfile ? 'Мои курсы' : 'Курсы пользователя'} ({mentorCourses.length})
             </h3>
             {isOwnProfile && (
               <button 
@@ -608,25 +839,25 @@ const ProfilePage: React.FC = () => {
                       fontWeight: 'bold',
                       fontSize: '24px'
                     }}>
-                    {course.title[0]}
+                    {course.title?.[0] || '📚'}
                   </div>
                   <div className="c-body">
                     <div className="title" style={{ fontSize: '16px', marginBottom: '8px' }}>
-                      {course.title}
+                      {course.title || 'Без названия'}
                     </div>
                     <div className="meta" style={{ fontSize: '12px', marginBottom: '8px' }}>
-                      {course.tags.slice(0, 2).map(tag => `#${tag}`).join(' ')}
-                      {course.tags.length > 2 && '...'}
+                      {course.tags?.slice(0, 2).map(tag => `#${tag}`).join(' ') || ''}
+                      {course.tags?.length > 2 && '...'}
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <span className="meta">
                         {course.average_rating
-                          ? `⭐ ${course.average_rating.toFixed(1)} (${course.ratings_count})`
+                          ? `⭐ ${course.average_rating.toFixed(1)} (${course.ratings_count || 0})`
                           : 'Нет оценок'
                         }
                       </span>
                       <span className="meta" style={{ fontSize: '11px' }}>
-                        {new Date(course.created_at).toLocaleDateString('ru-RU')}
+                        {course.created_at ? new Date(course.created_at).toLocaleDateString('ru-RU') : 'Дата неизвестна'}
                       </span>
                     </div>
                     {isOwnProfile && (
@@ -686,11 +917,11 @@ const ProfilePage: React.FC = () => {
           <div>
             <div className="meta" style={{ marginBottom: '6px' }}>Дата регистрации</div>
             <div style={{ fontWeight: '500' }}>
-              {new Date(profile.user.created_at).toLocaleDateString('ru-RU', {
+              {profile.user.created_at ? new Date(profile.user.created_at).toLocaleDateString('ru-RU', {
                 day: 'numeric',
                 month: 'long',
                 year: 'numeric'
-              })}
+              }) : 'Не указана'}
             </div>
           </div>
 
@@ -725,6 +956,15 @@ const ProfilePage: React.FC = () => {
               <div className="meta" style={{ marginBottom: '6px' }}>Курсов создано</div>
               <div style={{ fontWeight: '500' }}>
                 {mentorCourses.length}
+              </div>
+            </div>
+          )}
+
+          {likedPosts.length > 0 && (
+            <div>
+              <div className="meta" style={{ marginBottom: '6px' }}>Понравившихся постов</div>
+              <div style={{ fontWeight: '500' }}>
+                {likedPosts.length}
               </div>
             </div>
           )}
