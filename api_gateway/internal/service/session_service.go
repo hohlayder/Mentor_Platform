@@ -2,10 +2,12 @@ package service
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"log/slog"
 
-	"github.com/hohlayder/Mentor_Platform/api_gateway/internal/domain"
 	sessionv1 "github.com/Sergey-1214/contracts_mentors/session/v1"
+	"github.com/hohlayder/Mentor_Platform/api_gateway/internal/domain"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -23,6 +25,7 @@ type SessionClient interface {
 	UpdateSlotStatus(ctx context.Context, in *sessionv1.UpdateSlotStatusRequest) (*sessionv1.UpdateSlotStatusResponse, error)
 	RateSession(ctx context.Context, in *sessionv1.RateSessionRequest) (*sessionv1.RateSessionResponse, error) 
 	GetSlotsByMentor(ctx context.Context, in *sessionv1.GetSlotsByMentorRequest) (*sessionv1.GetSlotsByMentorResponse, error)
+	GetMentorPaymentAmount(ctx context.Context, in *sessionv1.GetMentorPaymentAmountRequest) (*sessionv1.GetMentorPaymentAmountResponse, error)
 }
 
 type SessionService struct {
@@ -330,6 +333,29 @@ func (s *SessionService) GetSlotsByMentor(ctx context.Context, mentorID string) 
     }
 
     return slots, nil
+}
+
+func (s *SessionService) GetMentorPaymentAmount(ctx context.Context, mentorID string) (*domain.GetMentorPaymentAmountResponse, error) {
+	if mentorID == "" {
+		return nil, errors.New("mentor ID is required")
+	}
+
+	grpcReq := &sessionv1.GetMentorPaymentAmountRequest{
+		MentorId: mentorID,
+	}
+
+	grpcResp, err := s.client.GetMentorPaymentAmount(ctx, grpcReq)
+	if err != nil {
+		slog.Error("Failed to get mentor payment amount via gRPC",
+			"error", err,
+			"mentor_id", mentorID)
+		return nil, fmt.Errorf("failed to get payment amount: %w", err)
+	}
+
+	return &domain.GetMentorPaymentAmountResponse{
+		MentorID:      grpcResp.MentorId,
+		TotalAmount:   grpcResp.TotalAmount,
+	}, nil
 }
 
 func convertToProtoSlotStatus(status string) sessionv1.SlotStatus {
