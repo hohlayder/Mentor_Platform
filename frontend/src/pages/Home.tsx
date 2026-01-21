@@ -15,6 +15,7 @@ interface Course {
   ratings_count?: number;
   created_at: string;
   updated_at: string;
+  avatar_url?: string | null; // Добавлено поле для аватара курса
 }
 
 interface User {
@@ -39,6 +40,46 @@ export const Home: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   const { token, user, logout } = useAuth();
+
+  // Функция для получения URL аватара поста
+  const getPostAvatarUrl = (postId: string, filename?: string | null): string => {
+    if (!filename) return '';
+    
+    // Если это уже полный URL, возвращаем как есть
+    if (filename.startsWith('http://') || filename.startsWith('https://')) {
+      return filename;
+    }
+    
+    // Если это просто имя файла, формируем URL
+    if (!filename.includes('/')) {
+      return `http://localhost:8080/api/v1/files/posts/avatar/${filename}`;
+    }
+    
+    // Если это относительный путь
+    if (filename.startsWith('/')) {
+      return `http://localhost:8080${filename}`;
+    }
+    
+    // Если это путь без префикса http
+    if (filename.startsWith('files/posts/avatar/')) {
+      return `http://localhost:8080/api/v1/${filename}`;
+    }
+    
+    // По умолчанию используем эндпоинт с post_id
+    return `http://localhost:8080/api/v1/files/posts/avatar/${postId}`;
+  };
+
+  // Функция для получения URL аватара пользователя
+  const getUserAvatarUrl = (filename?: string): string => {
+    if (!filename) return '';
+    
+    if (filename.startsWith('http://') || filename.startsWith('https://')) {
+      return filename;
+    }
+    
+    // Для аватара пользователя: GET /files/avatar/{filename}
+    return `http://localhost:8080/api/v1/files/avatar/${filename}`;
+  };
 
   // При монтировании читаем тему из localStorage
   useEffect(() => {
@@ -65,7 +106,14 @@ export const Home: React.FC = () => {
         }
 
         const data = await response.json();
-        setCourses(data.posts || []);
+        
+        // Добавляем проверку avatar_url для каждого курса
+        const coursesWithAvatar = (data.posts || []).map((course: Course) => ({
+          ...course,
+          avatar_url: course.avatar_url || null
+        }));
+        
+        setCourses(coursesWithAvatar);
       } catch (err: any) {
         console.error('Ошибка загрузки курсов:', err);
         setError('Не удалось загрузить курсы');
@@ -89,15 +137,23 @@ export const Home: React.FC = () => {
         if (uniqueAuthorIds.length > 0) {
           // Загружаем информацию о первых 6 авторах
           const teachersPromises = uniqueAuthorIds.slice(0, 6).map(async (authorId) => {
-            const response = await fetch(`http://localhost:8080/api/v1/users/${authorId}`);
-            if (response.ok) {
-              return await response.json();
+            try {
+              const response = await fetch(`http://localhost:8080/api/v1/users/${authorId}`);
+              if (response.ok) {
+                const userData = await response.json();
+                return {
+                  ...userData,
+                  avatar_url: userData.avatar_url || null
+                };
+              }
+            } catch (err) {
+              console.error(`Ошибка загрузки пользователя ${authorId}:`, err);
             }
             return null;
           });
 
           const teachersData = await Promise.all(teachersPromises);
-          setTeachers(teachersData.filter(Boolean));
+          setTeachers(teachersData.filter(Boolean) as User[]);
         }
       } catch (err: any) {
         console.error('Ошибка загрузки менторов:', err);
@@ -198,6 +254,64 @@ export const Home: React.FC = () => {
     );
   };
 
+  // Рендер изображения курса с fallback
+  const renderCourseImage = (course: Course) => {
+    const avatarUrl = getPostAvatarUrl(course.id, course.avatar_url);
+    
+    if (avatarUrl) {
+      return (
+        <img
+          src={avatarUrl}
+          alt={course.title}
+          style={{
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+            position: 'absolute',
+            top: 0,
+            left: 0
+          }}
+          onError={(e) => {
+            // Если изображение не загружается, показываем градиент с первой буквой
+            e.currentTarget.style.display = 'none';
+            const parent = e.currentTarget.parentElement;
+            if (parent) {
+              const fallback = document.createElement('div');
+              fallback.style.width = '100%';
+              fallback.style.height = '100%';
+              fallback.style.background = 'linear-gradient(135deg, var(--accent), var(--accent-2))';
+              fallback.style.display = 'flex';
+              fallback.style.alignItems = 'center';
+              fallback.style.justifyContent = 'center';
+              fallback.style.color = '#fff';
+              fallback.style.fontWeight = 'bold';
+              fallback.style.fontSize = '24px';
+              fallback.textContent = course.title[0];
+              parent.appendChild(fallback);
+            }
+          }}
+        />
+      );
+    }
+    
+    // Если нет аватара, показываем градиент с первой буквой
+    return (
+      <div style={{
+        width: '100%',
+        height: '100%',
+        background: 'linear-gradient(135deg, var(--accent), var(--accent-2))',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        color: '#fff',
+        fontWeight: 'bold',
+        fontSize: '24px'
+      }}>
+        {course.title[0]}
+      </div>
+    );
+  };
+
   return (
     <div>
       {/* Header */}
@@ -291,16 +405,12 @@ export const Home: React.FC = () => {
                   <div
                     className="thumb"
                     style={{
-                      background: `linear-gradient(135deg, var(--accent), var(--accent-2))`,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      color: '#fff',
-                      fontWeight: 'bold',
-                      fontSize: '24px'
+                      position: 'relative',
+                      overflow: 'hidden',
+                      height: '150px' // Фиксированная высота для всех картинок
                     }}
                   >
-                    {course.title[0]}
+                    {renderCourseImage(course)}
                   </div>
                   <div className="c-body">
                     <div className="title">{course.title}</div>
@@ -330,7 +440,6 @@ export const Home: React.FC = () => {
             </div>
           )}
         </div>
-
 
         {/* Статистика для зарегистрированных пользователей */}
         {token && user && (

@@ -1,4 +1,4 @@
-// src/pages/CoursePage.tsx (упрощенная версия)
+// src/pages/CoursePage.tsx (исправленная версия)
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../store/AuthContext';
@@ -34,6 +34,7 @@ interface Post {
   ratings_count?: number;
   created_at: string;
   updated_at: string;
+  avatar_url?: string | null; // Добавлено поле для аватара поста
 }
 
 interface PostUpdate {
@@ -59,6 +60,59 @@ interface User {
   last_name: string;
   avatar_url?: string;
   created_at: string;
+}
+
+interface APIProfileResponse {
+  Profile?: {
+    user?: {
+      user_id: string;
+      first_name: string;
+      last_name: string;
+      email: string;
+      avatar_url?: string | null;
+      created_at: string;
+    };
+    mentor?: {
+      user_id: string;
+      description?: string | null;
+      rating?: number | null;
+      withdrawal_address?: string | null;
+      created_at: string;
+    };
+    student?: {
+      user_id: string;
+      learning_goals?: string | null;
+      preferred_learning_style?: string | null;
+      created_at: string;
+    };
+    teaching_skills?: any[] | null;
+    learning_skills?: any[] | null;
+  };
+  profile?: {
+    user?: {
+      user_id: string;
+      first_name: string;
+      last_name: string;
+      email: string;
+      avatar_url?: string | null;
+      created_at: string;
+    };
+    mentor?: {
+      user_id: string;
+      description?: string | null;
+      rating?: number | null;
+      withdrawal_address?: string | null;
+      created_at: string;
+    };
+    student?: {
+      user_id: string;
+      learning_goals?: string | null;
+      preferred_learning_style?: string | null;
+      created_at: string;
+    };
+    teaching_skills?: any[] | null;
+    learning_skills?: any[] | null;
+  };
 }
 
 interface ProfileResponse {
@@ -103,6 +157,61 @@ const apiFetch = async <T,>(
   return response.json();
 };
 
+// Вспомогательная функция для получения правильного URL аватара пользователя
+const getAvatarUrl = (avatarUrl: string | null | undefined): string => {
+  if (!avatarUrl) return '';
+  
+  // Если URL уже полный (http или https)
+  if (avatarUrl.startsWith('http')) {
+    return avatarUrl;
+  }
+  
+  // Если это имя файла
+  if (avatarUrl && !avatarUrl.includes('/')) {
+    return `http://localhost:8080/api/v1/files/avatar/${avatarUrl}`;
+  }
+  
+  // Если это относительный путь
+  if (avatarUrl.startsWith('/')) {
+    return `http://localhost:8080${avatarUrl}`;
+  }
+  
+  // Если это путь без префикса http
+  if (avatarUrl.startsWith('files/avatar/')) {
+    return `http://localhost:8080/api/v1/${avatarUrl}`;
+  }
+  
+  return avatarUrl;
+};
+
+// Вспомогательная функция для получения правильного URL аватара поста
+const getPostAvatarUrl = (postId: string, avatarUrl: string | null | undefined): string => {
+  if (!avatarUrl) return `http://localhost:8080/api/v1/files/posts/avatar/default`;
+  
+  // Если URL уже полный (http или https)
+  if (avatarUrl.startsWith('http')) {
+    return avatarUrl;
+  }
+  
+  // Если это имя файла
+  if (avatarUrl && !avatarUrl.includes('/')) {
+    return `http://localhost:8080/api/v1/files/posts/avatar/${avatarUrl}`;
+  }
+  
+  // Если это относительный путь
+  if (avatarUrl.startsWith('/')) {
+    return `http://localhost:8080${avatarUrl}`;
+  }
+  
+  // Если это путь без префикса http
+  if (avatarUrl.startsWith('files/posts/avatar/')) {
+    return `http://localhost:8080/api/v1/${avatarUrl}`;
+  }
+  
+  // По умолчанию используем эндпоинт с post_id из документации
+  return `http://localhost:8080/api/v1/files/posts/avatar/${postId}`;
+};
+
 const CoursePage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -118,6 +227,7 @@ const CoursePage: React.FC = () => {
   const [rating, setRating] = useState(0);
   const [review, setReview] = useState('');
   const [submittingRating, setSubmittingRating] = useState(false);
+  const [postAvatarUrl, setPostAvatarUrl] = useState<string>('');
 
   // Функция для нормализации статуса
   const normalizeStatus = (status: string): 'published' | 'draft' | 'archived' => {
@@ -213,7 +323,27 @@ const CoursePage: React.FC = () => {
         const loadedCourse = courseData.post;
         setCourse(loadedCourse);
 
-        // 2. Загружаем информацию об авторе по документации: GET /users/{id}
+        // 2. Загружаем аватар поста
+        try {
+          if (loadedCourse.avatar_url) {
+            const postAvatarUrl = getPostAvatarUrl(loadedCourse.id, loadedCourse.avatar_url);
+            setPostAvatarUrl(postAvatarUrl);
+          } else {
+            // Если у поста нет аватара, пробуем получить дефолтный
+            const postAvatarUrl = `http://localhost:8080/api/v1/files/posts/avatar/default`;
+            // Проверяем, существует ли дефолтный аватар
+            const response = await fetch(postAvatarUrl, { method: 'HEAD' });
+            if (response.ok) {
+              setPostAvatarUrl(postAvatarUrl);
+            }
+          }
+        } catch (err) {
+          console.warn('Не удалось загрузить аватар поста:', err);
+          // Устанавливаем дефолтный градиент вместо аватара
+          setPostAvatarUrl('');
+        }
+
+        // 3. Загружаем информацию об авторе по документации: GET /users/{id}
         try {
           const authorData = await apiFetch<User>(
             `http://localhost:8080/api/v1/users/${loadedCourse.author_id}`,
@@ -222,15 +352,79 @@ const CoursePage: React.FC = () => {
           setAuthor(authorData);
         } catch (err) {
           console.warn('Не удалось загрузить информацию об авторе:', err);
+          // Создаем базового автора если не удалось загрузить
+          setAuthor({
+            user_id: loadedCourse.author_id,
+            email: 'unknown@example.com',
+            first_name: 'Неизвестный',
+            last_name: 'Автор',
+            created_at: new Date().toISOString()
+          });
         }
 
-        // 3. Загружаем профиль автора по документации: GET /profiles/{id}
+        // 4. Загружаем профиль автора по документации: GET /profiles/{id}
         try {
-          const profileData = await apiFetch<ProfileResponse>(
+          const profileResponse = await fetch(
             `http://localhost:8080/api/v1/profiles/${loadedCourse.author_id}`,
             { headers }
           );
-          setProfile(profileData);
+          
+          if (profileResponse.ok) {
+            const profileData: APIProfileResponse = await profileResponse.json();
+            
+            // Исправление: используем любой вариант (с большой или маленькой буквы)
+            const profileObj = profileData.Profile || profileData.profile;
+            
+            if (profileObj?.user) {
+              // Нормализуем данные профиля
+              const normalizedProfile: ProfileResponse = {
+                user: {
+                  user_id: profileObj.user.user_id || loadedCourse.author_id,
+                  email: profileObj.user.email || '',
+                  first_name: profileObj.user.first_name || '',
+                  last_name: profileObj.user.last_name || '',
+                  avatar_url: getAvatarUrl(profileObj.user.avatar_url),
+                  created_at: profileObj.user.created_at || ''
+                },
+                mentor: profileObj.mentor ? {
+                  user_id: profileObj.mentor.user_id || loadedCourse.author_id,
+                  description: profileObj.mentor.description || undefined,
+                  rating: profileObj.mentor.rating || undefined,
+                  created_at: profileObj.mentor.created_at || ''
+                } : undefined,
+                student: profileObj.student ? {
+                  user_id: profileObj.student.user_id || loadedCourse.author_id,
+                  learning_goals: profileObj.student.learning_goals || undefined,
+                  preferred_learning_style: profileObj.student.preferred_learning_style || undefined,
+                  created_at: profileObj.student.created_at || ''
+                } : undefined
+              };
+              
+              setProfile(normalizedProfile);
+              
+              // Обновляем автора с данными из профиля
+              if (author) {
+                setAuthor({
+                  ...author,
+                  avatar_url: getAvatarUrl(profileObj.user.avatar_url),
+                  first_name: profileObj.user.first_name || author.first_name,
+                  last_name: profileObj.user.last_name || author.last_name,
+                  email: profileObj.user.email || author.email
+                });
+              } else {
+                setAuthor({
+                  user_id: loadedCourse.author_id,
+                  email: profileObj.user.email || '',
+                  first_name: profileObj.user.first_name || 'Неизвестный',
+                  last_name: profileObj.user.last_name || 'Автор',
+                  avatar_url: getAvatarUrl(profileObj.user.avatar_url),
+                  created_at: profileObj.user.created_at || new Date().toISOString()
+                });
+              }
+            }
+          } else {
+            console.warn('Профиль автора не найден или ошибка доступа');
+          }
         } catch (err) {
           console.warn('Не удалось загрузить профиль автора:', err);
         }
@@ -567,15 +761,45 @@ const CoursePage: React.FC = () => {
           width: '350px', 
           height: '200px', 
           borderRadius: '12px',
-          background: 'linear-gradient(135deg, var(--accent), var(--accent-2))',
+          overflow: 'hidden',
+          background: postAvatarUrl ? 'transparent' : 'linear-gradient(135deg, var(--accent), var(--accent-2))',
           display: 'grid',
           placeContent: 'center',
           color: '#fff',
           fontSize: '48px',
           fontWeight: 700,
-          flexShrink: 0
+          flexShrink: 0,
+          position: 'relative'
         }}>
-          {course.title[0]}
+          {postAvatarUrl ? (
+            <img 
+              src={postAvatarUrl} 
+              alt={course.title}
+              style={{ 
+                width: '100%', 
+                height: '100%', 
+                objectFit: 'cover',
+                position: 'absolute',
+                top: 0,
+                left: 0
+              }}
+              onError={(e) => {
+                // Если изображение не загружается, показываем инициалы
+                e.currentTarget.style.display = 'none';
+                const parent = e.currentTarget.parentElement;
+                if (parent) {
+                  const span = document.createElement('span');
+                  span.style.fontSize = '48px';
+                  span.style.color = '#fff';
+                  span.style.fontWeight = '700';
+                  span.textContent = course.title[0];
+                  parent.appendChild(span);
+                }
+              }}
+            />
+          ) : (
+            <span>{course.title[0]}</span>
+          )}
         </div>
 
         {/* Информация о курсе */}
@@ -610,6 +834,69 @@ const CoursePage: React.FC = () => {
             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
               {canEdit && (
                 <>
+                  {/* Кнопка загрузки аватара для поста */}
+                  <input
+                    type="file"
+                    id="post-avatar-upload"
+                    style={{ display: 'none' }}
+                    accept="image/*"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file || !token || !course) return;
+
+                      // Проверяем размер файла (максимум 5МБ)
+                      if (file.size > 5 * 1024 * 1024) {
+                        alert('Файл слишком большой. Максимальный размер: 5 МБ');
+                        return;
+                      }
+
+                      // Проверяем формат файла
+                      const allowedFormats = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/svg+xml'];
+                      if (!allowedFormats.includes(file.type)) {
+                        alert('Неподдерживаемый формат файла. Разрешенные форматы: jpg, jpeg, png, gif, svg');
+                        return;
+                      }
+
+                      const formData = new FormData();
+                      formData.append('avatar', file);
+
+                      try {
+                        const response = await fetch(
+                          `http://localhost:8080/api/v1/files/posts/avatar/${course.id}`,
+                          {
+                            method: 'POST',
+                            headers: {
+                              'Authorization': `Bearer ${token}`,
+                            },
+                            body: formData
+                          }
+                        );
+
+                        if (response.ok) {
+                          const data = await response.json();
+                          // Обновляем аватар поста с новым URL
+                          setPostAvatarUrl(getPostAvatarUrl(course.id, data.filename || data.url));
+                          alert('✅ Аватар курса успешно загружен!');
+                        } else {
+                          const errorData = await response.json().catch(() => ({}));
+                          alert(`Ошибка загрузки аватара: ${errorData.message || response.statusText}`);
+                        }
+                      } catch (err) {
+                        console.error('Ошибка загрузки аватара:', err);
+                        alert('Ошибка загрузки аватара');
+                      }
+                    }}
+                  />
+                  <label htmlFor="post-avatar-upload" className="btn btn-ghost" style={{ 
+                    fontSize: '14px', 
+                    padding: '8px 16px',
+                    cursor: 'pointer',
+                    border: '1px dashed var(--accent)',
+                    color: 'var(--accent)'
+                  }}>
+                    📷 Загрузить аватар
+                  </label>
+
                   {/* Кнопки изменения статуса */}
                   {statusInfo.canArchive && (
                     <button 
@@ -759,13 +1046,29 @@ const CoursePage: React.FC = () => {
                 color: '#fff',
                 fontWeight: 600,
                 fontSize: '20px',
-                flexShrink: 0
+                flexShrink: 0,
+                position: 'relative'
               }}>
                 {author.avatar_url ? (
                   <img 
-                    src={author.avatar_url} 
+                    src={getAvatarUrl(author.avatar_url)} 
                     alt={author.first_name}
-                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', top: 0, left: 0 }}
+                    onError={(e) => {
+                      // Если изображение не загружается, показываем инициалы
+                      const target = e.currentTarget;
+                      target.style.display = 'none';
+                      const parent = target.parentElement;
+                      if (parent) {
+                        const initials = `${author.first_name?.[0] || ''}${author.last_name?.[0] || ''}` || 'A';
+                        const span = document.createElement('span');
+                        span.style.fontSize = '20px';
+                        span.style.color = '#fff';
+                        span.style.fontWeight = '600';
+                        span.textContent = initials;
+                        parent.appendChild(span);
+                      }
+                    }}
                   />
                 ) : (
                   <span>{author.first_name?.[0]}{author.last_name?.[0]}</span>
