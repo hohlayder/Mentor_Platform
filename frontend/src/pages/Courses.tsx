@@ -128,6 +128,8 @@ const CoursesPage: React.FC = () => {
       setCourses(data.posts || []);
       setTotalCount(data.total_count || 0);
       
+      console.log(data);
+      
       // Обновляем URL с текущими фильтрами
       const newParams = new URLSearchParams();
       if (searchQuery) newParams.set('search', searchQuery);

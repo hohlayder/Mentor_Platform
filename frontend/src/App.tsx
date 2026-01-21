@@ -7,8 +7,9 @@ import CoursesPage from './pages/Courses'
 import { AuthProvider } from "./store/AuthContext";
 import CourseFormPage from "./pages/CourseFormPage";
 import EditProfilePage from './pages/ProfileEdit';
-import CoursePage from './pages/CourseTest';
-
+import CoursePage from './pages/Course';
+import CourseEnrollmentPage from './pages/CourseEnrollPage';
+import CreateSlotsPage from "./pages/ManageSlotsPage";
 import Chats from './pages/Chats'; // Импортируем новый компонент
 
 
@@ -29,7 +30,9 @@ export default function App() {
           <Route path="/courses/:id" element={<CoursePage />} />
           <Route path="/course/create" element={<CourseFormPage />} />
           <Route path="/course/edit/:id" element={<CourseFormPage />} />
-          <Route path="/chats" element={<Chats />} /> {/* Используем новый компонент */}
+          <Route path="/chats" element={<Chats />} />
+          <Route path="/course/:id/enroll" element={<CourseEnrollmentPage />} />
+          <Route path="/course/:id/create-slots" element={<CreateSlotsPage />} />
 
           <Route path="*" element={<div>404 - Страница не найдена</div>} />
         </Routes>
