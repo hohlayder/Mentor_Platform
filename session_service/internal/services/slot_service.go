@@ -23,6 +23,7 @@ type SlotRepository interface {
 	GetSlotsByMentor(ctx context.Context, mentorID string) ([]domain.Slot, error)
 	GetSlotsByPost(ctx context.Context, postID string) ([]domain.Slot, error)          
 	GetAvailableSlotsByPost(ctx context.Context, postID string) ([]domain.Slot, error)
+	CloseExpiredSlots(ctx context.Context) (int64, error)
 }
 
 type UserClient interface {
@@ -222,6 +223,10 @@ func (s *SlotService) UpdateSlotStatus(ctx context.Context, slotID string, statu
 	}
     
     return nil
+}
+
+func (s *SlotService) CloseExpiredSlots(ctx context.Context) (int64, error) {
+    return s.repo.CloseExpiredSlots(ctx)
 }
 
 func (s *SlotService) SendNotification(ctx context.Context, slotId string) error {

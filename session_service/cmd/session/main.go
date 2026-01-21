@@ -63,6 +63,9 @@ func main() {
 
 	reflection.Register(grpcServer)
 
+	cleanupCtx, cleanupCancel := context.WithCancel(context.Background())
+	defer cleanupCancel()
+
 	go func() {
 		lis, err := net.Listen("tcp", ":50057")
 		if err != nil {
@@ -75,12 +78,36 @@ func main() {
 		
 	}()
 
+	go func() {
+		ticker := time.NewTicker(1 * time.Minute)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-cleanupCtx.Done():
+				return
+			case <-ticker.C:
+				runCtx, cancel := context.WithTimeout(cleanupCtx, 10*time.Second)
+				updated, err := slotService.CloseExpiredSlots(runCtx)
+				cancel()
+				if err != nil {
+					log.Printf("close expired slots failed: %v", err)
+					continue
+				}
+				if updated > 0 {
+					log.Printf("closed expired slots: %d", updated)
+				}
+			}
+		}
+	}()
+
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
 	<-stop
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
+	cleanupCancel()
 
 	go func() {
     	grpcServer.GracefulStop()
