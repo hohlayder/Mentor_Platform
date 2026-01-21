@@ -14,6 +14,7 @@ interface SlotResponse {
   price?: number;
   currency?: string;
   status: string;
+  post_id?: string; // Добавлено поле для привязки к курсу
   created_at: string;
   updated_at: string;
 }
@@ -27,6 +28,7 @@ interface CreateSlotRequest {
   price?: number;
   currency?: string;
   status?: string;
+  post_id?: string; // Обязательное поле для привязки к курсу
 }
 
 interface UpdateSlotStatusRequest {
@@ -43,7 +45,8 @@ interface UpdateSlotRequest {
   status?: string;
 }
 
-interface ListSlotsResponse {
+// Интерфейсы для ответов API
+interface MentorSlotsResponse {
   slots: SlotResponse[];
   total: number;
 }
@@ -102,7 +105,7 @@ const SLOT_STATUSES = {
 type SlotStatus = keyof typeof SLOT_STATUSES;
 
 const CreateSlotsPage: React.FC = () => {
-  const { id } = useParams<{ id: string }>();
+  const { id: postId } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const location = useLocation();
   const { token, user, logout } = useAuth();
@@ -115,6 +118,7 @@ const CreateSlotsPage: React.FC = () => {
   const [loadingCourse, setLoadingCourse] = useState(true);
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [slots, setSlots] = useState<SlotResponse[]>([]);
+  const [allMentorSlots, setAllMentorSlots] = useState<SlotResponse[]>([]); // Все слоты ментора для проверки пересечений
   const [updatingSlotId, setUpdatingSlotId] = useState<string | null>(null);
   const [creatingSlot, setCreatingSlot] = useState(false);
   const [slotError, setSlotError] = useState<string | null>(null);
@@ -181,7 +185,7 @@ const CreateSlotsPage: React.FC = () => {
   // Получение названия курса из location state или загрузка
   useEffect(() => {
     const loadCourseData = async () => {
-      if (!id || !token || !user) {
+      if (!postId || !token || !user) {
         navigate('/courses');
         return;
       }
@@ -201,7 +205,7 @@ const CreateSlotsPage: React.FC = () => {
 
           try {
             const courseData = await apiFetch<{ post: { title: string } }>(
-              `http://localhost:8080/api/v1/posts/${id}`,
+              `http://localhost:8080/api/v1/posts/${postId}`,
               { headers }
             );
             setCourseTitle(courseData.post.title);
@@ -218,18 +222,17 @@ const CreateSlotsPage: React.FC = () => {
     };
 
     loadCourseData();
-  }, [id, token, user, navigate, location.state]);
+  }, [postId, token, user, navigate, location.state]);
 
   // Проверяем, является ли пользователь автором курса
   const isAuthor = user?.user_id === location.state?.authorId;
 
-  // Загрузка существующих слотов
-  const loadSlots = useCallback(async () => {
+  // Загрузка ВСЕХ слотов ментора (для проверки пересечений)
+  const loadAllMentorSlots = useCallback(async () => {
     if (!token || !user) return;
     
-    setLoadingSlots(true);
     try {
-      const slotsData = await apiFetch<ListSlotsResponse>(
+      const slotsData = await apiFetch<MentorSlotsResponse>(
         `http://localhost:8080/api/v1/mentors/${user.user_id}/slots`,
         {
           headers: {
@@ -239,21 +242,55 @@ const CreateSlotsPage: React.FC = () => {
         }
       );
       
-      setSlots(slotsData.slots || []);
+      setAllMentorSlots(slotsData.slots || []);
     } catch (err) {
-      console.error('Ошибка загрузки слотов:', err);
-      setSlots([]);
-    } finally {
-      setLoadingSlots(false);
+      console.error('Ошибка загрузки всех слотов ментора:', err);
+      setAllMentorSlots([]);
     }
   }, [token, user]);
 
+  // Загрузка слотов для этого конкретного поста
+  const loadPostSlots = useCallback(async () => {
+    if (!token || !user || !postId) return;
+    
+    setLoadingSlots(true);
+    try {
+      // Вариант 1: Загружаем все слоты ментора и фильтруем по post_id
+      const slotsData = await apiFetch<MentorSlotsResponse>(
+        `http://localhost:8080/api/v1/mentors/${user.user_id}/slots`,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+      
+      // Фильтруем слоты, привязанные к текущему курсу
+      const filteredSlots = slotsData.slots.filter(slot => 
+        slot.post_id === postId
+      ) || [];
+      
+      setSlots(filteredSlots);
+      
+      // Также сохраняем все слоты для проверки пересечений
+      setAllMentorSlots(slotsData.slots || []);
+      
+    } catch (err) {
+      console.error('Ошибка загрузки слотов:', err);
+      setSlots([]);
+      setAllMentorSlots([]);
+    } finally {
+      setLoadingSlots(false);
+    }
+  }, [token, user, postId]);
+
   // Загружаем слоты при монтировании и при изменении недели
   useEffect(() => {
-    if (token && user && isAuthor) {
-      loadSlots();
+    if (token && user && isAuthor && postId) {
+      loadPostSlots();
     }
-  }, [token, user, isAuthor, currentWeekStart, loadSlots]);
+  }, [token, user, isAuthor, postId, currentWeekStart, loadPostSlots]);
 
   // Генерация временных слотов (с 8 утра до 22 вечера)
   const generateTimeSlots = useCallback(() => {
@@ -282,21 +319,37 @@ const CreateSlotsPage: React.FC = () => {
     });
   };
 
-  // Проверка пересечения слотов
-  const checkSlotOverlap = useCallback((startTime: Date, duration: number, existingSlots: SlotResponse[]) => {
+  // Проверка пересечения слотов (проверяем со ВСЕМИ слотами ментора)
+  const checkSlotOverlap = useCallback((startTime: Date, duration: number, allSlots: SlotResponse[]) => {
     const endTime = new Date(startTime.getTime() + duration * 60000);
     
-    return existingSlots.some(slot => {
+    // Проверяем с каждым существующим слотом ментора
+    for (const slot of allSlots) {
       const slotStart = new Date(slot.start_time);
       const slotEnd = new Date(slotStart.getTime() + slot.duration_minutes * 60000);
       
       // Проверяем пересечение временных интервалов
-      return (
+      const hasOverlap = (
         (startTime >= slotStart && startTime < slotEnd) ||
         (endTime > slotStart && endTime <= slotEnd) ||
         (startTime <= slotStart && endTime >= slotEnd)
       );
-    });
+      
+      if (hasOverlap) {
+        console.log('Найдено пересечение с слотом:', {
+          slotTitle: slot.title,
+          slotStart: slotStart.toISOString(),
+          slotEnd: slotEnd.toISOString(),
+          newStart: startTime.toISOString(),
+          newEnd: endTime.toISOString(),
+          slotId: slot.id,
+          slotPostId: slot.post_id
+        });
+        return true;
+      }
+    }
+    
+    return false;
   }, []);
 
   // Проверка, является ли дата и время в прошлом
@@ -344,16 +397,16 @@ const CreateSlotsPage: React.FC = () => {
     
     setShowCreateModalForDay(dayIndex);
     setSelectedTime(nextTime);
-    setSlotTitle(`Консультация ${DAYS_OF_WEEK[dayIndex].short}`);
+    setSlotTitle(`Консультация по курсу: ${courseTitle}`);
     setSlotDuration(60);
     setSlotPrice('');
-    setSlotDescription('');
+    setSlotDescription(`Консультация по курсу "${courseTitle}"`);
     setSlotError(null);
   };
 
   // Создание слота
   const createSlot = async () => {
-    if (!token || !user || showCreateModalForDay === null) return;
+    if (!token || !user || showCreateModalForDay === null || !postId) return;
     
     // Валидация
     if (!slotTitle.trim()) {
@@ -390,10 +443,9 @@ const CreateSlotsPage: React.FC = () => {
       const [hours, minutes] = selectedTime.split(':').map(Number);
       targetDate.setHours(hours, minutes, 0, 0);
       
-      // Проверка на пересечение с существующими слотами (включая занятые и закрытые)
-      const existingSlots = getSlotsForDay(day);
-      if (checkSlotOverlap(targetDate, slotDuration, existingSlots)) {
-        setSlotError('Это время пересекается с существующим слотом');
+      // ОБНОВЛЕНО: Проверяем пересечение со ВСЕМИ слотами ментора
+      if (checkSlotOverlap(targetDate, slotDuration, allMentorSlots)) {
+        setSlotError('Это время пересекается с существующим слотом ментора');
         setCreatingSlot(false);
         return;
       }
@@ -405,7 +457,8 @@ const CreateSlotsPage: React.FC = () => {
         title: slotTitle.trim(),
         start_time: startTimeISO,
         duration_minutes: slotDuration,
-        status: 'available'
+        status: 'available',
+        post_id: postId // ОБЯЗАТЕЛЬНОЕ поле для привязки к курсу
       };
       
       if (slotDescription.trim()) {
@@ -417,7 +470,13 @@ const CreateSlotsPage: React.FC = () => {
         slotData.currency = slotCurrency;
       }
       
-      await apiFetch(
+      console.log('Создание слота с данными:', {
+        ...slotData,
+        start_time: startTimeISO,
+        post_id: postId
+      });
+      
+      const response = await apiFetch<{ slot_id: string; success: boolean }>(
         'http://localhost:8080/api/v1/slots',
         {
           method: 'POST',
@@ -429,8 +488,15 @@ const CreateSlotsPage: React.FC = () => {
         }
       );
       
+      console.log('Слот успешно создан:', response);
+      
       setSlotSuccess(true);
-      loadSlots();
+      
+      // ОБНОВЛЕНО: Перезагружаем все слоты
+      await Promise.all([
+        loadPostSlots(),
+        loadAllMentorSlots()
+      ]);
       
       setTimeout(() => {
         setSlotSuccess(false);
@@ -439,7 +505,7 @@ const CreateSlotsPage: React.FC = () => {
 
     } catch (err: any) {
       console.error('Ошибка создания слота:', err);
-      setSlotError(err.message || 'Не удалось создать слот');
+      setSlotError(err.message || 'Не удалось создать слот. Убедитесь, что post_id указан правильно.');
     } finally {
       setCreatingSlot(false);
     }
@@ -465,7 +531,12 @@ const CreateSlotsPage: React.FC = () => {
         }
       );
 
-      loadSlots();
+      // ОБНОВЛЕНО: Перезагружаем все слоты
+      await Promise.all([
+        loadPostSlots(),
+        loadAllMentorSlots()
+      ]);
+      
       alert(`✅ Статус слота изменен на "${SLOT_STATUSES[newStatus].label}"`);
     } catch (err: any) {
       console.error('Ошибка изменения статуса слота:', err);
@@ -493,7 +564,12 @@ const CreateSlotsPage: React.FC = () => {
         }
       );
 
-      loadSlots();
+      // ОБНОВЛЕНО: Перезагружаем все слоты
+      await Promise.all([
+        loadPostSlots(),
+        loadAllMentorSlots()
+      ]);
+      
       alert('✅ Слот успешно обновлен!');
     } catch (err: any) {
       console.error('Ошибка обновления слота:', err);
@@ -521,7 +597,12 @@ const CreateSlotsPage: React.FC = () => {
         }
       );
 
-      loadSlots();
+      // ОБНОВЛЕНО: Перезагружаем все слоты
+      await Promise.all([
+        loadPostSlots(),
+        loadAllMentorSlots()
+      ]);
+      
       alert('✅ Слот успешно удален!');
     } catch (err: any) {
       console.error('Ошибка удаления слота:', err);
@@ -653,7 +734,7 @@ const CreateSlotsPage: React.FC = () => {
           <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
             <button
               className="btn btn-primary"
-              onClick={() => navigate(`/course/${id}`)}
+              onClick={() => navigate(`/course/${postId}`)}
             >
               Вернуться к курсу
             </button>
@@ -730,7 +811,7 @@ const CreateSlotsPage: React.FC = () => {
         <span style={{ margin: '0 8px', color: 'var(--muted)' }}>/</span>
         <Link to="/courses" style={{ color: 'var(--muted)' }}>Курсы</Link>
         <span style={{ margin: '0 8px', color: 'var(--muted)' }}>/</span>
-        <Link to={`/course/${id}`} style={{ color: 'var(--muted)' }}>{courseTitle}</Link>
+        <Link to={`/course/${postId}`} style={{ color: 'var(--muted)' }}>{courseTitle}</Link>
         <span style={{ margin: '0 8px', color: 'var(--muted)' }}>/</span>
         <span style={{ color: 'var(--accent)' }}>Управление слотами</span>
       </nav>
@@ -741,8 +822,57 @@ const CreateSlotsPage: React.FC = () => {
           🎯 Управление слотами для курса: {courseTitle}
         </h1>
         <p style={{ color: 'var(--muted)', fontSize: '16px' }}>
-          Создавайте и управляйте временными слотами для консультаций по вашему курсу
+          Создавайте и управляйте временными слотами для консультаций по вашему курсу. 
+          Слоты автоматически привязываются к этому курсу.
         </p>
+      </div>
+
+      {/* Информация о текущем курсе */}
+      <div className="card" style={{ 
+        marginBottom: '24px',
+        padding: '16px',
+        background: 'var(--glass)',
+        borderRadius: '8px',
+        borderLeft: '4px solid var(--accent)'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div>
+            <div style={{ fontWeight: 600, marginBottom: '4px' }}>Курс ID:</div>
+            <code style={{ 
+              background: 'rgba(0,0,0,0.05)', 
+              padding: '4px 8px', 
+              borderRadius: '4px',
+              fontSize: '12px',
+              wordBreak: 'break-all'
+            }}>
+              {postId}
+            </code>
+          </div>
+          <div style={{ fontSize: '12px', color: 'var(--muted)' }}>
+            Все создаваемые слоты будут привязаны к этому курсу
+          </div>
+        </div>
+      </div>
+
+      {/* Информация о проверке пересечений */}
+      <div className="card" style={{ 
+        marginBottom: '24px',
+        padding: '16px',
+        background: 'rgba(245, 158, 11, 0.1)',
+        borderRadius: '8px',
+        borderLeft: '4px solid #f59e0b'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+          <span>ℹ️</span>
+          <span style={{ fontWeight: 600 }}>Проверка пересечений времени</span>
+        </div>
+        <div style={{ fontSize: '14px', color: 'var(--muted)' }}>
+          Система проверяет пересечение со ВСЕМИ слотами ментора (даже из других курсов) 
+          для предотвращения двойного бронирования.
+        </div>
+        <div style={{ fontSize: '12px', color: 'var(--muted)', marginTop: '8px' }}>
+          Всего слотов ментора: {allMentorSlots.length} | Слотов этого курса: {slots.length}
+        </div>
       </div>
 
       {/* Навигация по неделям */}
@@ -800,7 +930,7 @@ const CreateSlotsPage: React.FC = () => {
             marginBottom: '16px',
             textAlign: 'center'
           }}>
-            ✅ Слот успешно создан!
+            ✅ Слот успешно создан и привязан к курсу! (post_id: {postId})
           </div>
         )}
         
@@ -816,7 +946,7 @@ const CreateSlotsPage: React.FC = () => {
               margin: '0 auto 20px',
               animation: 'spin 1s linear infinite'
             }} />
-            <p style={{ color: 'var(--muted)' }}>Загрузка ваших слотов...</p>
+            <p style={{ color: 'var(--muted)' }}>Загрузка слотов курса...</p>
           </div>
         ) : (
           <>
@@ -898,13 +1028,14 @@ const CreateSlotsPage: React.FC = () => {
                           const startTime = formatTime(slot.start_time);
                           const duration = formatDuration(slot.duration_minutes);
                           const hasPrice = slot.price && slot.price > 0;
+                          const isCorrectPost = slot.post_id === postId;
                           
                           return (
                             <div
                               key={slot.id}
                               className={`slot ${isClickable ? 'clickable' : 'unclickable'}`}
                               onClick={() => isClickable && !isUpdating && (
-                                alert(`Слот: ${slot.title}\nВремя: ${startTime}\nСтатус: ${statusInfo.label}\nДлительность: ${duration}\n${slot.description ? `Описание: ${slot.description}\n` : ''}${hasPrice ? `Цена: ${slot.price} ${slot.currency || '₽'}` : ''}`)
+                                alert(`Слот: ${slot.title}\nВремя: ${startTime}\nСтатус: ${statusInfo.label}\nДлительность: ${duration}\nПривязка к курсу: ${isCorrectPost ? '✓ Правильно' : '⚠ Ошибка'}\n${slot.description ? `Описание: ${slot.description}\n` : ''}${hasPrice ? `Цена: ${slot.price} ${slot.currency || '₽'}` : ''}`)
                               )}
                               style={{
                                 padding: '6px 4px',
@@ -985,6 +1116,20 @@ const CreateSlotsPage: React.FC = () => {
                                   {duration}
                                 </div>
                                 
+                                {/* Показываем статус привязки к курсу */}
+                                <div style={{ 
+                                  fontSize: '8px', 
+                                  color: isCorrectPost ? '#10b981' : '#ef4444',
+                                  fontWeight: 600,
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  gap: '2px'
+                                }}>
+                                  {isCorrectPost ? '✓' : '⚠'} 
+                                  {isCorrectPost ? 'Привязан' : 'Ошибка привязки'}
+                                </div>
+                                
                                 {/* Быстрые действия для доступных слотов - только значки */}
                                 {isClickable && !isUpdating && (
                                   <div style={{ 
@@ -1058,7 +1203,7 @@ const CreateSlotsPage: React.FC = () => {
             }}>
               <button
                 className="btn btn-outline"
-                onClick={() => navigate(`/course/${id}`)}
+                onClick={() => navigate(`/course/${postId}`)}
                 style={{ padding: '12px 24px' }}
               >
                 ← Вернуться к курсу
@@ -1120,6 +1265,24 @@ const CreateSlotsPage: React.FC = () => {
               </button>
             </div>
 
+            {/* Информация о курсе и проверке */}
+            <div style={{
+              background: 'rgba(79, 70, 229, 0.1)',
+              border: '1px solid rgba(79, 70, 229, 0.2)',
+              color: '#4f46e5',
+              padding: '12px',
+              borderRadius: '8px',
+              marginBottom: '16px',
+              fontSize: '14px'
+            }}>
+              <div style={{ fontWeight: 600, marginBottom: '4px' }}>ℹ️ Важная информация:</div>
+              <div>1. Слот будет привязан к курсу: <strong>{courseTitle}</strong></div>
+              <div>2. Проверка пересечений со всеми слотами ментора</div>
+              <div style={{ fontSize: '12px', marginTop: '4px', color: '#6b7280' }}>
+                post_id: <code>{postId}</code>
+              </div>
+            </div>
+
             {/* Сообщение об ошибке */}
             {slotError && (
               <div style={{
@@ -1143,7 +1306,7 @@ const CreateSlotsPage: React.FC = () => {
                 type="text"
                 value={slotTitle}
                 onChange={(e) => setSlotTitle(e.target.value)}
-                placeholder="Например: Консультация по курсу"
+                placeholder={`Например: Консультация по курсу "${courseTitle}"`}
                 required
                 minLength={3}
                 maxLength={255}
@@ -1201,7 +1364,7 @@ const CreateSlotsPage: React.FC = () => {
               <textarea
                 value={slotDescription}
                 onChange={(e) => setSlotDescription(e.target.value)}
-                placeholder="Дополнительная информация о сессии..."
+                placeholder={`Дополнительная информация о сессии по курсу "${courseTitle}"...`}
                 maxLength={1000}
                 style={{
                   width: '100%',
@@ -1287,21 +1450,46 @@ const CreateSlotsPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* Предварительный просмотр */}
+              {/* Техническая информация (для отладки) */}
               <div style={{
                 background: 'var(--glass)',
                 borderRadius: '8px',
                 padding: '16px',
+                marginBottom: '20px',
+                fontSize: '12px'
+              }}>
+                <div style={{ fontWeight: 600, marginBottom: '8px' }}>Технические данные:</div>
+                <div style={{ color: 'var(--muted)', lineHeight: 1.5 }}>
+                  <div>• Проверка пересечений: {allMentorSlots.length} слотов ментора</div>
+                  <div>• Будущий post_id: <code>{postId}</code></div>
+                  <div>• Дата: {weekDays[showCreateModalForDay].toLocaleDateString('ru-RU')}</div>
+                  <div>• Время: {selectedTime} ({slotDuration} минут)</div>
+                </div>
+              </div>
+
+              {/* Предварительный просмотр */}
+              <div style={{
+                background: 'rgba(16, 185, 129, 0.1)',
+                border: '1px solid rgba(16, 185, 129, 0.2)',
+                color: '#10b981',
+                padding: '16px',
+                borderRadius: '8px',
                 marginBottom: '20px'
               }}>
                 <div style={{ fontWeight: 600, marginBottom: '8px' }}>Предварительный просмотр:</div>
-                <div style={{ fontSize: '13px', color: 'var(--muted)' }}>
+                <div style={{ fontSize: '13px', color: '#10b981' }}>
+                  <div>Курс: <strong>{courseTitle}</strong></div>
                   <div>День: <strong>{formatDayHeader(weekDays[showCreateModalForDay])}</strong></div>
                   <div>Время: <strong>{selectedTime}</strong> ({slotDuration} минут)</div>
                   {slotPrice ? (
                     <div>Цена: <strong>{slotPrice} {slotCurrency}</strong></div>
                   ) : (
                     <div>Цена: <strong>Бесплатно</strong></div>
+                  )}
+                  {postId && (
+                    <div style={{ marginTop: '8px', fontSize: '12px', fontWeight: 600 }}>
+                      ✅ Будет привязан к курсу (post_id: {postId})
+                    </div>
                   )}
                 </div>
               </div>
@@ -1396,6 +1584,18 @@ const CreateSlotsPage: React.FC = () => {
         [data-theme="dark"] select option:disabled {
           color: #666;
           background-color: #333;
+        }
+        
+        code {
+          font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+          font-size: 0.9em;
+          background-color: rgba(0,0,0,0.05);
+          padding: 2px 4px;
+          border-radius: 3px;
+        }
+        
+        [data-theme="dark"] code {
+          background-color: rgba(255,255,255,0.1);
         }
       `}</style>
     </div>
