@@ -35,7 +35,7 @@ interface Attachment {
 }
 
 interface ChatMessagesResponse {
-  messages: IncomingMessage[];
+  messages: IncomingMessage[] | null;
   next_cursor?: {
     id: string;
     created_at: string;
@@ -72,6 +72,33 @@ const Chats: React.FC = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Функция для получения правильного URL аватара
+  const getAvatarUrl = (avatarUrl: string | null | undefined): string => {
+    if (!avatarUrl) return '';
+    
+    // Если URL уже полный (http или https)
+    if (avatarUrl.startsWith('http')) {
+      return avatarUrl;
+    }
+    
+    // Если это имя файла
+    if (avatarUrl && !avatarUrl.includes('/')) {
+      return `http://localhost:8080/api/v1/files/avatar/${avatarUrl}`;
+    }
+    
+    // Если это относительный путь
+    if (avatarUrl.startsWith('/')) {
+      return `http://localhost:8080${avatarUrl}`;
+    }
+    
+    // Если это путь без префикса http
+    if (avatarUrl.startsWith('files/avatar/')) {
+      return `http://localhost:8080/api/v1/${avatarUrl}`;
+    }
+    
+    return avatarUrl;
+  };
 
   // Подключение WebSocket при наличии токена
   useEffect(() => {
@@ -131,8 +158,12 @@ const Chats: React.FC = () => {
       
       if (response.ok) {
         const data = await response.json();
+        
+        // ВАЖНО: Защита от null/undefined
+        const chatsData = Array.isArray(data.chats) ? data.chats : [];
+        
         const chatsWithUsers = await Promise.all(
-          data.chats.map(async (chat: Chat) => {
+          chatsData.map(async (chat: Chat) => {
             // Определяем ID собеседника
             const otherUserId = chat.user1_id === user?.user_id ? chat.user2_id : chat.user1_id;
             
@@ -146,7 +177,13 @@ const Chats: React.FC = () => {
               
               if (userResponse.ok) {
                 const userData = await userResponse.json();
-                return { ...chat, other_user: userData };
+                return { 
+                  ...chat, 
+                  other_user: {
+                    ...userData,
+                    avatar_url: getAvatarUrl(userData.avatar_url)
+                  }
+                };
               }
             } catch (error) {
               console.error('Ошибка загрузки пользователя:', error);
@@ -157,13 +194,17 @@ const Chats: React.FC = () => {
         );
         
         setChats(chatsWithUsers);
+      } else {
+        // При ошибке устанавливаем пустой массив
+        setChats([]);
       }
     } catch (error) {
       console.error('Ошибка загрузки чатов:', error);
+      setChats([]);
     }
   }, [token, user]);
 
-  // Загрузка сообщений чата (с пагинацией) - УПРОЩЕННАЯ ВЕРСИЯ
+  // Загрузка сообщений чата (с пагинацией)
   const loadMessages = useCallback(async (chatId: string, cursor?: string | null, isLoadMore: boolean = false) => {
     if (!token) return;
     
@@ -179,7 +220,6 @@ const Chats: React.FC = () => {
       // Формируем URL запроса
       let url = `http://localhost:8080/api/v1/chats/messages?chat_id=${chatId}&limit=50`;
       
-      // ПРОСТО ПЕРЕДАЕМ КУРСОР КАК ЕСТЬ
       if (cursor) {
         url += `&cursor=${cursor}`;
       }
@@ -198,27 +238,27 @@ const Chats: React.FC = () => {
       
       const data: ChatMessagesResponse = await response.json();
       console.log('Получены данные:', { 
-        сообщений: data.messages?.length,
+        сообщений: data.messages?.length || 0,
         естьЕще: data.has_more,
         курсор: data.next_cursor?.id || 'нет'
       });
       
-      // СОХРАНЯЕМ КУРСОР ПРОСТО КАК СТРОКУ
+      // ВАЖНО: Убеждаемся, что messages всегда массив
+      const messagesArray = Array.isArray(data.messages) ? data.messages : [];
+      
       setNextCursor(data.next_cursor?.id || null);
       setHasMore(data.has_more);
       
       // Добавляем сообщения
       if (isLoadMore) {
-        // При подгрузке старых сообщений добавляем их в начало
-        setMessages(prev => [...data.messages, ...prev]);
+        setMessages(prev => [...messagesArray, ...prev]);
       } else {
-        // При первой загрузке устанавливаем сообщения
-        setMessages(data.messages);
+        setMessages(messagesArray);
       }
       
       // Помечаем как прочитанные
-      const unreadMessages = data.messages
-        ?.filter(msg => !msg.is_read && msg.sender_id !== user?.user_id) || [];
+      const unreadMessages = messagesArray
+        .filter(msg => !msg.is_read && msg.sender_id !== user?.user_id);
       
       if (unreadMessages.length > 0) {
         const unreadIds = unreadMessages.map(msg => msg.id);
@@ -227,10 +267,8 @@ const Chats: React.FC = () => {
       
     } catch (error) {
       console.error('Ошибка загрузки сообщений:', error);
-      // Показываем пользователю ошибку
-      if (!isLoadMore) {
-        setMessages([]);
-      }
+      // Всегда устанавливаем пустой массив при ошибке
+      setMessages([]);
     } finally {
       if (isLoadMore) {
         setIsLoadingMore(false);
@@ -307,7 +345,10 @@ const Chats: React.FC = () => {
           return;
         }
         
-        setFoundUser(userData);
+        setFoundUser({
+          ...userData,
+          avatar_url: getAvatarUrl(userData.avatar_url)
+        });
       } else if (response.status === 404) {
         setCreateChatError('Пользователь с таким email не найден');
       } else {
@@ -373,7 +414,7 @@ const Chats: React.FC = () => {
 
   // Пометить как прочитанное
   const markAsRead = async (messageIds: string[], chatId: string) => {
-    if (!token || messageIds.length === 0) return;
+    if (!token || !Array.isArray(messageIds) || messageIds.length === 0) return;
     
     try {
       await fetch('http://localhost:8080/api/v1/chats/messages/read', {
@@ -444,26 +485,45 @@ const Chats: React.FC = () => {
 
   // Форматирование даты
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffHours = diffMs / (1000 * 60 * 60);
-    
-    if (diffHours < 24) {
-      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    } else if (diffHours < 168) {
-      return date.toLocaleDateString([], { weekday: 'short' });
-    } else {
-      return date.toLocaleDateString([], { day: 'numeric', month: 'short' });
+    try {
+      const date = new Date(dateString);
+      const now = new Date();
+      const diffMs = now.getTime() - date.getTime();
+      const diffHours = diffMs / (1000 * 60 * 60);
+      
+      if (diffHours < 24) {
+        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      } else if (diffHours < 168) {
+        return date.toLocaleDateString([], { weekday: 'short' });
+      } else {
+        return date.toLocaleDateString([], { day: 'numeric', month: 'short' });
+      }
+    } catch (error) {
+      return '';
     }
   };
 
   // Получение имени собеседника
   const getOtherUserName = (chat: Chat) => {
+    if (!chat) return 'Unknown User';
+    
     if (chat.other_user) {
-      return `${chat.other_user.first_name} ${chat.other_user.last_name}`;
+      return `${chat.other_user.first_name || ''} ${chat.other_user.last_name || ''}`.trim() || 
+             chat.other_user.email || 
+             `User ${chat.user1_id === user?.user_id ? chat.user2_id?.substring(0, 8) || 'unknown' : chat.user1_id?.substring(0, 8) || 'unknown'}`;
     }
-    return chat.user1_id === user?.user_id ? `User ${chat.user2_id.substring(0, 8)}` : `User ${chat.user1_id.substring(0, 8)}`;
+    return `User ${chat.user1_id === user?.user_id ? chat.user2_id?.substring(0, 8) || 'unknown' : chat.user1_id?.substring(0, 8) || 'unknown'}`;
+  };
+
+  // Получение инициалов собеседника
+  const getOtherUserInitials = (chat: Chat) => {
+    if (!chat) return 'U';
+    
+    if (chat.other_user) {
+      return `${chat.other_user.first_name?.[0] || ''}${chat.other_user.last_name?.[0] || ''}` || 
+             chat.other_user.email?.[0]?.toUpperCase() || 'U';
+    }
+    return 'U';
   };
 
   // Обработка нажатия Enter
@@ -487,7 +547,7 @@ const Chats: React.FC = () => {
 
   // Прокрутка к последнему сообщению при загрузке новых сообщений
   useEffect(() => {
-    if (messages.length > 0) {
+    if (messages && messages.length > 0) {
       setTimeout(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
       }, 100);
@@ -574,13 +634,39 @@ const Chats: React.FC = () => {
                   width: '40px',
                   height: '40px',
                   borderRadius: '50%',
-                  background: 'linear-gradient(135deg, var(--accent), var(--accent-2))',
-                  color: 'white',
+                  overflow: 'hidden',
+                  background: foundUser.avatar_url ? 'transparent' : 'linear-gradient(135deg, var(--accent), var(--accent-2))',
                   display: 'grid',
                   placeContent: 'center',
-                  fontWeight: 600
+                  flexShrink: 0
                 }}>
-                  {foundUser.first_name?.charAt(0) || 'U'}
+                  {foundUser.avatar_url ? (
+                    <img
+                      src={foundUser.avatar_url}
+                      alt={`${foundUser.first_name} ${foundUser.last_name}`}
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'cover'
+                      }}
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none';
+                        const parent = e.currentTarget.parentElement;
+                        if (parent) {
+                          const span = document.createElement('span');
+                          span.style.fontSize = '16px';
+                          span.style.color = '#fff';
+                          span.style.fontWeight = '600';
+                          span.textContent = foundUser.first_name?.[0] || 'U';
+                          parent.appendChild(span);
+                        }
+                      }}
+                    />
+                  ) : (
+                    <span style={{ fontSize: '16px', color: '#fff', fontWeight: 600 }}>
+                      {foundUser.first_name?.[0] || 'U'}
+                    </span>
+                  )}
                 </div>
                 <div>
                   <div style={{ fontWeight: 600 }}>
@@ -668,7 +754,7 @@ const Chats: React.FC = () => {
           </div>
           
           <div style={{ paddingTop: 'var(--gap-sm)' }}>
-            {chats.length === 0 ? (
+            {!chats || chats.length === 0 ? (
               <div style={{ 
                 textAlign: 'center', 
                 padding: 'var(--gap-lg)', 
@@ -703,33 +789,78 @@ const Chats: React.FC = () => {
                     setSelectedChat(chat);
                   }}
                 >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div>
-                      <div style={{ fontWeight: 600 }}>{getOtherUserName(chat)}</div>
-                      <div style={{ fontSize: '14px', color: 'var(--muted)', marginTop: '4px' }}>
-                        {chat.last_message?.content || 'Нет сообщений'}
-                      </div>
-                    </div>
-                    <div style={{ textAlign: 'right' }}>
-                      <div style={{ fontSize: '12px', color: 'var(--muted)' }}>
-                        {chat.last_message ? formatDate(chat.last_message.created_at) : ''}
-                      </div>
-                      {chat.unread_count > 0 && (
-                        <div style={{
-                          backgroundColor: 'var(--accent)',
-                          color: 'white',
-                          borderRadius: '50%',
-                          width: '20px',
-                          height: '20px',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontSize: '12px',
-                          marginTop: '4px'
-                        }}>
-                          {chat.unread_count}
-                        </div>
+                  <div style={{ display: 'flex', gap: 'var(--gap-sm)', alignItems: 'center' }}>
+                    <div style={{
+                      width: '40px',
+                      height: '40px',
+                      borderRadius: '50%',
+                      overflow: 'hidden',
+                      background: chat.other_user?.avatar_url ? 'transparent' : 'linear-gradient(135deg, var(--accent), var(--accent-2))',
+                      display: 'grid',
+                      placeContent: 'center',
+                      flexShrink: 0
+                    }}>
+                      {chat.other_user?.avatar_url ? (
+                        <img
+                          src={chat.other_user.avatar_url}
+                          alt={getOtherUserName(chat)}
+                          style={{
+                            width: '100%',
+                            height: '100%',
+                            objectFit: 'cover'
+                          }}
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none';
+                            const parent = e.currentTarget.parentElement;
+                            if (parent) {
+                              const span = document.createElement('span');
+                              span.style.fontSize = '16px';
+                              span.style.color = '#fff';
+                              span.style.fontWeight = '600';
+                              span.textContent = getOtherUserInitials(chat);
+                              parent.appendChild(span);
+                            }
+                          }}
+                        />
+                      ) : (
+                        <span style={{ fontSize: '16px', color: '#fff', fontWeight: 600 }}>
+                          {getOtherUserInitials(chat)}
+                        </span>
                       )}
+                    </div>
+                    
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div>
+                          <div style={{ fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {getOtherUserName(chat)}
+                          </div>
+                          <div style={{ fontSize: '14px', color: 'var(--muted)', marginTop: '4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {chat.last_message?.content || 'Нет сообщений'}
+                          </div>
+                        </div>
+                        <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: '8px' }}>
+                          <div style={{ fontSize: '12px', color: 'var(--muted)' }}>
+                            {chat.last_message ? formatDate(chat.last_message.created_at) : ''}
+                          </div>
+                          {(chat.unread_count || 0) > 0 && (
+                            <div style={{
+                              backgroundColor: 'var(--accent)',
+                              color: 'white',
+                              borderRadius: '50%',
+                              width: '20px',
+                              height: '20px',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontSize: '12px',
+                              marginTop: '4px'
+                            }}>
+                              {chat.unread_count}
+                            </div>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -748,15 +879,41 @@ const Chats: React.FC = () => {
                     width: '40px',
                     height: '40px',
                     borderRadius: '50%',
-                    background: 'linear-gradient(135deg, var(--accent), var(--accent-2))',
-                    color: 'white',
+                    overflow: 'hidden',
+                    background: selectedChat.other_user?.avatar_url ? 'transparent' : 'linear-gradient(135deg, var(--accent), var(--accent-2))',
                     display: 'grid',
                     placeContent: 'center',
-                    fontWeight: 600
+                    flexShrink: 0
                   }}>
-                    {getOtherUserName(selectedChat).charAt(0)}
+                    {selectedChat.other_user?.avatar_url ? (
+                      <img
+                        src={selectedChat.other_user.avatar_url}
+                        alt={getOtherUserName(selectedChat)}
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          objectFit: 'cover'
+                        }}
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                          const parent = e.currentTarget.parentElement;
+                          if (parent) {
+                            const span = document.createElement('span');
+                            span.style.fontSize = '16px';
+                            span.style.color = '#fff';
+                            span.style.fontWeight = '600';
+                            span.textContent = getOtherUserInitials(selectedChat);
+                            parent.appendChild(span);
+                          }
+                        }}
+                      />
+                    ) : (
+                      <span style={{ fontSize: '16px', color: '#fff', fontWeight: 600 }}>
+                        {getOtherUserInitials(selectedChat)}
+                      </span>
+                    )}
                   </div>
-                  <div>
+                  <div style={{ flex: 1 }}>
                     <div style={{ fontWeight: 700 }}>{getOtherUserName(selectedChat)}</div>
                     <div style={{ fontSize: '14px', color: 'var(--muted)' }}>
                       {isConnected ? 'онлайн' : 'оффлайн'}
@@ -813,87 +970,149 @@ const Chats: React.FC = () => {
                   </div>
                 )}
                 
-                {messages.length === 0 && !isLoading ? (
+                {(!messages || messages.length === 0) && !isLoading ? (
                   <div style={{ textAlign: 'center', padding: 'var(--gap-lg)', color: 'var(--muted)' }}>
                     Начните общение
                   </div>
                 ) : (
-                  messages.map(message => (
-                    <div 
-                      key={message.id}
-                      className={`msg ${message.sender_id === user?.user_id ? 'sent' : 'received'}`}
-                      style={{ 
-                        maxWidth: '70%',
-                        padding: '10px',
-                        borderRadius: '12px',
-                        marginBottom: '8px',
-                        alignSelf: message.sender_id === user?.user_id ? 'flex-end' : 'flex-start',
-                        backgroundColor: message.sender_id === user?.user_id ? 'var(--accent)' : 'var(--surface)',
-                        color: message.sender_id === user?.user_id ? 'white' : 'var(--text)',
-                      }}
-                    >
-                      {message.reply_to && (
-                        <div style={{
-                          fontSize: '12px',
-                          color: message.sender_id === user?.user_id ? 'rgba(255,255,255,0.7)' : 'var(--muted)',
-                          borderLeft: '2px solid var(--accent)',
-                          paddingLeft: '8px',
-                          marginBottom: '4px'
-                        }}>
-                          Ответ на сообщение
-                        </div>
-                      )}
-                      
-                      <div>{message.content}</div>
-                      
-                      {message.attachments?.map(attachment => (
-                        <div key={attachment.id} style={{ marginTop: '8px' }}>
-                          {attachment.type === 'image' ? (
-                            <img 
-                              src={attachment.url} 
-                              alt={attachment.name} 
-                              style={{ 
-                                maxWidth: '100%', 
-                                borderRadius: '8px',
-                                maxHeight: '200px'
-                              }}
-                            />
-                          ) : (
-                            <div style={{
-                              padding: '8px',
-                              backgroundColor: message.sender_id === user?.user_id ? 'rgba(255,255,255,0.1)' : 'var(--accent-light)',
-                              borderRadius: '8px',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '8px'
-                            }}>
-                              <span>📎</span>
-                              <span>{attachment.name}</span>
-                              <span style={{ 
-                                fontSize: '12px', 
-                                color: message.sender_id === user?.user_id ? 'rgba(255,255,255,0.7)' : 'var(--muted)' 
-                              }}>
-                                ({Math.round((attachment.size || 0) / 1024)} KB)
+                  (messages || []).map(message => {
+                    const isOwnMessage = message.sender_id === user?.user_id;
+                    
+                    return (
+                      <div 
+                        key={message.id}
+                        style={{ 
+                          display: 'flex',
+                          gap: '8px',
+                          alignItems: 'flex-start',
+                          marginBottom: '12px',
+                          flexDirection: isOwnMessage ? 'row-reverse' : 'row'
+                        }}
+                      >
+                        {/* Аватарка для входящих сообщений */}
+                        {!isOwnMessage && selectedChat.other_user && (
+                          <div style={{
+                            width: '32px',
+                            height: '32px',
+                            borderRadius: '50%',
+                            overflow: 'hidden',
+                            background: selectedChat.other_user?.avatar_url ? 'transparent' : 'linear-gradient(135deg, var(--accent-2), var(--accent-3))',
+                            display: 'grid',
+                            placeContent: 'center',
+                            flexShrink: 0,
+                            marginTop: '4px'
+                          }}>
+                            {selectedChat.other_user?.avatar_url ? (
+                              <img
+                                src={selectedChat.other_user.avatar_url}
+                                alt={getOtherUserName(selectedChat)}
+                                style={{
+                                  width: '100%',
+                                  height: '100%',
+                                  objectFit: 'cover'
+                                }}
+                              />
+                            ) : (
+                              <span style={{ fontSize: '12px', color: '#fff', fontWeight: 600 }}>
+                                {getOtherUserInitials(selectedChat)}
                               </span>
+                            )}
+                          </div>
+                        )}
+                        
+                        {/* Сообщение */}
+                        <div 
+                          style={{ 
+                            maxWidth: '70%',
+                            padding: '12px',
+                            borderRadius: '18px',
+                            backgroundColor: isOwnMessage ? 'var(--accent)' : 'var(--surface)',
+                            color: isOwnMessage ? 'white' : 'var(--text)',
+                            border: !isOwnMessage ? '1px solid var(--glass)' : 'none',
+                            alignSelf: 'flex-start'
+                          }}
+                        >
+                          {message.reply_to && (
+                            <div style={{
+                              fontSize: '12px',
+                              color: isOwnMessage ? 'rgba(255,255,255,0.7)' : 'var(--muted)',
+                              borderLeft: '2px solid var(--accent)',
+                              paddingLeft: '8px',
+                              marginBottom: '6px'
+                            }}>
+                              Ответ на сообщение
                             </div>
                           )}
+                          
+                          <div style={{ wordBreak: 'break-word' }}>{message.content}</div>
+                          
+                          {(message.attachments || []).map(attachment => (
+                            <div key={attachment.id} style={{ marginTop: '8px' }}>
+                              {attachment.type === 'image' ? (
+                                <img 
+                                  src={attachment.url} 
+                                  alt={attachment.name} 
+                                  style={{ 
+                                    maxWidth: '100%', 
+                                    borderRadius: '12px',
+                                    maxHeight: '200px'
+                                  }}
+                                />
+                              ) : (
+                                <div style={{
+                                  padding: '8px 12px',
+                                  backgroundColor: isOwnMessage ? 'rgba(255,255,255,0.1)' : 'var(--accent-light)',
+                                  borderRadius: '12px',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '8px',
+                                  fontSize: '14px'
+                                }}>
+                                  <span>📎</span>
+                                  <div style={{ flex: 1 }}>
+                                    <div style={{ fontWeight: 500 }}>{attachment.name}</div>
+                                    <div style={{ 
+                                      fontSize: '12px', 
+                                      color: isOwnMessage ? 'rgba(255,255,255,0.7)' : 'var(--muted)' 
+                                    }}>
+                                      {Math.round((attachment.size || 0) / 1024)} KB
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                          
+                          <div style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            fontSize: '11px',
+                            color: isOwnMessage ? 'rgba(255,255,255,0.7)' : 'var(--muted)',
+                            marginTop: '6px',
+                            gap: '8px'
+                          }}>
+                            <span>{formatDate(message.created_at)}</span>
+                            {isOwnMessage && (
+                              <span style={{ 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                gap: '2px',
+                                fontSize: '10px'
+                              }}>
+                                {message.is_read ? '✓✓' : '✓'}
+                              </span>
+                            )}
+                          </div>
                         </div>
-                      ))}
-                      
-                      <div style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        fontSize: '11px',
-                        color: message.sender_id === user?.user_id ? 'rgba(255,255,255,0.7)' : 'var(--muted)',
-                        marginTop: '4px'
-                      }}>
-                        <span>{formatDate(message.created_at)}</span>
-                        {message.sender_id === user?.user_id && (
-                          <span>{message.is_read ? '✓✓' : '✓'}</span>
+                        
+                        {/* Пустой блок для выравнивания исходящих сообщений */}
+                        {isOwnMessage && (
+                          <div style={{ width: '32px', flexShrink: 0 }} />
                         )}
                       </div>
-                    </div>
-                  ))
+                    );
+                  })
                 )}
                 <div ref={messagesEndRef} />
               </div>
@@ -903,12 +1122,20 @@ const Chats: React.FC = () => {
                 gap: 'var(--gap-sm)', 
                 alignItems: 'flex-end',
                 borderTop: '1px solid var(--glass)',
-                paddingTop: 'var(--gap-sm)'
+                paddingTop: 'var(--gap-sm)',
+                paddingBottom: 'var(--gap-sm)'
               }}>
                 <button 
                   className="btn btn-ghost"
                   onClick={() => fileInputRef.current?.click()}
-                  style={{ flexShrink: 0 }}
+                  style={{ 
+                    flexShrink: 0,
+                    width: '44px',
+                    height: '44px',
+                    borderRadius: '50%',
+                    display: 'grid',
+                    placeContent: 'center'
+                  }}
                 >
                   📎
                 </button>
@@ -944,7 +1171,8 @@ const Chats: React.FC = () => {
                       color: 'var(--text)',
                       resize: 'none',
                       fontFamily: 'inherit',
-                      fontSize: '14px'
+                      fontSize: '14px',
+                      lineHeight: '1.4'
                     }}
                   />
                   
@@ -1011,7 +1239,8 @@ const Chats: React.FC = () => {
         borderRadius: 'var(--radius)',
         boxShadow: 'var(--shadow-sm)',
         border: '1px solid var(--glass)',
-        fontSize: '14px'
+        fontSize: '14px',
+        zIndex: 100
       }}>
         <div style={{
           width: '8px',

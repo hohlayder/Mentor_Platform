@@ -160,8 +160,8 @@ const ProfilePage: React.FC = () => {
 
   const isProfileRoot = location.pathname === '/profile' || location.pathname === '/profile/'
 
-  // Функция для получения правильного URL аватара
-  const getAvatarUrl = (avatarUrl: string | null | undefined): string => {
+  // Функция для получения правильного URL аватара пользователя
+  const getUserAvatarUrl = (avatarUrl: string | null | undefined): string => {
     if (!avatarUrl) return ''
     
     // Если URL уже полный (http или https)
@@ -185,6 +185,34 @@ const ProfilePage: React.FC = () => {
     }
     
     return avatarUrl
+  }
+
+  // Функция для получения правильного URL аватара поста
+  const getPostAvatarUrl = (postId: string, avatarUrl: string | null | undefined): string => {
+    if (!avatarUrl) return ''
+    
+    // Если URL уже полный (http или https)
+    if (avatarUrl.startsWith('http')) {
+      return avatarUrl
+    }
+    
+    // Если это имя файла
+    if (avatarUrl && !avatarUrl.includes('/')) {
+      return `http://localhost:8080/api/v1/files/posts/avatar/${avatarUrl}`
+    }
+    
+    // Если это относительный путь
+    if (avatarUrl.startsWith('/')) {
+      return `http://localhost:8080${avatarUrl}`
+    }
+    
+    // Если это путь без префикса http
+    if (avatarUrl.startsWith('files/posts/avatar/')) {
+      return `http://localhost:8080/api/v1/${avatarUrl}`
+    }
+    
+    // По умолчанию используем эндпоинт с post_id
+    return `http://localhost:8080/api/v1/files/posts/avatar/${postId}`
   }
 
   useEffect(() => {
@@ -273,7 +301,7 @@ const ProfilePage: React.FC = () => {
             first_name: profileData.user.first_name || '',
             last_name: profileData.user.last_name || '',
             email: profileData.user.email || '',
-            avatar_url: getAvatarUrl(profileData.user.avatar_url || null),
+            avatar_url: getUserAvatarUrl(profileData.user.avatar_url || null),
             created_at: profileData.user.created_at || ''
           };
         } else {
@@ -342,7 +370,7 @@ const ProfilePage: React.FC = () => {
             created_at: post.created_at || '',
             updated_at: post.updated_at || '',
             author_name: post.author_name || null,
-            avatar_url: getAvatarUrl(post.avatar_url || null)
+            avatar_url: post.avatar_url || null
           }));
           console.log('Transformed liked posts:', transformedPosts);
           setLikedPosts(transformedPosts);
@@ -376,7 +404,7 @@ const ProfilePage: React.FC = () => {
               console.log('Courses data:', coursesData);
               const coursesWithAvatar = (coursesData.posts || []).map((post: any) => ({
                 ...post,
-                avatar_url: getAvatarUrl(post.avatar_url || null)
+                avatar_url: post.avatar_url || null
               }));
               setMentorCourses(coursesWithAvatar);
             } else {
@@ -407,6 +435,68 @@ const ProfilePage: React.FC = () => {
 
   const handleLogout = () => {
     logout();
+  };
+
+  // Функция для рендеринга изображения курса
+  const renderCourseImage = (course: Post, isLikedPost: boolean = false) => {
+    const avatarUrl = course.avatar_url ? getPostAvatarUrl(course.id, course.avatar_url) : '';
+    
+    if (avatarUrl) {
+      return (
+        <img
+          src={avatarUrl}
+          alt={course.title}
+          style={{
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+            position: 'absolute',
+            top: 0,
+            left: 0
+          }}
+          onError={(e) => {
+            // Если изображение не загружается, показываем fallback
+            e.currentTarget.style.display = 'none';
+            const parent = e.currentTarget.parentElement;
+            if (parent) {
+              const fallback = document.createElement('div');
+              fallback.style.width = '100%';
+              fallback.style.height = '100%';
+              fallback.style.background = isLikedPost 
+                ? 'linear-gradient(135deg, #f59e0b, #d97706)' 
+                : 'linear-gradient(135deg, var(--accent), var(--accent-2))';
+              fallback.style.display = 'flex';
+              fallback.style.alignItems = 'center';
+              fallback.style.justifyContent = 'center';
+              fallback.style.color = '#fff';
+              fallback.style.fontWeight = 'bold';
+              fallback.style.fontSize = '24px';
+              fallback.textContent = course.title?.[0] || (isLikedPost ? '❤️' : '📚');
+              parent.appendChild(fallback);
+            }
+          }}
+        />
+      );
+    }
+    
+    // Если нет аватара, показываем градиент
+    return (
+      <div style={{
+        width: '100%',
+        height: '100%',
+        background: isLikedPost 
+          ? 'linear-gradient(135deg, #f59e0b, #d97706)' 
+          : 'linear-gradient(135deg, var(--accent), var(--accent-2))',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        color: '#fff',
+        fontWeight: 'bold',
+        fontSize: '24px'
+      }}>
+        {course.title?.[0] || (isLikedPost ? '❤️' : '📚')}
+      </div>
+    );
   };
 
   // Функция для отображения загрузки
@@ -525,7 +615,7 @@ const ProfilePage: React.FC = () => {
   const userName = `${profile.user.first_name || ''} ${profile.user.last_name || ''}`.trim() || 'Пользователь'
   const userEmail = profile.user.email || ''
   const userInitials = `${profile.user.first_name?.[0] || ''}${profile.user.last_name?.[0] || ''}` || 'U'
-  const userAvatarUrl = getAvatarUrl(profile.user.avatar_url)
+  const userAvatarUrl = getUserAvatarUrl(profile.user.avatar_url)
 
   return (
     <div className="container">
@@ -766,15 +856,12 @@ const ProfilePage: React.FC = () => {
                 <div
                   className="thumb"
                   style={{
-                    background: `linear-gradient(135deg, #f59e0b, #d97706)`,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: '#fff',
-                    fontWeight: 'bold',
-                    fontSize: '24px'
-                  }}>
-                  {post.title?.[0] || '❤️'}
+                    position: 'relative',
+                    overflow: 'hidden',
+                    height: '150px'
+                  }}
+                >
+                  {renderCourseImage(post, true)}
                 </div>
                 <div className="c-body">
                   <div className="title" style={{ fontSize: '16px', marginBottom: '8px' }}>
@@ -831,15 +918,12 @@ const ProfilePage: React.FC = () => {
                   <div
                     className="thumb"
                     style={{
-                      background: `linear-gradient(135deg, var(--accent), var(--accent-2))`,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      color: '#fff',
-                      fontWeight: 'bold',
-                      fontSize: '24px'
-                    }}>
-                    {course.title?.[0] || '📚'}
+                      position: 'relative',
+                      overflow: 'hidden',
+                      height: '150px'
+                    }}
+                  >
+                    {renderCourseImage(course)}
                   </div>
                   <div className="c-body">
                     <div className="title" style={{ fontSize: '16px', marginBottom: '8px' }}>

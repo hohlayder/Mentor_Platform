@@ -1,4 +1,4 @@
-// src/pages/CourseFormPage.tsx
+// src/pages/CourseFormPage.tsx (исправленная версия)
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useAuth } from '../store/AuthContext';
@@ -11,7 +11,7 @@ interface Post {
   status: string;
   tags: string[];
   author_id: string;
-  avatar_url?: string;
+  avatar_url?: string | null; // Изменено: может быть null
   average_rating: number;
   ratings_count: number;
   created_at: string;
@@ -98,8 +98,8 @@ const CourseFormPage: React.FC = () => {
   const [avatarError, setAvatarError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Функция для получения URL аватара
-  const getAvatarUrl = (filename?: string): string | null => {
+  // Функция для получения URL аватара поста
+  const getPostAvatarUrl = (postId: string, filename?: string | null): string | null => {
     if (!filename) return null;
     
     // Если это уже полный URL, возвращаем как есть
@@ -107,9 +107,23 @@ const CourseFormPage: React.FC = () => {
       return filename;
     }
     
-    // Иначе формируем URL для получения аватара поста
-    // Согласно Swagger: GET /files/posts/avatar/{filename}
-    return `http://localhost:8080/api/v1/files/posts/avatar/${filename}`;
+    // Если это просто имя файла, формируем URL
+    if (!filename.includes('/')) {
+      return `http://localhost:8080/api/v1/files/posts/avatar/${filename}`;
+    }
+    
+    // Если это относительный путь
+    if (filename.startsWith('/')) {
+      return `http://localhost:8080${filename}`;
+    }
+    
+    // Если это путь без префикса http
+    if (filename.startsWith('files/posts/avatar/')) {
+      return `http://localhost:8080/api/v1/${filename}`;
+    }
+    
+    // По умолчанию используем эндпоинт с post_id
+    return `http://localhost:8080/api/v1/files/posts/avatar/${postId}`;
   };
 
   // Функция для получения URL аватара пользователя
@@ -227,11 +241,23 @@ const CourseFormPage: React.FC = () => {
           
           // Устанавливаем превью аватара, если он есть
           if (loadedCourse.avatar_url) {
-            const avatarUrl = getAvatarUrl(loadedCourse.avatar_url);
+            const avatarUrl = getPostAvatarUrl(loadedCourse.id, loadedCourse.avatar_url);
             console.log('Загруженный avatar_url:', loadedCourse.avatar_url);
             console.log('Сформированный URL аватара:', avatarUrl);
             if (avatarUrl) {
-              setAvatarPreview(avatarUrl);
+              // Проверяем, существует ли изображение
+              try {
+                const testResponse = await fetch(avatarUrl, { method: 'HEAD' });
+                if (testResponse.ok) {
+                  setAvatarPreview(avatarUrl);
+                } else {
+                  console.warn('Аватар не найден по URL:', avatarUrl);
+                  setAvatarPreview(null);
+                }
+              } catch (err) {
+                console.warn('Не удалось проверить аватар:', err);
+                setAvatarPreview(null);
+              }
             }
           }
           
@@ -370,24 +396,14 @@ const CourseFormPage: React.FC = () => {
       // Если был выбран файл для загрузки и курс создан/обновлен
       if (avatarFile && courseId) {
         try {
-          const uploadResult = await uploadAvatarForPost(courseId, avatarFile);
+          await uploadAvatarForPost(courseId, avatarFile);
           
-          // Обновляем состояние курса с новым avatar_url
-          if (course) {
-            setCourse({
-              ...course,
-              avatar_url: uploadResult.filename
-            });
-          }
-          
-          // Обновляем превью с URL от сервера
-          const newAvatarUrl = getAvatarUrl(uploadResult.filename);
-          if (newAvatarUrl) {
-            setAvatarPreview(newAvatarUrl);
-          }
+          // Не обновляем локальное состояние, так как после редиректа
+          // страница курса загрузит данные с сервера
         } catch (uploadError) {
           console.error('Ошибка загрузки аватара:', uploadError);
           // Продолжаем несмотря на ошибку загрузки аватара
+          // Можно показать предупреждение, но не прерывать процесс
         }
       }
       
@@ -552,9 +568,10 @@ const CourseFormPage: React.FC = () => {
       
       // Обновляем состояние курса
       if (course) {
-        const updatedCourse = { ...course };
-        delete updatedCourse.avatar_url;
-        setCourse(updatedCourse);
+        setCourse({
+          ...course,
+          avatar_url: null
+        });
       }
       
     } catch (err: any) {
@@ -572,19 +589,26 @@ const CourseFormPage: React.FC = () => {
     try {
       const uploadResult = await uploadAvatarForPost(id, avatarFile);
       
-      // Обновляем состояние курса с новым avatar_url
-      if (course) {
-        const updatedCourse = {
-          ...course,
-          avatar_url: uploadResult.filename
-        };
-        setCourse(updatedCourse);
+      // Обновляем превью с URL от сервера
+      const newAvatarUrl = getPostAvatarUrl(id, uploadResult.filename || uploadResult.url);
+      if (newAvatarUrl) {
+        // Проверяем, что изображение загрузилось
+        try {
+          const testResponse = await fetch(newAvatarUrl, { method: 'HEAD' });
+          if (testResponse.ok) {
+            setAvatarPreview(newAvatarUrl);
+          }
+        } catch (err) {
+          console.warn('Не удалось проверить загруженный аватар:', err);
+        }
       }
       
-      // Обновляем превью с URL от сервера
-      const newAvatarUrl = getAvatarUrl(uploadResult.filename);
-      if (newAvatarUrl) {
-        setAvatarPreview(newAvatarUrl);
+      // Обновляем состояние курса
+      if (course) {
+        setCourse({
+          ...course,
+          avatar_url: uploadResult.filename || uploadResult.url
+        });
       }
       
       // Сбрасываем файл после успешной загрузки
@@ -600,7 +624,7 @@ const CourseFormPage: React.FC = () => {
   const handleAvatarClear = () => {
     // Если есть текущий аватар курса, возвращаем его в превью
     if (course?.avatar_url) {
-      const currentAvatarUrl = getAvatarUrl(course.avatar_url);
+      const currentAvatarUrl = getPostAvatarUrl(id!, course.avatar_url);
       if (currentAvatarUrl) {
         setAvatarPreview(currentAvatarUrl);
       }
@@ -770,7 +794,24 @@ const CourseFormPage: React.FC = () => {
               console.error('Ошибка загрузки изображения:', avatarPreview);
               // Если изображение не загрузилось, показываем заглушку
               e.currentTarget.style.display = 'none';
-              // Можно добавить fallback изображение
+              const parent = e.currentTarget.parentElement;
+              if (parent) {
+                const fallback = document.createElement('div');
+                fallback.style.width = '200px';
+                fallback.style.height = '200px';
+                fallback.style.borderRadius = '12px';
+                fallback.style.background = 'var(--glass)';
+                fallback.style.display = 'flex';
+                fallback.style.flexDirection = 'column';
+                fallback.style.alignItems = 'center';
+                fallback.style.justifyContent = 'center';
+                fallback.style.color = 'var(--muted)';
+                fallback.innerHTML = `
+                  <div style="font-size: 48px; margin-bottom: 8px;">📷</div>
+                  <div style="font-size: 14px; text-align: center;">Изображение курса</div>
+                `;
+                parent.appendChild(fallback);
+              }
             }}
           />
         );
@@ -820,7 +861,7 @@ const CourseFormPage: React.FC = () => {
               {(avatarFile || (isEditMode && course?.avatar_url)) && (
                 <button
                   type="button"
-                  onClick={handleAvatarDelete}
+                  onClick={avatarFile ? handleAvatarClear : handleAvatarDelete}
                   disabled={isUploadingAvatar}
                   style={{
                     position: 'absolute',
@@ -839,7 +880,7 @@ const CourseFormPage: React.FC = () => {
                     fontSize: '18px',
                     opacity: isUploadingAvatar ? 0.5 : 1
                   }}
-                  title="Удалить изображение"
+                  title={avatarFile ? "Отменить выбор файла" : "Удалить изображение"}
                 >
                   ×
                 </button>
@@ -1014,6 +1055,21 @@ const CourseFormPage: React.FC = () => {
                   console.error('Ошибка загрузки аватара пользователя:', userAvatarUrl);
                   // Показываем заглушку если аватар не загрузился
                   e.currentTarget.style.display = 'none';
+                  const parent = e.currentTarget.parentElement;
+                  if (parent) {
+                    const fallback = document.createElement('div');
+                    fallback.style.width = '60px';
+                    fallback.style.height = '60px';
+                    fallback.style.borderRadius = '50%';
+                    fallback.style.background = 'linear-gradient(135deg, var(--accent), var(--accent-2))';
+                    fallback.style.display = 'grid';
+                    fallback.style.placeContent = 'center';
+                    fallback.style.color = '#fff';
+                    fallback.style.fontWeight = '600';
+                    fallback.style.fontSize = '20px';
+                    fallback.textContent = getUserInitials();
+                    parent.appendChild(fallback);
+                  }
                 }}
               />
             ) : (

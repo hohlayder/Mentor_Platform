@@ -15,6 +15,7 @@ interface Post {
   ratings_count: number;
   created_at: string;
   updated_at: string;
+  avatar_url?: string | null; // Добавлено поле для аватара курса
 }
 
 // Типы для сортировки
@@ -51,6 +52,34 @@ const useTheme = () => {
   };
 
   return { theme, toggleTheme };
+};
+
+// Функция для получения URL аватара поста
+const getPostAvatarUrl = (postId: string, avatarUrl?: string | null): string => {
+  if (!avatarUrl) return '';
+  
+  // Если это уже полный URL, возвращаем как есть
+  if (avatarUrl.startsWith('http://') || avatarUrl.startsWith('https://')) {
+    return avatarUrl;
+  }
+  
+  // Если это просто имя файла, формируем URL
+  if (!avatarUrl.includes('/')) {
+    return `http://localhost:8080/api/v1/files/posts/avatar/${avatarUrl}`;
+  }
+  
+  // Если это относительный путь
+  if (avatarUrl.startsWith('/')) {
+    return `http://localhost:8080${avatarUrl}`;
+  }
+  
+  // Если это путь без префикса http
+  if (avatarUrl.startsWith('files/posts/avatar/')) {
+    return `http://localhost:8080/api/v1/${avatarUrl}`;
+  }
+  
+  // По умолчанию используем эндпоинт с post_id
+  return `http://localhost:8080/api/v1/files/posts/avatar/${postId}`;
 };
 
 const CoursesPage: React.FC = () => {
@@ -125,10 +154,9 @@ const CoursesPage: React.FC = () => {
       }
       
       const data = await response.json();
+      // Сохраняем курсы с аватарами
       setCourses(data.posts || []);
       setTotalCount(data.total_count || 0);
-      
-      console.log(data);
       
       // Обновляем URL с текущими фильтрами
       const newParams = new URLSearchParams();
@@ -226,23 +254,73 @@ const CoursesPage: React.FC = () => {
     logout();
   }, [logout]);
   
-  const totalPages = Math.ceil(totalCount / pageSize);
-  
-  // Функция для получения цвета фона карточки курса
-  const getCourseColor = (course: Post) => {
-    if (showMyCourses && user && course.author_id === user.user_id) {
-      return 'linear-gradient(135deg, var(--accent), var(--accent-dark))';
+  // Функция для рендеринга изображения курса
+  const renderCourseImage = (course: Post) => {
+    const avatarUrl = course.avatar_url ? getPostAvatarUrl(course.id, course.avatar_url) : '';
+    const isMyCourse = user && course.author_id === user.user_id;
+    
+    if (avatarUrl) {
+      return (
+        <img
+          src={avatarUrl}
+          alt={course.title}
+          style={{
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+            position: 'absolute',
+            top: 0,
+            left: 0
+          }}
+          onError={(e) => {
+            // Если изображение не загружается, показываем fallback
+            e.currentTarget.style.display = 'none';
+            const parent = e.currentTarget.parentElement;
+            if (parent) {
+              const fallback = document.createElement('div');
+              fallback.style.width = '100%';
+              fallback.style.height = '100%';
+              fallback.style.background = isMyCourse 
+                ? 'linear-gradient(135deg, var(--accent), var(--accent-dark))' 
+                : 'linear-gradient(135deg, var(--accent), var(--accent-2))';
+              fallback.style.display = 'flex';
+              fallback.style.alignItems = 'center';
+              fallback.style.justifyContent = 'center';
+              fallback.style.color = '#fff';
+              fallback.style.fontWeight = 'bold';
+              fallback.style.fontSize = '48px';
+              fallback.style.fontWeight = '800';
+              fallback.style.opacity = '0.9';
+              fallback.textContent = course.title.charAt(0).toUpperCase();
+              parent.appendChild(fallback);
+            }
+          }}
+        />
+      );
     }
     
-    const colors = [
-      'linear-gradient(135deg, var(--accent), var(--accent-2))',
-      'linear-gradient(135deg, #06B6D4, #0EA5E9)',
-      'linear-gradient(135deg, #8B5CF6, #A855F7)',
-      'linear-gradient(135deg, #EC4899, #F43F5E)',
-      'linear-gradient(135deg, #10B981, #34D399)',
-    ];
-    return colors[course.id.charCodeAt(0) % colors.length];
+    // Если нет аватара, показываем градиент с первой буквой
+    return (
+      <div style={{
+        width: '100%',
+        height: '100%',
+        background: isMyCourse 
+          ? 'linear-gradient(135deg, var(--accent), var(--accent-dark))' 
+          : 'linear-gradient(135deg, var(--accent), var(--accent-2))',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        color: 'white',
+        fontSize: '48px',
+        fontWeight: '800',
+        opacity: 0.9
+      }}>
+        {course.title.charAt(0).toUpperCase()}
+      </div>
+    );
   };
+  
+  const totalPages = Math.ceil(totalCount / pageSize);
   
   return (
     <div className="container" style={{ padding: '0 24px', maxWidth: '1400px' }}>
@@ -639,20 +717,16 @@ const CoursesPage: React.FC = () => {
                         </div>
                       )}
                       
-                      {/* Заголовок курса с цветным фоном */}
+                      {/* Заголовок курса с цветным фоном или аватаром */}
                       <div style={{
                         height: '160px',
                         width: '100%',
-                        background: getCourseColor(course),
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        color: 'white',
-                        fontSize: '28px',
-                        fontWeight: 'bold',
                         position: 'relative',
                         overflow: 'hidden'
                       }}>
+                        {/* Изображение курса */}
+                        {renderCourseImage(course)}
+                        
                         {/* Рейтинг */}
                         {course.average_rating > 0 && (
                           <div style={{
@@ -667,20 +741,13 @@ const CoursesPage: React.FC = () => {
                             alignItems: 'center',
                             gap: '6px',
                             backdropFilter: 'blur(4px)',
-                            fontWeight: 600
+                            fontWeight: 600,
+                            zIndex: 2
                           }}>
                             <span>⭐</span>
                             <span>{course.average_rating.toFixed(1)}</span>
                           </div>
                         )}
-                        
-                        <div style={{ 
-                          fontSize: '48px',
-                          opacity: 0.9,
-                          fontWeight: 800
-                        }}>
-                          {course.title.charAt(0).toUpperCase()}
-                        </div>
                       </div>
                       
                       <div className="c-body" style={{ 
