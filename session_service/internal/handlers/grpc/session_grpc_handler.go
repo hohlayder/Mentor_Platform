@@ -33,6 +33,8 @@ type SlotService interface {
 	DeleteSlot(ctx context.Context, slotId string) error
 	UpdateSlotStatus(ctx context.Context, slotID, status string) error
 	GetSlotsByMentor(ctx context.Context, mentorID string) ([]domain.Slot, error)
+	GetSlotsByPost(ctx context.Context, postID string) ([]domain.Slot, error)          
+	GetAvailableSlotsByPost(ctx context.Context, postID string) ([]domain.Slot, error)
 }
 
 type SessionHandler struct {
@@ -288,6 +290,7 @@ func (h *SessionHandler) CreateSlot(ctx context.Context, req *sessionv1.CreateSl
 
 	slot := &domain.Slot{
 		MentorId:        req.MentorId,
+		PostId:          stringToPtr(req.PostId), // Новое поле
 		Title:           req.Title,
 		Description:     stringToPtr(req.Description),
 		StartTime:       req.StartTime.AsTime(),
@@ -321,6 +324,7 @@ func (h *SessionHandler) GetSlot(ctx context.Context, req *sessionv1.GetSlotRequ
 	return &sessionv1.GetSlotResponse{
 		SlotId:          slot.SlotId,
 		MentorId:        slot.MentorId,
+		PostId:          stringFromPtr(slot.PostId), // Новое поле
 		Title:           slot.Title,
 		Description:     stringFromPtr(slot.Description),
 		StartTime:       timestamppb.New(slot.StartTime),
@@ -340,6 +344,10 @@ func (h *SessionHandler) UpdateSlot(ctx context.Context, req *sessionv1.UpdateSl
 		SlotId: req.SlotId,
 	}
 
+	if req.PostId != nil && *req.PostId != "" {
+		updateSlot.PostId = req.PostId
+	}
+	
 	if req.Title != nil && *req.Title != "" {
 		updateSlot.Title = req.Title
 	}
@@ -366,9 +374,9 @@ func (h *SessionHandler) UpdateSlot(ctx context.Context, req *sessionv1.UpdateSl
 		}
 	}
 
-	if updateSlot.Title == nil && updateSlot.Description == nil && updateSlot.StartTime == nil &&
-		updateSlot.DurationMinutes == nil && updateSlot.Price == nil && updateSlot.Currency == nil &&
-		updateSlot.Status == nil {
+	if updateSlot.PostId == nil && updateSlot.Title == nil && updateSlot.Description == nil && 
+		updateSlot.StartTime == nil && updateSlot.DurationMinutes == nil && updateSlot.Price == nil && 
+		updateSlot.Currency == nil && updateSlot.Status == nil {
 		return nil, status.Error(codes.InvalidArgument, "at least one field must be provided for update")
 	}
 
@@ -426,18 +434,17 @@ func (h *SessionHandler) GetSlotsByMentor(ctx context.Context, req *sessionv1.Ge
         return nil, status.Error(codes.InvalidArgument, "mentor_id is required")
     }
 
-    // Вызываем метод сервиса
     slots, err := h.slotService.GetSlotsByMentor(ctx, req.GetMentorId())
     if err != nil {
         return nil, convertSlotError(err)
     }
 
-    // Конвертируем в proto
     protoSlots := make([]*sessionv1.Slot, len(slots))
     for i, slot := range slots {
         protoSlots[i] = &sessionv1.Slot{
             SlotId:          slot.SlotId,
             MentorId:        slot.MentorId,
+            PostId:          stringFromPtr(slot.PostId), 
             Title:           slot.Title,
             Description:     stringFromPtr(slot.Description),
             StartTime:       timestamppb.New(slot.StartTime),
@@ -470,6 +477,68 @@ func (h *SessionHandler) GetMentorPaymentAmount(ctx context.Context, req *sessio
 		MentorId:      mentorID,
 		TotalAmount:   totalAmount,
 	}, nil
+}
+
+func (h *SessionHandler) GetSlotsByPost(ctx context.Context, req *sessionv1.GetSlotsByPostRequest) (*sessionv1.GetSlotsByPostResponse, error) {
+    if req.GetPostId() == "" {
+        return nil, status.Error(codes.InvalidArgument, "post_id is required")
+    }
+
+    slots, err := h.slotService.GetSlotsByPost(ctx, req.GetPostId())
+    if err != nil {
+        return nil, convertSlotError(err)
+    }
+
+    protoSlots := make([]*sessionv1.Slot, len(slots))
+    for i, slot := range slots {
+        protoSlots[i] = &sessionv1.Slot{
+            SlotId:          slot.SlotId,
+            MentorId:        slot.MentorId,
+            PostId:          stringFromPtr(slot.PostId),
+            Title:           slot.Title,
+            Description:     stringFromPtr(slot.Description),
+            StartTime:       timestamppb.New(slot.StartTime),
+            DurationMinutes: slot.DurationMinutes,
+            Price:           slot.Price,
+            Currency:        slot.Currency,
+            Status:          convertToSlotStatus(slot.Status),
+        }
+    }
+
+    return &sessionv1.GetSlotsByPostResponse{
+        Slots: protoSlots,
+    }, nil
+}
+
+func (h *SessionHandler) GetAvailableSlotsByPost(ctx context.Context, req *sessionv1.GetAvailableSlotsByPostRequest) (*sessionv1.GetAvailableSlotsByPostResponse, error) {
+    if req.GetPostId() == "" {
+        return nil, status.Error(codes.InvalidArgument, "post_id is required")
+    }
+
+    slots, err := h.slotService.GetAvailableSlotsByPost(ctx, req.GetPostId())
+    if err != nil {
+        return nil, convertSlotError(err)
+    }
+
+    protoSlots := make([]*sessionv1.Slot, len(slots))
+    for i, slot := range slots {
+        protoSlots[i] = &sessionv1.Slot{
+            SlotId:          slot.SlotId,
+            MentorId:        slot.MentorId,
+            PostId:          stringFromPtr(slot.PostId),
+            Title:           slot.Title,
+            Description:     stringFromPtr(slot.Description),
+            StartTime:       timestamppb.New(slot.StartTime),
+            DurationMinutes: slot.DurationMinutes,
+            Price:           slot.Price,
+            Currency:        slot.Currency,
+            Status:          convertToSlotStatus(slot.Status),
+        }
+    }
+
+    return &sessionv1.GetAvailableSlotsByPostResponse{
+        Slots: protoSlots,
+    }, nil
 }
 
 func convertSlotError(err error) error {

@@ -13,19 +13,21 @@ import (
 
 type SessionClient interface {
 	CreateSlot(ctx context.Context, in *sessionv1.CreateSlotRequest) (*sessionv1.CreateSlotResponse, error)
-	GetSlot(ctx context.Context, in *sessionv1.GetSlotRequest) (*sessionv1.GetSlotResponse, error) 
-	UpdateSlot(ctx context.Context, in *sessionv1.UpdateSlotRequest) (*sessionv1.UpdateSlotResponse, error) 
-	DeleteSlot(ctx context.Context, in *sessionv1.DeleteSlotRequest) (*sessionv1.DeleteSlotResponse, error) 
-	CreateSession(ctx context.Context, in *sessionv1.CreateSessionRequest) (*sessionv1.CreateSessionResponse, error) 
-	GetSession(ctx context.Context, in *sessionv1.GetSessionRequest) (*sessionv1.GetSessionResponse, error) 
+	GetSlot(ctx context.Context, in *sessionv1.GetSlotRequest) (*sessionv1.GetSlotResponse, error)
+	UpdateSlot(ctx context.Context, in *sessionv1.UpdateSlotRequest) (*sessionv1.UpdateSlotResponse, error)
+	DeleteSlot(ctx context.Context, in *sessionv1.DeleteSlotRequest) (*sessionv1.DeleteSlotResponse, error)
+	CreateSession(ctx context.Context, in *sessionv1.CreateSessionRequest) (*sessionv1.CreateSessionResponse, error)
+	GetSession(ctx context.Context, in *sessionv1.GetSessionRequest) (*sessionv1.GetSessionResponse, error)
 	UpdateSession(ctx context.Context, in *sessionv1.UpdateSessionRequest) (*sessionv1.UpdateSessionResponse, error)
 	DeleteSession(ctx context.Context, in *sessionv1.DeleteSessionRequest) (*sessionv1.DeleteSessionResponse, error)
-	ListSessionsByMentor(ctx context.Context, in *sessionv1.ListSessionsByMentorRequest) (*sessionv1.ListSessionsResponse, error) 
+	ListSessionsByMentor(ctx context.Context, in *sessionv1.ListSessionsByMentorRequest) (*sessionv1.ListSessionsResponse, error)
 	ListSessionsByStudent(ctx context.Context, in *sessionv1.ListSessionsByStudentRequest) (*sessionv1.ListSessionsResponse, error)
 	UpdateSlotStatus(ctx context.Context, in *sessionv1.UpdateSlotStatusRequest) (*sessionv1.UpdateSlotStatusResponse, error)
-	RateSession(ctx context.Context, in *sessionv1.RateSessionRequest) (*sessionv1.RateSessionResponse, error) 
+	RateSession(ctx context.Context, in *sessionv1.RateSessionRequest) (*sessionv1.RateSessionResponse, error)
 	GetSlotsByMentor(ctx context.Context, in *sessionv1.GetSlotsByMentorRequest) (*sessionv1.GetSlotsByMentorResponse, error)
 	GetMentorPaymentAmount(ctx context.Context, in *sessionv1.GetMentorPaymentAmountRequest) (*sessionv1.GetMentorPaymentAmountResponse, error)
+	GetSlotsByPost(ctx context.Context, in *sessionv1.GetSlotsByPostRequest) (*sessionv1.GetSlotsByPostResponse, error)
+	GetAvailableSlotsByPost(ctx context.Context, in *sessionv1.GetAvailableSlotsByPostRequest) (*sessionv1.GetAvailableSlotsByPostResponse, error)
 }
 
 type SessionService struct {
@@ -39,6 +41,7 @@ func NewSessionService(client SessionClient) *SessionService {
 func (s *SessionService) CreateSlot(ctx context.Context, req *domain.CreateSlotRequest) (string, error) {
 	pbReq := &sessionv1.CreateSlotRequest{
 		MentorId:        req.MentorID,
+		PostId:          req.PostID,
 		Title:           req.Title,
 		StartTime:       timestamppb.New(req.StartTime),
 		DurationMinutes: req.DurationMinutes,
@@ -70,6 +73,7 @@ func (s *SessionService) GetSlot(ctx context.Context, slotID string) (*domain.Sl
 	slotResp := &domain.SlotResponse{
 		ID:              resp.SlotId,
 		MentorID:        resp.MentorId,
+		PostID:          resp.PostId,
 		Title:           resp.Title,
 		Description:     &resp.Description,
 		StartTime:       resp.StartTime.AsTime(),
@@ -87,6 +91,9 @@ func (s *SessionService) UpdateSlot(ctx context.Context, slotID string, req *dom
 		SlotId: slotID,
 	}
 
+	if req.PostID != nil {
+		pbReq.PostId = req.PostID
+	}
 	if req.Title != nil {
 		pbReq.Title = req.Title
 	}
@@ -122,7 +129,7 @@ func (s *SessionService) UpdateSlot(ctx context.Context, slotID string, req *dom
 func (s *SessionService) UpdateSlotStatus(ctx context.Context, slotID, status string) error {
 	_, err := s.client.UpdateSlotStatus(ctx, &sessionv1.UpdateSlotStatusRequest{
 		SessionId: slotID,
-		Status: convertToProtoSlotStatus(status),
+		Status:    convertToProtoSlotStatus(status),
 	})
 	if err != nil {
 		slog.Error("Failed to update slot status via gRPC", "error", err)
@@ -298,41 +305,120 @@ func (s *SessionService) ListSessionsByStudent(ctx context.Context, studentID st
 }
 
 func (s *SessionService) GetSlotsByMentor(ctx context.Context, mentorID string) ([]domain.SlotResponse, error) {
-    resp, err := s.client.GetSlotsByMentor(ctx, &sessionv1.GetSlotsByMentorRequest{
-        MentorId: mentorID,
-    })
-    if err != nil {
-        slog.Error("Failed to get slots by mentor via gRPC", "error", err)
-        return nil, err
-    }
+	resp, err := s.client.GetSlotsByMentor(ctx, &sessionv1.GetSlotsByMentorRequest{
+		MentorId: mentorID,
+	})
+	if err != nil {
+		slog.Error("Failed to get slots by mentor via gRPC", "error", err)
+		return nil, err
+	}
 
-    slots := make([]domain.SlotResponse, len(resp.Slots))
-    for i, slot := range resp.Slots {
-        slotResp := domain.SlotResponse{
-            ID:              slot.SlotId,
-            MentorID:        slot.MentorId,
-            Title:           slot.Title,
-            StartTime:       slot.StartTime.AsTime(),
-            DurationMinutes: slot.DurationMinutes,
-            Price:           slot.Price,
-            Currency:        slot.Currency,
-            Status:          convertFromProtoSlotStatus(slot.Status),
-        }
-        
-        if slot.Description != "" {
-            slotResp.Description = &slot.Description
-        }
-        if slot.CreatedAt != nil {
-            slotResp.CreatedAt = slot.CreatedAt.AsTime()
-        }
-        if slot.UpdatedAt != nil {
-            slotResp.UpdatedAt = slot.UpdatedAt.AsTime()
-        }
-        
-        slots[i] = slotResp
-    }
+	slots := make([]domain.SlotResponse, len(resp.Slots))
+	for i, slot := range resp.Slots {
+		slotResp := domain.SlotResponse{
+			ID:              slot.SlotId,
+			MentorID:        slot.MentorId,
+			PostID:          slot.PostId,
+			Title:           slot.Title,
+			StartTime:       slot.StartTime.AsTime(),
+			DurationMinutes: slot.DurationMinutes,
+			Price:           slot.Price,
+			Currency:        slot.Currency,
+			Status:          convertFromProtoSlotStatus(slot.Status),
+		}
 
-    return slots, nil
+		if slot.Description != "" {
+			slotResp.Description = &slot.Description
+		}
+		if slot.CreatedAt != nil {
+			slotResp.CreatedAt = slot.CreatedAt.AsTime()
+		}
+		if slot.UpdatedAt != nil {
+			slotResp.UpdatedAt = slot.UpdatedAt.AsTime()
+		}
+
+		slots[i] = slotResp
+	}
+
+	return slots, nil
+}
+
+func (s *SessionService) GetSlotsByPost(ctx context.Context, postID string) ([]domain.SlotResponse, error) {
+	resp, err := s.client.GetSlotsByPost(ctx, &sessionv1.GetSlotsByPostRequest{
+		PostId: postID,
+	})
+	if err != nil {
+		slog.Error("Failed to get slots by post via gRPC", "error", err)
+		return nil, err
+	}
+
+	slots := make([]domain.SlotResponse, len(resp.Slots))
+	for i, slot := range resp.Slots {
+		slotResp := domain.SlotResponse{
+			ID:              slot.SlotId,
+			MentorID:        slot.MentorId,
+			PostID:          slot.PostId,
+			Title:           slot.Title,
+			StartTime:       slot.StartTime.AsTime(),
+			DurationMinutes: slot.DurationMinutes,
+			Price:           slot.Price,
+			Currency:        slot.Currency,
+			Status:          convertFromProtoSlotStatus(slot.Status),
+		}
+
+		if slot.Description != "" {
+			slotResp.Description = &slot.Description
+		}
+		if slot.CreatedAt != nil {
+			slotResp.CreatedAt = slot.CreatedAt.AsTime()
+		}
+		if slot.UpdatedAt != nil {
+			slotResp.UpdatedAt = slot.UpdatedAt.AsTime()
+		}
+
+		slots[i] = slotResp
+	}
+
+	return slots, nil
+}
+
+func (s *SessionService) GetAvailableSlotsByPost(ctx context.Context, postID string) ([]domain.SlotResponse, error) {
+	resp, err := s.client.GetAvailableSlotsByPost(ctx, &sessionv1.GetAvailableSlotsByPostRequest{
+		PostId: postID,
+	})
+	if err != nil {
+		slog.Error("Failed to get available slots by post via gRPC", "error", err)
+		return nil, err
+	}
+
+	slots := make([]domain.SlotResponse, len(resp.Slots))
+	for i, slot := range resp.Slots {
+		slotResp := domain.SlotResponse{
+			ID:              slot.SlotId,
+			MentorID:        slot.MentorId,
+			PostID:          slot.PostId,
+			Title:           slot.Title,
+			StartTime:       slot.StartTime.AsTime(),
+			DurationMinutes: slot.DurationMinutes,
+			Price:           slot.Price,
+			Currency:        slot.Currency,
+			Status:          convertFromProtoSlotStatus(slot.Status),
+		}
+
+		if slot.Description != "" {
+			slotResp.Description = &slot.Description
+		}
+		if slot.CreatedAt != nil {
+			slotResp.CreatedAt = slot.CreatedAt.AsTime()
+		}
+		if slot.UpdatedAt != nil {
+			slotResp.UpdatedAt = slot.UpdatedAt.AsTime()
+		}
+
+		slots[i] = slotResp
+	}
+
+	return slots, nil
 }
 
 func (s *SessionService) GetMentorPaymentAmount(ctx context.Context, mentorID string) (*domain.GetMentorPaymentAmountResponse, error) {
@@ -353,8 +439,8 @@ func (s *SessionService) GetMentorPaymentAmount(ctx context.Context, mentorID st
 	}
 
 	return &domain.GetMentorPaymentAmountResponse{
-		MentorID:      grpcResp.MentorId,
-		TotalAmount:   grpcResp.TotalAmount,
+		MentorID:    grpcResp.MentorId,
+		TotalAmount: grpcResp.TotalAmount,
 	}, nil
 }
 

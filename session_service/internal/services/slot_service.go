@@ -1,3 +1,4 @@
+// services/slot_service.go
 package services
 
 import (
@@ -10,6 +11,7 @@ import (
 	"github.com/hohlayder/Mentor_Platform/session_service/internal/domain"
 )
 
+// Добавляем новые интерфейсы в репозиторий
 type SlotRepository interface {
 	CreateSlot(ctx context.Context, slot *domain.Slot) (string, error)
 	GetSlot(ctx context.Context, slotId string) (*domain.Slot, error)
@@ -19,6 +21,8 @@ type SlotRepository interface {
 	UpdateSlotStatus(ctx context.Context, slotID string, status string) error
 	GetSessionBySlotID(ctx context.Context, slotID string) (*domain.Session, error)
 	GetSlotsByMentor(ctx context.Context, mentorID string) ([]domain.Slot, error)
+	GetSlotsByPost(ctx context.Context, postID string) ([]domain.Slot, error)          
+	GetAvailableSlotsByPost(ctx context.Context, postID string) ([]domain.Slot, error)
 }
 
 type UserClient interface {
@@ -157,6 +161,34 @@ func (s *SlotService) GetSlotsByMentor(ctx context.Context, mentorID string) ([]
     return slots, nil
 }
 
+// Новый метод: получение слотов по post_id
+func (s *SlotService) GetSlotsByPost(ctx context.Context, postID string) ([]domain.Slot, error) {
+    if postID == "" {
+        return nil, fmt.Errorf("post_id is required")
+    }
+
+    slots, err := s.repo.GetSlotsByPost(ctx, postID)
+    if err != nil {
+        return nil, fmt.Errorf("failed to get slots by post: %w", err)
+    }
+
+    return slots, nil
+}
+
+// Новый метод: получение доступных слотов по post_id
+func (s *SlotService) GetAvailableSlotsByPost(ctx context.Context, postID string) ([]domain.Slot, error) {
+    if postID == "" {
+        return nil, fmt.Errorf("post_id is required")
+    }
+
+    slots, err := s.repo.GetAvailableSlotsByPost(ctx, postID)
+    if err != nil {
+        return nil, fmt.Errorf("failed to get available slots by post: %w", err)
+    }
+
+    return slots, nil
+}
+
 func (s *SlotService) UpdateSlotStatus(ctx context.Context, slotID string, status string) error {
     if slotID == "" {
         return fmt.Errorf("slot_id is required")
@@ -220,3 +252,7 @@ func toUserProtoRequest(userId string) *userv1.GetUserByIdRequest {
 		UserId: userId,
 	}
 }
+
+var (
+	ErrInvalidPostID   = fmt.Errorf("invalid post id")
+)

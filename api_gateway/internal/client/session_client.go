@@ -72,8 +72,16 @@ func (c *SessionClient) GetSlotsByMentor(ctx context.Context, in *sessionv1.GetS
 	return c.Client.GetSlotsByMentor(ctx, in)
 }
 
-func (c SessionClient) GetMentorPaymentAmount(ctx context.Context, in *sessionv1.GetMentorPaymentAmountRequest) (*sessionv1.GetMentorPaymentAmountResponse, error) {
+func (c *SessionClient) GetMentorPaymentAmount(ctx context.Context, in *sessionv1.GetMentorPaymentAmountRequest) (*sessionv1.GetMentorPaymentAmountResponse, error) {
 	return c.Client.GetMentorPaymentAmount(ctx, in)
+}
+
+func (c *SessionClient) GetSlotsByPost(ctx context.Context, in *sessionv1.GetSlotsByPostRequest) (*sessionv1.GetSlotsByPostResponse, error) {
+	return c.Client.GetSlotsByPost(ctx, in)
+}
+
+func (c *SessionClient) GetAvailableSlotsByPost(ctx context.Context, in *sessionv1.GetAvailableSlotsByPostRequest) (*sessionv1.GetAvailableSlotsByPostResponse, error) {
+	return c.Client.GetAvailableSlotsByPost(ctx, in)
 }
 
 func (c *SessionClient) Close() error {

@@ -1,3 +1,4 @@
+// postgres/slot_repository.go
 package postgres
 
 import (
@@ -21,15 +22,16 @@ func NewSlotRepository(db *sqlx.DB) *SlotRepository {
 func (r *SlotRepository) CreateSlot(ctx context.Context, slot *domain.Slot) (string, error) {
 	query := `
 		INSERT INTO slots (
-			mentor_id, title, description, start_time, 
+			mentor_id, post_id, title, description, start_time, 
 			duration_minutes, price, currency, status
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 		RETURNING id
 	`
 
 	var slotID string
 	err := r.db.QueryRowContext(ctx, query,
 		slot.MentorId,
+		slot.PostId,           
 		slot.Title,
 		slot.Description,
 		slot.StartTime,
@@ -55,7 +57,7 @@ func (r *SlotRepository) CreateSlot(ctx context.Context, slot *domain.Slot) (str
 func (r *SlotRepository) GetSlot(ctx context.Context, slotId string) (*domain.Slot, error) {
 	query := `
 		SELECT 
-			id, mentor_id, status, title, description, 
+			id, mentor_id, post_id, status, title, description, 
 			start_time, duration_minutes, price, currency,
 			created_at, updated_at
 		FROM slots 
@@ -79,6 +81,12 @@ func (r *SlotRepository) UpdateSlot(ctx context.Context, slot *domain.SlotUpdate
 	args := []interface{}{}
 	argIdx := 1
 
+	if slot.PostId != nil {
+		updates = append(updates, fmt.Sprintf("post_id = $%d", argIdx))
+		args = append(args, *slot.PostId)
+		argIdx++
+	}
+	
 	if slot.Title != nil {
 		updates = append(updates, fmt.Sprintf("title = $%d", argIdx))
 		args = append(args, *slot.Title)
@@ -237,7 +245,7 @@ func (r *SlotRepository) GetSessionBySlotID(ctx context.Context, slotID string) 
 func (r *SlotRepository) GetSlotsByMentor(ctx context.Context, mentorID string) ([]domain.Slot, error) {
     query := `
         SELECT 
-            id, mentor_id, status, title, description, 
+            id, mentor_id, post_id, status, title, description, 
             start_time, duration_minutes, price, currency,
             created_at, updated_at
         FROM slots 
@@ -249,6 +257,46 @@ func (r *SlotRepository) GetSlotsByMentor(ctx context.Context, mentorID string) 
     err := r.db.SelectContext(ctx, &slots, query, mentorID)
     if err != nil {
         return nil, fmt.Errorf("failed to get slots by mentor: %w", err)
+    }
+
+    return slots, nil
+}
+
+func (r *SlotRepository) GetSlotsByPost(ctx context.Context, postID string) ([]domain.Slot, error) {
+    query := `
+        SELECT 
+            id, mentor_id, post_id, status, title, description, 
+            start_time, duration_minutes, price, currency,
+            created_at, updated_at
+        FROM slots 
+        WHERE post_id = $1
+        ORDER BY start_time ASC
+    `
+
+    var slots []domain.Slot
+    err := r.db.SelectContext(ctx, &slots, query, postID)
+    if err != nil {
+        return nil, fmt.Errorf("failed to get slots by post: %w", err)
+    }
+
+    return slots, nil
+}
+
+func (r *SlotRepository) GetAvailableSlotsByPost(ctx context.Context, postID string) ([]domain.Slot, error) {
+    query := `
+        SELECT 
+            id, mentor_id, post_id, status, title, description, 
+            start_time, duration_minutes, price, currency,
+            created_at, updated_at
+        FROM slots 
+        WHERE post_id = $1 AND status = 'available'
+        ORDER BY start_time ASC
+    `
+
+    var slots []domain.Slot
+    err := r.db.SelectContext(ctx, &slots, query, postID)
+    if err != nil {
+        return nil, fmt.Errorf("failed to get available slots by post: %w", err)
     }
 
     return slots, nil

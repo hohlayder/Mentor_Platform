@@ -6,6 +6,7 @@ import (
 
 type CreateSlotRequest struct {
 	MentorID        string    `json:"mentor_id" binding:"required,uuid"`
+	PostID          string    `json:"post_id" binding:"required,uuid"`
 	Title           string    `json:"title" binding:"required,min=3,max=255"`
 	Description     *string   `json:"description,omitempty" binding:"omitempty,max=1000"`
 	StartTime       time.Time `json:"start_time" binding:"required"`
@@ -16,6 +17,7 @@ type CreateSlotRequest struct {
 }
 
 type UpdateSlotRequest struct {
+	PostID          *string    `json:"post_id,omitempty" binding:"omitempty,uuid"`
 	Title           *string    `json:"title" binding:"omitempty,min=3,max=255"`
 	Description     *string    `json:"description,omitempty" binding:"omitempty,max=1000"`
 	StartTime       *time.Time `json:"start_time,omitempty"`
@@ -51,6 +53,7 @@ type RateSessionRequest struct {
 type SlotResponse struct {
 	ID              string    `json:"id"`
 	MentorID        string    `json:"mentor_id"`
+	PostID          string    `json:"post_id"`
 	Title           string    `json:"title"`
 	Description     *string   `json:"description,omitempty"`
 	StartTime       time.Time `json:"start_time"`
@@ -58,8 +61,8 @@ type SlotResponse struct {
 	Price           int64     `json:"price"`
 	Currency        string    `json:"currency"`
 	Status          string    `json:"status"`
-	CreatedAt       time.Time `json:"created_at"`
-	UpdatedAt       time.Time `json:"updated_at"`
+	CreatedAt       time.Time `json:"created_at,omitempty"`
+	UpdatedAt       time.Time `json:"updated_at,omitempty"`
 }
 
 type SessionResponse struct {
@@ -84,6 +87,6 @@ type ListSlotsResponse struct {
 }
 
 type GetMentorPaymentAmountResponse struct {
-	MentorID      string `json:"mentor_id"`
-	TotalAmount   int64  `json:"total_amount"`   
+	MentorID    string `json:"mentor_id"`
+	TotalAmount int64  `json:"total_amount"`
 }

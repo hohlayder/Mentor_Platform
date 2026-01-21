@@ -3,7 +3,7 @@ module github.com/hohlayder/Mentor_Platform/api_gateway
 go 1.24.3
 
 require (
-	github.com/Sergey-1214/contracts_mentors v0.0.29
+	github.com/Sergey-1214/contracts_mentors v0.0.31
 	github.com/gin-gonic/gin v1.11.0
 	github.com/golang-jwt/jwt/v5 v5.3.0
 	github.com/redis/go-redis/v9 v9.16.0
