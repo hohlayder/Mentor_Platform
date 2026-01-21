@@ -306,7 +306,7 @@ const CourseEnrollPage: React.FC = () => {
       const response = await apiFetch<SuccessResponse>(
         `/api/v1/slots/${slotId}/status`,
         {
-          method: 'PATCH',
+          method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
