@@ -145,6 +145,260 @@ const useTheme = () => {
   return { theme, toggleTheme };
 };
 
+// Компонент для отображения избранного поста с вертикальной закладкой
+const FavoritePostCard: React.FC<{ 
+  post: Post; 
+  onClick: () => void;
+  index: number;
+}> = ({ post, onClick, index }) => {
+  const getPostAvatarUrl = (postId: string, avatarUrl: string | null | undefined): string => {
+    if (!avatarUrl) return '';
+    
+    if (avatarUrl.startsWith('http')) {
+      return avatarUrl;
+    }
+    
+    if (avatarUrl && !avatarUrl.includes('/')) {
+      return `http://localhost:8080/api/v1/files/posts/avatar/${avatarUrl}`;
+    }
+    
+    if (avatarUrl.startsWith('/')) {
+      return `http://localhost:8080${avatarUrl}`;
+    }
+    
+    if (avatarUrl.startsWith('files/posts/avatar/')) {
+      return `http://localhost:8080/api/v1/${avatarUrl}`;
+    }
+    
+    return `http://localhost:8080/api/v1/files/posts/avatar/${postId}`;
+  };
+
+  const avatarUrl = post.avatar_url ? getPostAvatarUrl(post.id, post.avatar_url) : '';
+
+  return (
+    <div 
+      className="favorite-post-card"
+      onClick={onClick}
+      style={{
+        position: 'relative',
+        cursor: 'pointer',
+        borderRadius: '12px',
+        overflow: 'hidden',
+        transition: 'all 0.2s ease',
+        background: 'var(--card-bg)',
+        border: '1px solid var(--glass)',
+        height: '180px'
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.transform = 'translateY(-2px)';
+        e.currentTarget.style.boxShadow = '0 8px 20px rgba(0, 0, 0, 0.12)';
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.transform = 'translateY(0)';
+        e.currentTarget.style.boxShadow = 'none';
+      }}
+    >
+      {/* Вертикальная закладка */}
+      <div style={{
+        position: 'absolute',
+        top: '-10px',
+        left: '10px',
+        zIndex: 2,
+        width: '40px',
+        height: '50px',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        transform: 'rotate(0deg)'
+      }}>
+        <div style={{
+          width: '40px',
+          height: '40px',
+          background: 'var(--accent)',
+          borderRadius: '8px 8px 0 0',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: 'white',
+          fontSize: '14px',
+          fontWeight: 'bold',
+          boxShadow: '0 2px 8px rgba(79, 70, 229, 0.3)'
+        }}>
+          {index + 1}
+        </div>
+        <div style={{
+          width: 0,
+          height: 0,
+          borderLeft: '20px solid transparent',
+          borderRight: '20px solid transparent',
+          borderTop: '10px solid var(--accent)'
+        }} />
+      </div>
+
+      {/* Изображение курса */}
+      <div style={{
+        width: '100%',
+        height: '100px',
+        position: 'relative',
+        overflow: 'hidden',
+        background: avatarUrl ? 'transparent' : 'linear-gradient(135deg, #f59e0b, #d97706)'
+      }}>
+        {avatarUrl ? (
+          <img
+            src={avatarUrl}
+            alt={post.title}
+            style={{
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover'
+            }}
+            onError={(e) => {
+              e.currentTarget.style.display = 'none';
+              const parent = e.currentTarget.parentElement;
+              if (parent) {
+                const fallback = document.createElement('div');
+                fallback.style.width = '100%';
+                fallback.style.height = '100%';
+                fallback.style.background = 'linear-gradient(135deg, #f59e0b, #d97706)';
+                fallback.style.display = 'flex';
+                fallback.style.alignItems = 'center';
+                fallback.style.justifyContent = 'center';
+                fallback.style.color = '#fff';
+                fallback.style.fontWeight = 'bold';
+                fallback.style.fontSize = '24px';
+                fallback.textContent = post.title?.[0] || '❤️';
+                parent.appendChild(fallback);
+              }
+            }}
+          />
+        ) : (
+          <div style={{
+            width: '100%',
+            height: '100%',
+            background: 'linear-gradient(135deg, #f59e0b, #d97706)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#fff',
+            fontWeight: 'bold',
+            fontSize: '24px'
+          }}>
+            {post.title?.[0] || '❤️'}
+          </div>
+        )}
+      </div>
+
+      {/* Информация о посте */}
+      <div style={{
+        padding: '12px',
+        flex: 1
+      }}>
+        <div style={{
+          fontSize: '14px',
+          fontWeight: '600',
+          marginBottom: '4px',
+          color: 'var(--text)',
+          display: '-webkit-box',
+          WebkitLineClamp: 2,
+          WebkitBoxOrient: 'vertical',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          height: '40px',
+          lineHeight: '20px'
+        }}>
+          {post.title || 'Без названия'}
+        </div>
+        
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginTop: '8px'
+        }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '4px',
+            fontSize: '12px',
+            color: 'var(--muted)'
+          }}>
+            {post.average_rating ? (
+              <>
+                <span>⭐</span>
+                <span>{post.average_rating.toFixed(1)}</span>
+                <span>({post.ratings_count || 0})</span>
+              </>
+            ) : (
+              <span>Нет оценок</span>
+            )}
+          </div>
+          
+          <div style={{
+            fontSize: '11px',
+            color: 'var(--muted)',
+            whiteSpace: 'nowrap'
+          }}>
+            {post.created_at ? new Date(post.created_at).toLocaleDateString('ru-RU') : 'Дата неизвестна'}
+          </div>
+        </div>
+
+        {/* Теги */}
+        {post.tags && post.tags.length > 0 && (
+          <div style={{
+            marginTop: '8px',
+            display: 'flex',
+            gap: '4px',
+            flexWrap: 'wrap'
+          }}>
+            {post.tags.slice(0, 2).map((tag, tagIndex) => (
+              <span
+                key={tagIndex}
+                style={{
+                  fontSize: '10px',
+                  padding: '2px 6px',
+                  background: 'rgba(79, 70, 229, 0.1)',
+                  color: 'var(--accent)',
+                  borderRadius: '12px',
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                #{tag}
+              </span>
+            ))}
+            {post.tags.length > 2 && (
+              <span style={{
+                fontSize: '10px',
+                color: 'var(--muted)'
+              }}>
+                +{post.tags.length - 2}
+              </span>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Иконка закладки в правом нижнем углу */}
+      <div style={{
+        position: 'absolute',
+        bottom: '10px',
+        right: '10px',
+        color: 'var(--accent)',
+        opacity: 0.3
+      }}>
+        <svg 
+          width="16" 
+          height="16" 
+          viewBox="0 0 24 24" 
+          fill="currentColor" 
+          stroke="none"
+        >
+          <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+        </svg>
+      </div>
+    </div>
+  );
+};
+
 const ProfilePage: React.FC = () => {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
@@ -185,34 +439,6 @@ const ProfilePage: React.FC = () => {
     }
     
     return avatarUrl
-  }
-
-  // Функция для получения правильного URL аватара поста
-  const getPostAvatarUrl = (postId: string, avatarUrl: string | null | undefined): string => {
-    if (!avatarUrl) return ''
-    
-    // Если URL уже полный (http или https)
-    if (avatarUrl.startsWith('http')) {
-      return avatarUrl
-    }
-    
-    // Если это имя файла
-    if (avatarUrl && !avatarUrl.includes('/')) {
-      return `http://localhost:8080/api/v1/files/posts/avatar/${avatarUrl}`
-    }
-    
-    // Если это относительный путь
-    if (avatarUrl.startsWith('/')) {
-      return `http://localhost:8080${avatarUrl}`
-    }
-    
-    // Если это путь без префикса http
-    if (avatarUrl.startsWith('files/posts/avatar/')) {
-      return `http://localhost:8080/api/v1/${avatarUrl}`
-    }
-    
-    // По умолчанию используем эндпоинт с post_id
-    return `http://localhost:8080/api/v1/files/posts/avatar/${postId}`
   }
 
   useEffect(() => {
@@ -357,25 +583,84 @@ const ProfilePage: React.FC = () => {
         setProfile(normalizedData);
 
         // 2. Сохраняем понравившиеся посты из Posts
-        if (apiData.Posts?.posts && Array.isArray(apiData.Posts.posts)) {
-          const transformedPosts: Post[] = apiData.Posts.posts.map((post: any) => ({
-            id: post.id || '',
-            title: post.title || '',
-            content: post.content || '',
-            author_id: post.author_id || '',
-            status: post.status || 'published',
-            tags: post.tags || [],
-            average_rating: post.average_rating || null,
-            ratings_count: post.ratings_count || null,
-            created_at: post.created_at || '',
-            updated_at: post.updated_at || '',
-            author_name: post.author_name || null,
-            avatar_url: post.avatar_url || null
-          }));
-          console.log('Transformed liked posts:', transformedPosts);
-          setLikedPosts(transformedPosts);
-        } else {
-          console.log('No liked posts found or empty array');
+        try {
+          const favoritesResponse = await fetch(
+            `http://localhost:8080/api/v1/posts/favorite?page_size=20`,
+            { 
+              headers,
+              method: 'GET'
+            }
+          );
+          
+          console.log('Favorites response status:', favoritesResponse.status);
+          
+          if (favoritesResponse.ok) {
+            const favoritesData = await favoritesResponse.json();
+            console.log('Favorites data:', favoritesData);
+            
+            if (favoritesData.posts && Array.isArray(favoritesData.posts)) {
+              const transformedPosts: Post[] = favoritesData.posts.map((post: any) => ({
+                id: post.id || '',
+                title: post.title || '',
+                content: post.content || '',
+                author_id: post.author_id || '',
+                status: post.status || 'published',
+                tags: post.tags || [],
+                average_rating: post.average_rating || null,
+                ratings_count: post.ratings_count || null,
+                created_at: post.created_at || '',
+                updated_at: post.updated_at || '',
+                author_name: post.author_name || null,
+                avatar_url: post.avatar_url || null
+              }));
+              console.log('Transformed liked posts:', transformedPosts);
+              setLikedPosts(transformedPosts);
+            } else {
+              console.log('No liked posts found in favorites endpoint');
+            }
+          } else {
+            console.warn('Не удалось загрузить избранное:', favoritesResponse.status);
+            // Проверяем, есть ли посты в старом формате (на всякий случай)
+            if (apiData.Posts?.posts && Array.isArray(apiData.Posts.posts)) {
+              const transformedPosts: Post[] = apiData.Posts.posts.map((post: any) => ({
+                id: post.id || '',
+                title: post.title || '',
+                content: post.content || '',
+                author_id: post.author_id || '',
+                status: post.status || 'published',
+                tags: post.tags || [],
+                average_rating: post.average_rating || null,
+                ratings_count: post.ratings_count || null,
+                created_at: post.created_at || '',
+                updated_at: post.updated_at || '',
+                author_name: post.author_name || null,
+                avatar_url: post.avatar_url || null
+              }));
+              console.log('Fallback to old liked posts format:', transformedPosts);
+              setLikedPosts(transformedPosts);
+            }
+          }
+        } catch (favoritesErr) {
+          console.error('Error loading favorites:', favoritesErr);
+          // Fallback к старому формату данных
+          if (apiData.Posts?.posts && Array.isArray(apiData.Posts.posts)) {
+            const transformedPosts: Post[] = apiData.Posts.posts.map((post: any) => ({
+              id: post.id || '',
+              title: post.title || '',
+              content: post.content || '',
+              author_id: post.author_id || '',
+              status: post.status || 'published',
+              tags: post.tags || [],
+              average_rating: post.average_rating || null,
+              ratings_count: post.ratings_count || null,
+              created_at: post.created_at || '',
+              updated_at: post.updated_at || '',
+              author_name: post.author_name || null,
+              avatar_url: post.avatar_url || null
+            }));
+            console.log('Error fallback liked posts:', transformedPosts);
+            setLikedPosts(transformedPosts);
+          }
         }
 
         // 3. Загружаем курсы, созданные пользователем
@@ -439,6 +724,28 @@ const ProfilePage: React.FC = () => {
 
   // Функция для рендеринга изображения курса
   const renderCourseImage = (course: Post, isLikedPost: boolean = false) => {
+    const getPostAvatarUrl = (postId: string, avatarUrl: string | null | undefined): string => {
+      if (!avatarUrl) return '';
+      
+      if (avatarUrl.startsWith('http')) {
+        return avatarUrl;
+      }
+      
+      if (avatarUrl && !avatarUrl.includes('/')) {
+        return `http://localhost:8080/api/v1/files/posts/avatar/${avatarUrl}`;
+      }
+      
+      if (avatarUrl.startsWith('/')) {
+        return `http://localhost:8080${avatarUrl}`;
+      }
+      
+      if (avatarUrl.startsWith('files/posts/avatar/')) {
+        return `http://localhost:8080/api/v1/${avatarUrl}`;
+      }
+      
+      return `http://localhost:8080/api/v1/files/posts/avatar/${postId}`;
+    };
+
     const avatarUrl = course.avatar_url ? getPostAvatarUrl(course.id, course.avatar_url) : '';
     
     if (avatarUrl) {
@@ -835,57 +1142,78 @@ const ProfilePage: React.FC = () => {
         </div>
       )}
 
-      {/* Понравившиеся посты */}
+      {/* Понравившиеся посты - новый дизайн с вертикальными закладками */}
       {likedPosts.length > 0 && (
         <div className="card" style={{ marginBottom: '24px' }}>
-          <h3 style={{ margin: '0 0 16px 0' }}>
-            {isOwnProfile ? 'Мне понравилось' : 'Понравившиеся посты'}
-            <span className="meta" style={{ marginLeft: '8px', fontWeight: 'normal' }}>
-              ({likedPosts.length})
-            </span>
-          </h3>
-
-          <div className="courses-grid">
-            {likedPosts.map((post) => (
-              <div 
-                key={post.id} 
-                className="course"
-                onClick={() => navigate(`/courses/${post.id}`)}
-                style={{ cursor: 'pointer' }}
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '12px', 
+            marginBottom: '20px',
+            paddingBottom: '12px',
+            borderBottom: '2px solid var(--glass)' 
+          }}>
+            <div style={{
+              width: '40px',
+              height: '40px',
+              borderRadius: '8px',
+              background: 'linear-gradient(135deg, #f59e0b, #d97706)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#fff',
+              fontSize: '20px'
+            }}>
+              <svg 
+                width="24" 
+                height="24" 
+                viewBox="0 0 24 24" 
+                fill="currentColor" 
+                stroke="none"
               >
-                <div
-                  className="thumb"
-                  style={{
-                    position: 'relative',
-                    overflow: 'hidden',
-                    height: '150px'
-                  }}
-                >
-                  {renderCourseImage(post, true)}
-                </div>
-                <div className="c-body">
-                  <div className="title" style={{ fontSize: '16px', marginBottom: '8px' }}>
-                    {post.title || 'Без названия'}
-                  </div>
-                  <div className="meta" style={{ fontSize: '12px', marginBottom: '8px' }}>
-                    {post.tags?.slice(0, 2).map(tag => `#${tag}`).join(' ') || ''}
-                    {post.tags?.length > 2 && '...'}
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span className="meta">
-                      {post.average_rating
-                        ? `⭐ ${post.average_rating.toFixed(1)} (${post.ratings_count || 0})`
-                        : 'Нет оценок'
-                      }
-                    </span>
-                    <span className="meta" style={{ fontSize: '11px' }}>
-                      {post.created_at ? new Date(post.created_at).toLocaleDateString('ru-RU') : 'Дата неизвестна'}
-                    </span>
-                  </div>
-                </div>
-              </div>
+                <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+              </svg>
+            </div>
+            <div>
+              <h3 style={{ margin: '0 0 4px 0', fontSize: '20px' }}>
+                {isOwnProfile ? 'Мои закладки' : 'Сохраненные курсы'}
+              </h3>
+              <p style={{ margin: 0, color: 'var(--muted)', fontSize: '14px' }}>
+                {likedPosts.length} {likedPosts.length === 1 ? 'закладка' : likedPosts.length < 5 ? 'закладки' : 'закладок'}
+              </p>
+            </div>
+          </div>
+
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+            gap: '20px'
+          }}>
+            {likedPosts.map((post, index) => (
+              <FavoritePostCard
+                key={post.id}
+                post={post}
+                onClick={() => navigate(`/courses/${post.id}`)}
+                index={index}
+              />
             ))}
           </div>
+
+          {/* Если постов много, показываем кнопку "Показать еще" */}
+          {likedPosts.length >= 8 && (
+            <div style={{ marginTop: '20px', textAlign: 'center' }}>
+              <button 
+                className="btn btn-ghost"
+                style={{
+                  color: 'var(--accent)',
+                  borderColor: 'var(--accent)',
+                  fontSize: '14px'
+                }}
+              >
+                Показать все закладки →
+              </button>
+            </div>
+          )}
         </div>
       )}
 
@@ -1060,6 +1388,11 @@ const ProfilePage: React.FC = () => {
           0% { opacity: 1; }
           50% { opacity: 0.5; }
           100% { opacity: 1; }
+        }
+        
+        .favorite-post-card:hover {
+          transform: translateY(-2px) !important;
+          box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12) !important;
         }
       `}</style>
     </div>

@@ -1,4 +1,3 @@
-// src/pages/CoursePage.tsx (исправленная версия)
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../store/AuthContext';
@@ -65,53 +64,53 @@ interface User {
 interface APIProfileResponse {
   Profile?: {
     user?: {
-      user_id: string;
-      first_name: string;
-      last_name: string;
-      email: string;
-      avatar_url?: string | null;
-      created_at: string;
+      user_id: string
+      first_name: string
+      last_name: string
+      email: string
+      avatar_url?: string | null
+      created_at: string
     };
     mentor?: {
-      user_id: string;
-      description?: string | null;
-      rating?: number | null;
-      withdrawal_address?: string | null;
-      created_at: string;
+      user_id: string
+      description?: string | null
+      rating?: number | null
+      withdrawal_address?: string | null
+      created_at: string
     };
     student?: {
-      user_id: string;
-      learning_goals?: string | null;
-      preferred_learning_style?: string | null;
-      created_at: string;
+      user_id: string
+      learning_goals?: string | null
+      preferred_learning_style?: string | null
+      created_at: string
     };
-    teaching_skills?: any[] | null;
-    learning_skills?: any[] | null;
+    teaching_skills?: any[] | null
+    learning_skills?: any[] | null
   };
   profile?: {
     user?: {
-      user_id: string;
-      first_name: string;
-      last_name: string;
-      email: string;
-      avatar_url?: string | null;
-      created_at: string;
+      user_id: string
+      first_name: string
+      last_name: string
+      email: string
+      avatar_url?: string | null
+      created_at: string
     };
     mentor?: {
-      user_id: string;
-      description?: string | null;
-      rating?: number | null;
-      withdrawal_address?: string | null;
-      created_at: string;
+      user_id: string
+      description?: string | null
+      rating?: number | null
+      withdrawal_address?: string | null
+      created_at: string
     };
     student?: {
-      user_id: string;
-      learning_goals?: string | null;
-      preferred_learning_style?: string | null;
-      created_at: string;
+      user_id: string
+      learning_goals?: string | null
+      preferred_learning_style?: string | null
+      created_at: string
     };
-    teaching_skills?: any[] | null;
-    learning_skills?: any[] | null;
+    teaching_skills?: any[] | null
+    learning_skills?: any[] | null
   };
 }
 
@@ -135,6 +134,12 @@ interface RatePostRequest {
   rate: number;
   user_id: string;
   comment?: string;
+}
+
+// Интерфейс для ответа количества избранного
+interface FavoriteCountResponse {
+  post_id: string;
+  users_count: number;
 }
 
 // Вспомогательная функция для работы с API
@@ -212,6 +217,227 @@ const getPostAvatarUrl = (postId: string, avatarUrl: string | null | undefined):
   return `http://localhost:8080/api/v1/files/posts/avatar/${postId}`;
 };
 
+// Компонент кнопки добавления в избранное (стиль Brave)
+interface FavoriteToggleProps {
+  postId: string;
+  favoriteCount: number;
+  isFavorite: boolean;
+  onToggle: () => void;
+  loading?: boolean;
+  size?: 'sm' | 'md' | 'lg';
+}
+
+const FavoriteToggle: React.FC<FavoriteToggleProps> = ({ 
+  postId, 
+  favoriteCount,
+  isFavorite,
+  onToggle,
+  loading = false,
+  size = 'md'
+}) => {
+  const { token } = useAuth();
+  
+  const sizeConfig = {
+    sm: { icon: 18, padding: '6px', size: '34px', strokeWidth: '1.5' },
+    md: { icon: 22, padding: '8px', size: '40px', strokeWidth: '2' },
+    lg: { icon: 26, padding: '10px', size: '46px', strokeWidth: '2.5' }
+  };
+
+  const handleClick = () => {
+    if (!token) {
+      showNotification('Войдите, чтобы добавлять курсы в избранное', 'info');
+      return;
+    }
+    
+    if (loading) return;
+    
+    onToggle();
+  };
+
+  const showNotification = (message: string, type: 'success' | 'error' | 'info' | 'warning') => {
+    const notification = document.createElement('div');
+    notification.style.cssText = `
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      padding: 12px 20px;
+      border-radius: 8px;
+      background: ${type === 'success' ? '#10b981' : 
+                  type === 'error' ? '#ef4444' : 
+                  type === 'warning' ? '#f59e0b' : '#3b82f6'};
+      color: white;
+      font-weight: 500;
+      z-index: 9999;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      animation: slideIn 0.3s ease-out;
+      max-width: 300px;
+    `;
+    
+    notification.textContent = message;
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+      notification.style.animation = 'slideOut 0.3s ease-out forwards';
+      setTimeout(() => {
+        if (notification.parentNode) {
+          notification.parentNode.removeChild(notification);
+        }
+      }, 300);
+    }, 3000);
+  };
+
+  if (!token) {
+    return (
+      <button
+        className="btn btn-ghost"
+        onClick={() => showNotification('Войдите, чтобы добавлять курсы в избранное', 'info')}
+        style={{
+          width: sizeConfig[size].size,
+          height: sizeConfig[size].size,
+          padding: sizeConfig[size].padding,
+          borderRadius: '8px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          cursor: 'pointer',
+          background: 'transparent',
+          border: 'none',
+          color: 'var(--muted)',
+          position: 'relative'
+        }}
+        title="Войдите, чтобы добавлять в избранное"
+      >
+        {/* SVG закладки как в Brave - пустая */}
+        <svg 
+          width={sizeConfig[size].icon} 
+          height={sizeConfig[size].icon} 
+          viewBox="0 0 24 24" 
+          fill="none" 
+          stroke="currentColor" 
+          strokeWidth={sizeConfig[size].strokeWidth}
+          strokeLinecap="round" 
+          strokeLinejoin="round"
+        >
+          <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+        </svg>
+        
+        {favoriteCount > 0 && (
+          <span style={{
+            position: 'absolute',
+            top: '-4px',
+            right: '-4px',
+            fontSize: '11px',
+            background: 'var(--accent)',
+            color: 'white',
+            borderRadius: '10px',
+            padding: '2px 6px',
+            minWidth: '18px',
+            textAlign: 'center',
+            lineHeight: 1
+          }}>
+            {favoriteCount}
+          </span>
+        )}
+      </button>
+    );
+  }
+
+  return (
+    <button
+      className="btn btn-ghost"
+      onClick={handleClick}
+      disabled={loading}
+      style={{
+        width: sizeConfig[size].size,
+        height: sizeConfig[size].size,
+        padding: sizeConfig[size].padding,
+        borderRadius: '8px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        cursor: loading ? 'wait' : 'pointer',
+        transition: 'all 0.2s ease',
+        background: isFavorite ? 'rgba(79, 70, 229, 0.1)' : 'transparent',
+        border: 'none',
+        color: isFavorite ? 'var(--accent)' : 'var(--muted)',
+        position: 'relative',
+        opacity: loading ? 0.7 : 1
+      }}
+      title={isFavorite ? 'Удалить из избранного' : 'Добавить в избранное'}
+    >
+      {loading && (
+        <span style={{
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
+          width: '20px',
+          height: '20px',
+          borderRadius: '50%',
+          background: 'rgba(79, 70, 229, 0.2)',
+          animation: 'pulse 1.5s ease-in-out infinite',
+          transform: 'translate(-50%, -50%)'
+        }} />
+      )}
+      
+      <span 
+        className={isFavorite ? 'bookmark-pulse' : ''}
+        style={{ 
+          transition: 'transform 0.2s ease',
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center'
+        }}
+      >
+        {/* SVG закладки как в Brave - с заполнением */}
+        <svg 
+          width={sizeConfig[size].icon} 
+          height={sizeConfig[size].icon} 
+          viewBox="0 0 24 24" 
+          fill={isFavorite ? "currentColor" : "none"} 
+          stroke="currentColor" 
+          strokeWidth={sizeConfig[size].strokeWidth}
+          strokeLinecap="round" 
+          strokeLinejoin="round"
+        >
+          <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+        </svg>
+      </span>
+      
+      {favoriteCount > 0 && (
+        <span style={{
+          position: 'absolute',
+          top: '-4px',
+          right: '-4px',
+          fontSize: '11px',
+          background: isFavorite ? 'var(--accent)' : 'var(--muted)',
+          color: 'white',
+          borderRadius: '10px',
+          padding: '2px 6px',
+          minWidth: '18px',
+          textAlign: 'center',
+          lineHeight: 1
+        }}>
+          {favoriteCount}
+        </span>
+      )}
+      
+      {loading && (
+        <span style={{
+          position: 'absolute',
+          top: 'calc(100% + 4px)',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          fontSize: '8px',
+          color: 'var(--muted)',
+          whiteSpace: 'nowrap'
+        }}>
+          ...
+        </span>
+      )}
+    </button>
+  );
+};
+
 const CoursePage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -228,6 +454,11 @@ const CoursePage: React.FC = () => {
   const [review, setReview] = useState('');
   const [submittingRating, setSubmittingRating] = useState(false);
   const [postAvatarUrl, setPostAvatarUrl] = useState<string>('');
+  
+  // Состояния для избранного
+  const [favoriteCount, setFavoriteCount] = useState(0);
+  const [isFavorite, setIsFavorite] = useState(false);
+  const [favoriteLoading, setFavoriteLoading] = useState(false);
 
   // Функция для нормализации статуса
   const normalizeStatus = (status: string): 'published' | 'draft' | 'archived' => {
@@ -294,6 +525,158 @@ const CoursePage: React.FC = () => {
     }
   };
 
+  // Функция загрузки количества добавлений в избранное
+  const loadFavoriteCount = async () => {
+    if (!id) return;
+    
+    try {
+      const response = await fetch(
+        `http://localhost:8080/api/v1/posts/${id}/favorite/count`,
+        {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+      
+      if (response.ok) {
+        const data: FavoriteCountResponse = await response.json();
+        setFavoriteCount(data.users_count || 0);
+      }
+    } catch (err) {
+      console.warn('Не удалось получить количество избранного:', err);
+    }
+  };
+
+  // Функция проверки, добавлен ли пост в избранное у текущего пользователя
+  const checkIfFavorite = async () => {
+    if (!token || !id) {
+      setIsFavorite(false);
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `http://localhost:8080/api/v1/posts/favorite?page_size=100`,
+        {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        const isFav = data.posts?.some((post: Post) => post.id === id) || false;
+        setIsFavorite(isFav);
+      }
+    } catch (err) {
+      console.error('Ошибка проверки избранного:', err);
+    }
+  };
+
+  // Функция добавления в избранное
+  const addToFavorite = async () => {
+    if (!token || !id || favoriteLoading) return;
+
+    setFavoriteLoading(true);
+    try {
+      const response = await fetch(
+        `http://localhost:8080/api/v1/posts/${id}/favorite`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      if (response.ok) {
+        setIsFavorite(true);
+        setFavoriteCount(prev => prev + 1);
+        showNotification('Курс добавлен в избранное!', 'success');
+      } else {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Ошибка добавления в избранное');
+      }
+    } catch (err: any) {
+      console.error('Ошибка добавления в избранное:', err);
+      showNotification(err.message || 'Не удалось добавить в избранное', 'error');
+    } finally {
+      setFavoriteLoading(false);
+    }
+  };
+
+  // Функция удаления из избранного
+  const removeFromFavorite = async () => {
+    if (!token || !id || favoriteLoading) return;
+
+    setFavoriteLoading(true);
+    try {
+      const response = await fetch(
+        `http://localhost:8080/api/v1/posts/${id}/favorite`,
+        {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      if (response.ok) {
+        setIsFavorite(false);
+        setFavoriteCount(prev => Math.max(0, prev - 1));
+        showNotification('Курс удален из избранного', 'info');
+      } else {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Ошибка удаления из избранного');
+      }
+    } catch (err: any) {
+      console.error('Ошибка удаления из избранного:', err);
+      showNotification(err.message || 'Не удалось удалить из избранного', 'error');
+    } finally {
+      setFavoriteLoading(false);
+    }
+  };
+
+  // Функция для показа уведомлений
+  const showNotification = (message: string, type: 'success' | 'error' | 'info' | 'warning') => {
+    const notification = document.createElement('div');
+    notification.style.cssText = `
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      padding: 12px 20px;
+      border-radius: 8px;
+      background: ${type === 'success' ? '#10b981' : 
+                  type === 'error' ? '#ef4444' : 
+                  type === 'warning' ? '#f59e0b' : '#3b82f6'};
+      color: white;
+      font-weight: 500;
+      z-index: 9999;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      animation: slideIn 0.3s ease-out;
+      max-width: 300px;
+    `;
+    
+    notification.textContent = message;
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+      notification.style.animation = 'slideOut 0.3s ease-out forwards';
+      setTimeout(() => {
+        if (notification.parentNode) {
+          notification.parentNode.removeChild(notification);
+        }
+      }, 300);
+    }, 3000);
+  };
+
   // ========== ЗАГРУЗКА ДАННЫХ ==========
   useEffect(() => {
     if (!id) {
@@ -329,9 +712,7 @@ const CoursePage: React.FC = () => {
             const postAvatarUrl = getPostAvatarUrl(loadedCourse.id, loadedCourse.avatar_url);
             setPostAvatarUrl(postAvatarUrl);
           } else {
-            // Если у поста нет аватара, пробуем получить дефолтный
             const postAvatarUrl = `http://localhost:8080/api/v1/files/posts/avatar/default`;
-            // Проверяем, существует ли дефолтный аватар
             const response = await fetch(postAvatarUrl, { method: 'HEAD' });
             if (response.ok) {
               setPostAvatarUrl(postAvatarUrl);
@@ -339,7 +720,6 @@ const CoursePage: React.FC = () => {
           }
         } catch (err) {
           console.warn('Не удалось загрузить аватар поста:', err);
-          // Устанавливаем дефолтный градиент вместо аватара
           setPostAvatarUrl('');
         }
 
@@ -352,7 +732,6 @@ const CoursePage: React.FC = () => {
           setAuthor(authorData);
         } catch (err) {
           console.warn('Не удалось загрузить информацию об авторе:', err);
-          // Создаем базового автора если не удалось загрузить
           setAuthor({
             user_id: loadedCourse.author_id,
             email: 'unknown@example.com',
@@ -372,11 +751,9 @@ const CoursePage: React.FC = () => {
           if (profileResponse.ok) {
             const profileData: APIProfileResponse = await profileResponse.json();
             
-            // Исправление: используем любой вариант (с большой или маленькой буквы)
             const profileObj = profileData.Profile || profileData.profile;
             
             if (profileObj?.user) {
-              // Нормализуем данные профиля
               const normalizedProfile: ProfileResponse = {
                 user: {
                   user_id: profileObj.user.user_id || loadedCourse.author_id,
@@ -402,7 +779,6 @@ const CoursePage: React.FC = () => {
               
               setProfile(normalizedProfile);
               
-              // Обновляем автора с данными из профиля
               if (author) {
                 setAuthor({
                   ...author,
@@ -428,6 +804,12 @@ const CoursePage: React.FC = () => {
         } catch (err) {
           console.warn('Не удалось загрузить профиль автора:', err);
         }
+
+        // 5. Загружаем количество избранного
+        await loadFavoriteCount();
+        
+        // 6. Проверяем, добавлен ли курс в избранное у пользователя
+        await checkIfFavorite();
 
       } catch (err: any) {
         console.error('Ошибка загрузки курса:', err);
@@ -480,7 +862,7 @@ const CoursePage: React.FC = () => {
       const successMessage = newStatus === 'archived' ? 'Курс перемещен в архив' :
                              newStatus === 'published' ? 'Курс опубликован' : 
                              'Курс переведен в черновик';
-      alert(`✅ ${successMessage}!`);
+      showNotification(`✅ ${successMessage}!`, 'success');
     } catch (err: any) {
       console.error(`Ошибка ${action} курса:`, err);
       setError(err.message || `Не удалось ${action} курс`);
@@ -512,9 +894,10 @@ const CoursePage: React.FC = () => {
       setRating(0);
       setReview('');
       setActiveTab('reviews');
+      showNotification('Спасибо за ваш отзыв!', 'success');
     } catch (err: any) {
       console.error('Ошибка оценки курса:', err);
-      setError(err.message || 'Не удалось оценить курс');
+      showNotification(err.message || 'Не удалось оценить курс', 'error');
     } finally {
       setSubmittingRating(false);
     }
@@ -538,10 +921,11 @@ const CoursePage: React.FC = () => {
         }
       );
 
+      showNotification('Курс успешно удален', 'success');
       navigate('/courses');
     } catch (err: any) {
       console.error('Ошибка удаления курса:', err);
-      setError(err.message || 'Не удалось удалить курс');
+      showNotification(err.message || 'Не удалось удалить курс', 'error');
     }
   };
 
@@ -599,19 +983,16 @@ const CoursePage: React.FC = () => {
 
   // ========== ФУНКЦИЯ ЗАПИСИ НА КУРС ==========
   const handleEnroll = () => {
-    // Если пользователь не авторизован, перенаправляем на страницу входа
     if (!token) {
       navigate('/login', { state: { returnTo: `/course/${id}` } });
       return;
     }
     
-    // Если пользователь является автором курса (ментором)
     if (isAuthor) {
-      alert('Вы являетесь автором этого курса. Создайте слоты для студентов на отдельной странице');
+      showNotification('Вы являетесь автором этого курса. Создайте слоты для студентов на отдельной странице', 'info');
       return;
     }
     
-    // Если пользователь студент, перенаправляем на страницу записи
     navigate(`/course/${id}/enroll`);
   };
 
@@ -619,7 +1000,6 @@ const CoursePage: React.FC = () => {
   if (loading) {
     return (
       <div className="container" style={{ padding: '0 24px', maxWidth: '1400px' }}>
-        {/* Header */}
         <header className="header" style={{ padding: '12px 0' }}>
           <Link to="/" className="brand">
             <div className="logo">M</div>Mentor Fellowship
@@ -663,7 +1043,6 @@ const CoursePage: React.FC = () => {
   if (error || !course) {
     return (
       <div className="container" style={{ padding: '0 24px', maxWidth: '1400px' }}>
-        {/* Header */}
         <header className="header" style={{ padding: '12px 0' }}>
           <Link to="/" className="brand">
             <div className="logo">M</div>Mentor Fellowship
@@ -715,7 +1094,6 @@ const CoursePage: React.FC = () => {
 
   return (
     <div className="container" style={{ padding: '0 24px', maxWidth: '1400px' }}>
-      {/* Header */}
       <header className="header" style={{ padding: '12px 0' }}>
         <Link to="/" className="brand">
           <div className="logo">M</div>Mentor Fellowship
@@ -740,7 +1118,6 @@ const CoursePage: React.FC = () => {
         </div>
       </header>
 
-      {/* Хлебные крошки */}
       <nav style={{ margin: '24px 0', fontSize: '14px' }}>
         <Link to="/" style={{ color: 'var(--muted)' }}>Главная</Link>
         <span style={{ margin: '0 8px', color: 'var(--muted)' }}>/</span>
@@ -749,20 +1126,18 @@ const CoursePage: React.FC = () => {
         <span style={{ color: 'var(--accent)' }}>{course.title}</span>
       </nav>
 
-      {/* Hero секция курса */}
       <div className="hero" style={{ 
         flexDirection: 'row', 
         alignItems: 'flex-start', 
         gap: '32px',
         marginBottom: '32px'
       }}>
-        {/* Изображение курса */}
         <div style={{ 
           width: '350px', 
           height: '200px', 
           borderRadius: '12px',
           overflow: 'hidden',
-          background: postAvatarUrl ? 'transparent' : 'linear-gradient(135deg, var(--accent), var(--accent-2))',
+          background: postAvatarUrl ? 'transparent' : 'linear-gradient(135deg, #3b82f6, #2563eb)',
           display: 'grid',
           placeContent: 'center',
           color: '#fff',
@@ -784,7 +1159,6 @@ const CoursePage: React.FC = () => {
                 left: 0
               }}
               onError={(e) => {
-                // Если изображение не загружается, показываем инициалы
                 e.currentTarget.style.display = 'none';
                 const parent = e.currentTarget.parentElement;
                 if (parent) {
@@ -802,7 +1176,6 @@ const CoursePage: React.FC = () => {
           )}
         </div>
 
-        {/* Информация о курсе */}
         <div style={{ flex: 1 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
             <div>
@@ -824,17 +1197,40 @@ const CoursePage: React.FC = () => {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   {renderStars(course.average_rating)}
                 </div>
+                
+                <div style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '4px',
+                  fontSize: '14px',
+                  color: 'var(--muted)'
+                }}>
+                  {/* SVG иконка закладки вместо эмодзи */}
+                  <svg 
+                    width="16" 
+                    height="16" 
+                    viewBox="0 0 24 24" 
+                    fill="currentColor" 
+                    stroke="none"
+                    style={{ verticalAlign: 'middle' }}
+                  >
+                    <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+                  </svg>
+                  <span style={{ fontWeight: 500 }}>
+                    {favoriteCount}
+                  </span>
+                  <span style={{ fontSize: '13px' }}>в избранном</span>
+                </div>
+                
                 <div style={{ fontSize: '14px', color: 'var(--muted)' }}>
                   Обновлен: {formatDate(course.updated_at)}
                 </div>
               </div>
             </div>
 
-            {/* Кнопки действий */}
-            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+            <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
               {canEdit && (
                 <>
-                  {/* Кнопка загрузки аватара для поста */}
                   <input
                     type="file"
                     id="post-avatar-upload"
@@ -844,13 +1240,11 @@ const CoursePage: React.FC = () => {
                       const file = e.target.files?.[0];
                       if (!file || !token || !course) return;
 
-                      // Проверяем размер файла (максимум 5МБ)
                       if (file.size > 5 * 1024 * 1024) {
                         alert('Файл слишком большой. Максимальный размер: 5 МБ');
                         return;
                       }
 
-                      // Проверяем формат файла
                       const allowedFormats = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/svg+xml'];
                       if (!allowedFormats.includes(file.type)) {
                         alert('Неподдерживаемый формат файла. Разрешенные форматы: jpg, jpeg, png, gif, svg');
@@ -874,16 +1268,15 @@ const CoursePage: React.FC = () => {
 
                         if (response.ok) {
                           const data = await response.json();
-                          // Обновляем аватар поста с новым URL
                           setPostAvatarUrl(getPostAvatarUrl(course.id, data.filename || data.url));
-                          alert('✅ Аватар курса успешно загружен!');
+                          showNotification('✅ Аватар курса успешно загружен!', 'success');
                         } else {
                           const errorData = await response.json().catch(() => ({}));
-                          alert(`Ошибка загрузки аватара: ${errorData.message || response.statusText}`);
+                          showNotification(`Ошибка загрузки аватара: ${errorData.message || response.statusText}`, 'error');
                         }
                       } catch (err) {
                         console.error('Ошибка загрузки аватара:', err);
-                        alert('Ошибка загрузки аватара');
+                        showNotification('Ошибка загрузки аватара', 'error');
                       }
                     }}
                   />
@@ -897,7 +1290,6 @@ const CoursePage: React.FC = () => {
                     📷 Загрузить аватар
                   </label>
 
-                  {/* Кнопки изменения статуса */}
                   {statusInfo.canArchive && (
                     <button 
                       className="btn btn-ghost"
@@ -962,7 +1354,6 @@ const CoursePage: React.FC = () => {
                     </button>
                   )}
                   
-                  {/* Кнопка создания слотов (только для автора) */}
                   {isAuthor && (
                     <button 
                       className="btn btn-outline"
@@ -1002,19 +1393,30 @@ const CoursePage: React.FC = () => {
                 </>
               )}
               
-              {/* Кнопка записи на курс для не-авторов */}
               {!isAuthor && (
-                <button 
-                  className="btn btn-primary"
-                  onClick={handleEnroll}
-                  style={{ 
-                    fontSize: '14px', 
-                    padding: '8px 20px',
-                    background: 'linear-gradient(135deg, var(--accent-2), #10b981)'
-                  }}
-                >
-                  🎓 Записаться на курс
-                </button>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  <button 
+                    className="btn btn-primary"
+                    onClick={handleEnroll}
+                    style={{ 
+                      fontSize: '14px', 
+                      padding: '8px 20px',
+                      background: 'linear-gradient(135deg, var(--accent-2), #10b981)',
+                      whiteSpace: 'nowrap'
+                    }}
+                  >
+                    🎓 Записаться на курс
+                  </button>
+                  
+                  <FavoriteToggle 
+                    postId={course.id}
+                    favoriteCount={favoriteCount}
+                    isFavorite={isFavorite}
+                    onToggle={isFavorite ? removeFromFavorite : addToFavorite}
+                    loading={favoriteLoading}
+                    size="md"
+                  />
+                </div>
               )}
             </div>
           </div>
@@ -1029,7 +1431,6 @@ const CoursePage: React.FC = () => {
         </div>
       </div>
 
-      {/* Информация о менторе */}
       <div style={{ marginBottom: '32px' }}>
         <h2 style={{ margin: '0 0 16px 0', fontSize: '20px' }}>Автор Курса</h2>
         {author ? (
@@ -1040,7 +1441,7 @@ const CoursePage: React.FC = () => {
                 height: '64px', 
                 borderRadius: '50%',
                 overflow: 'hidden',
-                background: author.avatar_url ? 'transparent' : 'linear-gradient(135deg, var(--accent), var(--accent-2))',
+                background: author.avatar_url ? 'transparent' : 'linear-gradient(135deg, #3b82f6, #2563eb)',
                 display: 'grid',
                 placeContent: 'center',
                 color: '#fff',
@@ -1055,7 +1456,6 @@ const CoursePage: React.FC = () => {
                     alt={author.first_name}
                     style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', top: 0, left: 0 }}
                     onError={(e) => {
-                      // Если изображение не загружается, показываем инициалы
                       const target = e.currentTarget;
                       target.style.display = 'none';
                       const parent = target.parentElement;
@@ -1141,9 +1541,7 @@ const CoursePage: React.FC = () => {
         )}
       </div>
 
-      {/* Табы с содержанием курса */}
       <div style={{ marginBottom: '32px' }}>
-        {/* Навигация табов */}
         <div style={{ 
           display: 'flex', 
           gap: '8px', 
@@ -1168,7 +1566,6 @@ const CoursePage: React.FC = () => {
           </button>
         </div>
 
-        {/* Контент табов */}
         <div className="card" style={{ minHeight: '300px', padding: '24px' }}>
           {activeTab === 'description' && (
             <div>
@@ -1204,6 +1601,22 @@ const CoursePage: React.FC = () => {
                     <div style={{ fontWeight: 600, marginBottom: '4px' }}>Обновлен</div>
                     <div>{formatDate(course.updated_at)}</div>
                   </div>
+                  <div>
+                    <div style={{ fontWeight: 600, marginBottom: '4px' }}>В избранном</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      {/* SVG иконка закладки */}
+                      <svg 
+                        width="16" 
+                        height="16" 
+                        viewBox="0 0 24 24" 
+                        fill="currentColor" 
+                        stroke="none"
+                      >
+                        <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+                      </svg>
+                      <span>{favoriteCount} пользователей</span>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1213,7 +1626,6 @@ const CoursePage: React.FC = () => {
             <div>
               <h3 style={{ margin: '0 0 20px 0', fontSize: '20px' }}>Отзывы о курсе</h3>
               
-              {/* Форма оценки */}
               {canRate && (
                 <div className="card" style={{ 
                   marginBottom: '24px',
@@ -1276,7 +1688,6 @@ const CoursePage: React.FC = () => {
                 </div>
               )}
               
-              {/* Список отзывов */}
               <div>
                 {course.ratings_count && course.ratings_count > 0 ? (
                   <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--muted)' }}>
@@ -1299,7 +1710,6 @@ const CoursePage: React.FC = () => {
         </div>
       </div>
 
-      {/* Дополнительная информация */}
       <div className="card" style={{ marginBottom: '32px', padding: '24px' }}>
         <h3 style={{ margin: '0 0 16px 0', fontSize: '20px' }}>📋 Дополнительная информация</h3>
         <div style={{ 
@@ -1343,10 +1753,28 @@ const CoursePage: React.FC = () => {
               {course.ratings_count && ` (${course.ratings_count} оценок)`}
             </div>
           </div>
+          
+          <div>
+            <div style={{ fontSize: '13px', color: 'var(--muted)', marginBottom: '4px' }}>
+              В избранном
+            </div>
+            <div style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
+              {/* SVG иконка закладки */}
+              <svg 
+                width="16" 
+                height="16" 
+                viewBox="0 0 24 24" 
+                fill="currentColor" 
+                stroke="none"
+              >
+                <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+              </svg>
+              <span>{favoriteCount} пользователей</span>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Сообщение об ошибке */}
       {error && (
         <div className="card" style={{ 
           marginBottom: '24px',
@@ -1363,6 +1791,43 @@ const CoursePage: React.FC = () => {
         @keyframes spin {
           0% { transform: rotate(0deg); }
           100% { transform: rotate(360deg); }
+        }
+        
+        @keyframes pulse {
+          0% { transform: translate(-50%, -50%) scale(0.8); opacity: 0.8; }
+          100% { transform: translate(-50%, -50%) scale(2); opacity: 0; }
+        }
+        
+        @keyframes slideIn {
+          from {
+            transform: translateX(100%);
+            opacity: 0;
+          }
+          to {
+            transform: translateX(0);
+            opacity: 1;
+          }
+        }
+        
+        @keyframes slideOut {
+          from {
+            transform: translateX(0);
+            opacity: 1;
+          }
+          to {
+            transform: translateX(100%);
+            opacity: 0;
+          }
+        }
+        
+        @keyframes bookmarkPulse {
+          0% { transform: scale(1); }
+          50% { transform: scale(1.1); }
+          100% { transform: scale(1); }
+        }
+        
+        .bookmark-pulse {
+          animation: bookmarkPulse 0.6s ease;
         }
       `}</style>
     </div>
