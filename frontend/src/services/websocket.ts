@@ -39,7 +39,8 @@ export interface Attachment {
 // WebSocket сообщения, которые мы получаем (обертка)
 interface WebSocketIncomingWrapper {
   type: 'message' | 'notification' | 'error' | 'ping' | 'pong';
-  data: IncomingMessage | any;
+  data?: IncomingMessage | any;
+  error?: string;
 }
 
 class WebSocketService {
@@ -88,8 +89,7 @@ class WebSocketService {
         this.reconnectAttempts = 0;
         this.notifyConnection(true);
         
-        // Запускаем ping каждые 30 секунд
-        this.startPingInterval();
+        // Сервер использует WebSocket ping frame, браузер отвечает автоматически.
       };
 
       this.ws.onmessage = (event) => {
@@ -204,34 +204,27 @@ class WebSocketService {
     }
   }
 
-  private handleMessage(message: WebSocketIncomingWrapper) {
-    console.log('Обрабатываем WebSocket сообщение типа:', message.type);
-    
-    // Обработка ping/pong
-    if (message.type === 'ping') {
-      this.sendPong();
-      return;
-    }
-    
-    if (message.type === 'pong') {
-      // Pong получен, соединение активно
-      return;
-    }
+  private handleMessage(message: WebSocketIncomingWrapper | IncomingMessage) {
+    if ('type' in message) {
+      console.log('Обрабатываем WebSocket сообщение типа:', message.type);
 
-    const handlers = this.messageHandlers.get(message.type);
-    if (handlers) {
-      handlers.forEach(handler => handler(message.data));
-    }
-  }
-
-  private sendPong() {
-    if (this.isConnected()) {
-      try {
-        // Отправляем pong в формате, который ожидает сервер
-        this.ws!.send(JSON.stringify({ type: 'pong', data: {} }));
-      } catch (error) {
-        console.error('Ошибка отправки pong:', error);
+      if (message.type === 'ping' || message.type === 'pong') {
+        return;
       }
+
+      const handlers = this.messageHandlers.get(message.type);
+      if (handlers) {
+        const payload = message.type === 'error' ? message.error : message.data;
+        handlers.forEach(handler => handler(payload));
+      }
+      return;
+    }
+
+    // Сервер присылает сообщения без обертки {type,data}
+    console.log('Обрабатываем WebSocket сообщение типа: message');
+    const handlers = this.messageHandlers.get('message');
+    if (handlers) {
+      handlers.forEach(handler => handler(message));
     }
   }
 
@@ -243,18 +236,6 @@ class WebSocketService {
   private startPingInterval() {
     // Очищаем предыдущий интервал
     this.stopPingInterval();
-    
-    this.pingInterval = window.setInterval(() => {
-      if (this.isConnected()) {
-        console.log('Отправляем ping');
-        try {
-          // Отправляем ping в формате, который ожидает сервер
-          this.ws!.send(JSON.stringify({ type: 'ping', data: {} }));
-        } catch (error) {
-          console.error('Ошибка отправки ping:', error);
-        }
-      }
-    }, 30000);
   }
 
   private stopPingInterval() {

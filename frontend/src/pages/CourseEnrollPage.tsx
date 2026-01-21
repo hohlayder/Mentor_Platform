@@ -132,49 +132,25 @@ const apiFetch = async <T,>(
   }
 };
 
-// Функция для управления темой
-const useTheme = () => {
-  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
-    const savedTheme = localStorage.getItem('theme') as 'light' | 'dark';
-    return savedTheme || 'light';
-  });
-
-  useEffect(() => {
-    document.body.setAttribute('data-theme', theme);
-    localStorage.setItem('theme', theme);
-  }, [theme]);
-
-  const toggleTheme = () => {
-    setTheme(prev => prev === 'light' ? 'dark' : 'light');
-  };
-
-  return { theme, toggleTheme };
-};
-
-// Функция для получения правильного URL аватара
-const getAvatarUrl = (avatarUrl: string | null | undefined): string => {
+const getUserAvatarUrl = (avatarUrl?: string | null): string => {
   if (!avatarUrl) return '';
-  
-  // Если это уже полный URL, возвращаем как есть
-  if (avatarUrl.startsWith('http://') || avatarUrl.startsWith('https://')) {
+
+  if (avatarUrl.startsWith('http')) {
     return avatarUrl;
   }
-  
-  // Если это просто имя файла, формируем URL
-  if (!avatarUrl.includes('/')) {
+
+  if (avatarUrl && !avatarUrl.includes('/')) {
     return `http://localhost:8080/api/v1/files/avatar/${avatarUrl}`;
   }
-  
-  // Если это относительный путь
+
   if (avatarUrl.startsWith('/')) {
     return `http://localhost:8080${avatarUrl}`;
   }
-  
-  // Если это путь без префикса http
+
   if (avatarUrl.startsWith('files/avatar/')) {
     return `http://localhost:8080/api/v1/${avatarUrl}`;
   }
-  
+
   return avatarUrl;
 };
 
@@ -270,7 +246,10 @@ const CourseEnrollPage: React.FC = () => {
             `/api/v1/users/${courseData.post.author_id}`,
             { headers }
           );
-          setAuthor(authorData);
+          setAuthor({
+            ...authorData,
+            avatar_url: getUserAvatarUrl(authorData.avatar_url)
+          });
         } catch (err) {
           console.warn('Не удалось загрузить информацию об авторе:', err);
         }
