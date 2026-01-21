@@ -144,6 +144,8 @@ func InitRoutes(handlers Handlers) *gin.Engine {
 				posts.POST("/:id/rate", handlers.PostHandler.RatePost)
 				posts.POST("/:id/favorite", handlers.PostHandler.AddToFavorites)
 				posts.DELETE("/:id/favorite", handlers.PostHandler.AddToFavorites)
+				posts.GET("/:id/slots", handlers.SessionHandler.GetSlotsByPost)
+				posts.GET("/:id/available-slots", handlers.SessionHandler.GetAvailableSlotsByPost)
 			}
 			files := protected.Group("/files")
 			{

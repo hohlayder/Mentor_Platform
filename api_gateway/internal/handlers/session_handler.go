@@ -18,17 +18,19 @@ type SessionService interface {
 	UpdateSlot(ctx context.Context, slotID string, req *domain.UpdateSlotRequest) error
 	UpdateSlotStatus(ctx context.Context, slotID, status string) error
 	DeleteSlot(ctx context.Context, slotID string) error
-	
+
 	CreateSession(ctx context.Context, req *domain.CreateSessionRequest) (string, error)
 	GetSession(ctx context.Context, sessionID string) (*domain.SessionResponse, error)
 	UpdateSession(ctx context.Context, sessionID string, req *domain.UpdateSessionRequest) error
 	RateSession(ctx context.Context, sessionID string, req *domain.RateSessionRequest) error
 	DeleteSession(ctx context.Context, sessionID string) error
-	
+
 	ListSessionsByMentor(ctx context.Context, mentorID string) ([]domain.SessionResponse, error)
 	ListSessionsByStudent(ctx context.Context, studentID string) ([]domain.SessionResponse, error)
 
 	GetSlotsByMentor(ctx context.Context, mentorID string) ([]domain.SlotResponse, error)
+	GetSlotsByPost(ctx context.Context, postID string) ([]domain.SlotResponse, error)
+	GetAvailableSlotsByPost(ctx context.Context, postID string) ([]domain.SlotResponse, error)
 	GetMentorPaymentAmount(ctx context.Context, mentorID string) (*domain.GetMentorPaymentAmountResponse, error)
 }
 
@@ -48,13 +50,13 @@ func handleServiceError(c *gin.Context, err error, operation string) bool {
 	if st, ok := status.FromError(err); ok {
 		code := st.Code()
 		message := st.Message()
-		
-		slog.Error("Service error", 
+
+		slog.Error("Service error",
 			"operation", operation,
 			"code", code.String(),
 			"message", message,
 		)
-		
+
 		switch code {
 		case codes.NotFound:
 			c.JSON(http.StatusNotFound, utils.ErrorResponse{
@@ -95,11 +97,11 @@ func handleServiceError(c *gin.Context, err error, operation string) bool {
 		return true
 	}
 
-	slog.Error("Unexpected error", 
+	slog.Error("Unexpected error",
 		"operation", operation,
 		"error", err.Error(),
 	)
-	
+
 	c.JSON(http.StatusInternalServerError, utils.ErrorResponse{
 		Error:   "INTERNAL_ERROR",
 		Message: "Internal server error",
@@ -904,31 +906,115 @@ func (h *SessionHandler) ListSessionsByStudent(c *gin.Context) {
 // @Failure 500 {object} utils.ErrorResponse "Внутренняя ошибка сервера"
 // @Router /mentors/{mentor_id}/slots [get]
 func (h *SessionHandler) GetSlotsByMentor(c *gin.Context) {
-    mentorID := c.Param("mentor_id")
-    if mentorID == "" {
-        c.JSON(http.StatusBadRequest, utils.ErrorResponse{
-            Error:   "VALIDATION_ERROR",
-            Message: "Mentor ID is required",
-        })
-        return
-    }
+	mentorID := c.Param("mentor_id")
+	if mentorID == "" {
+		c.JSON(http.StatusBadRequest, utils.ErrorResponse{
+			Error:   "VALIDATION_ERROR",
+			Message: "Mentor ID is required",
+		})
+		return
+	}
 
-    slots, err := h.service.GetSlotsByMentor(c.Request.Context(), mentorID)
-    if err != nil {
-        if handleServiceError(c, err, "get slots by mentor") {
-            return
-        }
-        c.JSON(http.StatusInternalServerError, utils.ErrorResponse{
-            Error:   "INTERNAL_ERROR",
-            Message: "Failed to get slots",
-        })
-        return
-    }
+	slots, err := h.service.GetSlotsByMentor(c.Request.Context(), mentorID)
+	if err != nil {
+		if handleServiceError(c, err, "get slots by mentor") {
+			return
+		}
+		c.JSON(http.StatusInternalServerError, utils.ErrorResponse{
+			Error:   "INTERNAL_ERROR",
+			Message: "Failed to get slots",
+		})
+		return
+	}
 
-    c.JSON(http.StatusOK, domain.ListSlotsResponse{
-        Slots: slots,
-        Total: int64(len(slots)),
-    })
+	c.JSON(http.StatusOK, domain.ListSlotsResponse{
+		Slots: slots,
+		Total: int64(len(slots)),
+	})
+}
+
+// GetSlotsByPost получает список слотов по публикации
+// @Summary Список слотов публикации
+// @Description Возвращает список всех временных слотов для конкретной публикации
+// @Tags slots
+// @Accept json
+// @Produce json
+// @Param post_id path string true "ID публикации (UUID)"
+// @Security BearerAuth
+// @Success 200 {object} domain.ListSlotsResponse "Список слотов и общее количество"
+// @Failure 400 {object} utils.ErrorResponse "Неверный ID публикации"
+// @Failure 401 {object} utils.ErrorResponse "Не авторизован"
+// @Failure 404 {object} utils.ErrorResponse "Публикация не найдена"
+// @Failure 500 {object} utils.ErrorResponse "Внутренняя ошибка сервера"
+// @Router /posts/{post_id}/slots [get]
+func (h *SessionHandler) GetSlotsByPost(c *gin.Context) {
+	postID := c.Param("id")
+	if postID == "" {
+		c.JSON(http.StatusBadRequest, utils.ErrorResponse{
+			Error:   "VALIDATION_ERROR",
+			Message: "Post ID is required",
+		})
+		return
+	}
+
+	slots, err := h.service.GetSlotsByPost(c.Request.Context(), postID)
+	if err != nil {
+		if handleServiceError(c, err, "get slots by post") {
+			return
+		}
+		c.JSON(http.StatusInternalServerError, utils.ErrorResponse{
+			Error:   "INTERNAL_ERROR",
+			Message: "Failed to get slots",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, domain.ListSlotsResponse{
+		Slots: slots,
+		Total: int64(len(slots)),
+	})
+}
+
+// GetAvailableSlotsByPost получает список доступных слотов по публикации
+// @Summary Список доступных слотов публикации
+// @Description Возвращает список доступных временных слотов для конкретной публикации
+// @Tags slots
+// @Accept json
+// @Produce json
+// @Param post_id path string true "ID публикации (UUID)"
+// @Security BearerAuth
+// @Success 200 {object} domain.ListSlotsResponse "Список доступных слотов и общее количество"
+// @Failure 400 {object} utils.ErrorResponse "Неверный ID публикации"
+// @Failure 401 {object} utils.ErrorResponse "Не авторизован"
+// @Failure 404 {object} utils.ErrorResponse "Публикация не найдена"
+// @Failure 500 {object} utils.ErrorResponse "Внутренняя ошибка сервера"
+// @Router /posts/{post_id}/available-slots [get]
+func (h *SessionHandler) GetAvailableSlotsByPost(c *gin.Context) {
+	postID := c.Param("id")
+	if postID == "" {
+		c.JSON(http.StatusBadRequest, utils.ErrorResponse{
+			Error:   "VALIDATION_ERROR",
+			Message: "Post ID is required",
+		})
+		return
+	}
+
+	slots, err := h.service.GetAvailableSlotsByPost(c.Request.Context(), postID)
+	if err != nil {
+		if handleServiceError(c, err, "get available slots by post") {
+			return
+		}
+		c.JSON(http.StatusInternalServerError, utils.ErrorResponse{
+			Error:   "INTERNAL_ERROR",
+			Message: "Failed to get available slots",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, domain.ListSlotsResponse{
+		Slots: slots,
+		Total: int64(len(slots)),
+	})
 }
 
 // GetMentorPaymentAmount возвращает общую сумму оплаченных сессий ментора
