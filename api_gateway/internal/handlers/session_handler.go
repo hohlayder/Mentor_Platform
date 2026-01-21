@@ -300,7 +300,7 @@ func (h *SessionHandler) UpdateSlot(c *gin.Context) {
 // @Failure 500 {object} utils.ErrorResponse "Внутренняя ошибка сервера"
 // @Router /slots/{id}/status [patch]
 func (h *SessionHandler) UpdateSlotStatus(c *gin.Context) {
-	userId, ok := utils.GetUserIdFromContext(c)
+	_, ok := utils.GetUserIdFromContext(c)
 	if !ok {
 		return
 	}
@@ -324,7 +324,7 @@ func (h *SessionHandler) UpdateSlotStatus(c *gin.Context) {
 		return
 	}
 
-	slot, err := h.service.GetSlot(c.Request.Context(), slotID)
+	_, err := h.service.GetSlot(c.Request.Context(), slotID)
 	if err != nil {
 		if handleServiceError(c, err, "get slot for ownership check") {
 			return
@@ -332,14 +332,6 @@ func (h *SessionHandler) UpdateSlotStatus(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, utils.ErrorResponse{
 			Error:   "INTERNAL_ERROR",
 			Message: "Failed to check slot ownership",
-		})
-		return
-	}
-
-	if slot.MentorID != userId {
-		c.JSON(http.StatusForbidden, utils.ErrorResponse{
-			Error:   "FORBIDDEN_ERROR",
-			Message: "You can only update status of your own slots",
 		})
 		return
 	}
