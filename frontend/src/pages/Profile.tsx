@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useParams, useNavigate, useLocation, Link } from 'react-router-dom'
 import { useAuth } from '../store/AuthContext'
+import Header from '../components/Header'
 
 // Типы для ответа API
 interface APIProfileResponse {
@@ -809,31 +810,7 @@ const ProfilePage: React.FC = () => {
   // Функция для отображения загрузки
   const renderLoading = () => (
     <div className="container">
-      <header className="header">
-        <Link to="/" className="brand">
-          <div className="logo">M</div>Mentor Fellowship
-        </Link>
-        <div className="header-nav">
-          <button onClick={toggleTheme} className="btn btn-ghost">
-            {theme === 'light' ? '🌙' : '☀️'} Тема
-          </button>
-          {token && authUser ? (
-            <>
-              <Link to="/courses" className="btn btn-ghost">Курсы</Link>
-              <Link to="/chats" className="btn btn-ghost">Сообщения</Link>
-              <Link to={`/profile/${authUser.user_id}`} className="btn btn-ghost">
-                {authUser.first_name || 'Профиль'}
-              </Link>
-              <button onClick={handleLogout} className="btn btn-ghost">Выйти</button>
-            </>
-          ) : (
-            <>
-              <Link to="/login" className="btn btn-ghost">Войти</Link>
-              <Link to="/signup" className="btn btn-primary">Регистрация</Link>
-            </>
-          )}
-        </div>
-      </header>
+      <Header theme={theme} toggleTheme={toggleTheme} />
       
       <div style={{ textAlign: 'center', padding: '60px 20px' }}>
         <div className="logo" style={{ 
@@ -850,31 +827,7 @@ const ProfilePage: React.FC = () => {
   // Функция для отображения ошибки
   const renderError = () => (
     <div className="container">
-      <header className="header">
-        <Link to="/" className="brand">
-          <div className="logo">M</div>Mentor Fellowship
-        </Link>
-        <div className="header-nav">
-          <button onClick={toggleTheme} className="btn btn-ghost">
-            {theme === 'light' ? '🌙' : '☀️'} Тема
-          </button>
-          {token && authUser ? (
-            <>
-              <Link to="/courses" className="btn btn-ghost">Курсы</Link>
-              <Link to="/chats" className="btn btn-ghost">Сообщения</Link>
-              <Link to={`/profile/${authUser.user_id}`} className="btn btn-ghost">
-                {authUser.first_name || 'Профиль'}
-              </Link>
-              <button onClick={handleLogout} className="btn btn-ghost">Выйти</button>
-            </>
-          ) : (
-            <>
-              <Link to="/login" className="btn btn-ghost">Войти</Link>
-              <Link to="/signup" className="btn btn-primary">Регистрация</Link>
-            </>
-          )}
-        </div>
-      </header>
+      <Header theme={theme} toggleTheme={toggleTheme} />
       
       <div style={{ textAlign: 'center', padding: '60px 20px' }}>
         <div className="logo" style={{ margin: '0 auto 20px', background: '#ef4444' }}>
@@ -927,31 +880,7 @@ const ProfilePage: React.FC = () => {
   return (
     <div className="container">
       {/* Header */}
-      <header className="header">
-        <Link to="/" className="brand">
-          <div className="logo">M</div>Mentor Fellowship
-        </Link>
-        <div className="header-nav">
-          <button onClick={toggleTheme} className="btn btn-ghost">
-            {theme === 'light' ? '🌙' : '☀️'} Тема
-          </button>
-          {token && authUser ? (
-            <>
-              <Link to="/courses" className="btn btn-ghost">Курсы</Link>
-              <Link to="/chats" className="btn btn-ghost">Сообщения</Link>
-              <Link to={`/profile/${authUser.user_id}`} className="btn btn-ghost">
-                {authUser.first_name || 'Профиль'}
-              </Link>
-              <button onClick={handleLogout} className="btn btn-ghost">Выйти</button>
-            </>
-          ) : (
-            <>
-              <Link to="/login" className="btn btn-ghost">Войти</Link>
-              <Link to="/signup" className="btn btn-primary">Регистрация</Link>
-            </>
-          )}
-        </div>
-      </header>
+      <Header theme={theme} toggleTheme={toggleTheme} />
 
       {/* Хлебные крошки */}
       <nav style={{ marginBottom: '24px' }}>

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../store/AuthContext";
-import placeholderImg from "../assets/placeholder.svg";
+import placeholderImg from "../assets/mainPage.jpg";
+import Header from "../components/Header";
 
 // Типы на основе Swagger
 interface Course {
@@ -315,29 +316,7 @@ export const Home: React.FC = () => {
   return (
     <div>
       {/* Header */}
-      <header className="header">
-        <Link to="/" className="brand">
-          <div className="logo">M</div>Mentor Fellowship
-        </Link>
-        <div className="header-nav">
-          <button onClick={toggleTheme} className="btn btn-ghost">
-            {theme === 'light' ? '🌙' : '☀️'} Тема
-          </button>
-          {token && user ? (
-            <>
-              <Link to={`/profile/${user.user_id}`} className="btn btn-ghost">
-                {user.first_name || 'Профиль'}
-              </Link>
-              <button onClick={handleLogout} className="btn btn-ghost">Выйти</button>
-            </>
-          ) : (
-            <>
-              <Link to="/login" className="btn btn-ghost">Войти</Link>
-              <Link to="/signup" className="btn btn-primary">Регистрация</Link>
-            </>
-          )}
-        </div>
-      </header>
+      <Header theme={theme} toggleTheme={toggleTheme} />
 
       {/* Main Content */}
       <div className="container">

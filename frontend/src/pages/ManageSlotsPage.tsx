@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../store/AuthContext';
+import Header from '../components/Header';
 
 // Типы из сваггера
 interface SlotResponse {
@@ -679,18 +680,7 @@ const CreateSlotsPage: React.FC = () => {
   if (!token) {
     return (
       <div className="container" style={{ padding: '0 24px', maxWidth: '1400px' }}>
-        <header className="header">
-          <Link to="/" className="brand">
-            <div className="logo">M</div>Mentor Fellowship
-          </Link>
-          <div className="header-nav">
-            <button onClick={toggleTheme} className="btn btn-ghost">
-              {theme === 'light' ? '🌙' : '☀️'} Тема
-            </button>
-            <Link to="/login" className="btn btn-ghost">Войти</Link>
-            <Link to="/signup" className="btn btn-primary">Регистрация</Link>
-          </div>
-        </header>
+        <Header theme={theme} toggleTheme={toggleTheme} />
         
         <div style={{ textAlign: 'center', padding: '60px 20px' }}>
           <div style={{ fontSize: '48px', marginBottom: '20px' }}>🔒</div>
@@ -710,20 +700,7 @@ const CreateSlotsPage: React.FC = () => {
   if (!isAuthor) {
     return (
       <div className="container" style={{ padding: '0 24px', maxWidth: '1400px' }}>
-        <header className="header">
-          <Link to="/" className="brand">
-            <div className="logo">M</div>Mentor Fellowship
-          </Link>
-          <div className="header-nav">
-            <button onClick={toggleTheme} className="btn btn-ghost">
-              {theme === 'light' ? '🌙' : '☀️'} Тема
-            </button>
-            <Link to={`/profile/${user?.user_id}`} className="btn btn-ghost">
-              {user?.first_name || 'Профиль'}
-            </Link>
-            <button onClick={logout} className="btn btn-ghost">Выйти</button>
-          </div>
-        </header>
+        <Header theme={theme} toggleTheme={toggleTheme} />
         
         <div style={{ textAlign: 'center', padding: '60px 20px' }}>
           <div style={{ fontSize: '48px', marginBottom: '20px' }}>🔒</div>
@@ -753,20 +730,7 @@ const CreateSlotsPage: React.FC = () => {
   if (loadingCourse) {
     return (
       <div className="container" style={{ padding: '0 24px', maxWidth: '1400px' }}>
-        <header className="header">
-          <Link to="/" className="brand">
-            <div className="logo">M</div>Mentor Fellowship
-          </Link>
-          <div className="header-nav">
-            <button onClick={toggleTheme} className="btn btn-ghost">
-              {theme === 'light' ? '🌙' : '☀️'} Тема
-            </button>
-            <Link to={`/profile/${user?.user_id}`} className="btn btn-ghost">
-              {user?.first_name || 'Профиль'}
-            </Link>
-            <button onClick={logout} className="btn btn-ghost">Выйти</button>
-          </div>
-        </header>
+        <Header theme={theme} toggleTheme={toggleTheme} />
         
         <div style={{ textAlign: 'center', padding: '60px 20px' }}>
           <div style={{ 
@@ -790,20 +754,7 @@ const CreateSlotsPage: React.FC = () => {
   return (
     <div className="container" style={{ padding: '0 24px', maxWidth: '1400px' }}>
       {/* Header */}
-      <header className="header">
-        <Link to="/" className="brand">
-          <div className="logo">M</div>Mentor Fellowship
-        </Link>
-        <div className="header-nav">
-          <button onClick={toggleTheme} className="btn btn-ghost">
-            {theme === 'light' ? '🌙' : '☀️'} Тема
-          </button>
-          <Link to={`/profile/${user?.user_id}`} className="btn btn-ghost">
-            {user?.first_name || 'Профиль'}
-          </Link>
-          <button onClick={logout} className="btn btn-ghost">Выйти</button>
-        </div>
-      </header>
+      <Header theme={theme} toggleTheme={toggleTheme} />
 
       {/* Хлебные крошки */}
       <nav style={{ margin: '24px 0', fontSize: '14px' }}>

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../store/AuthContext';
+import Header from '../components/Header';
 
 // Хук для управления темой (без изменений)
 const useTheme = () => {
@@ -1000,29 +1001,7 @@ const CoursePage: React.FC = () => {
   if (loading) {
     return (
       <div className="container" style={{ padding: '0 24px', maxWidth: '1400px' }}>
-        <header className="header" style={{ padding: '12px 0' }}>
-          <Link to="/" className="brand">
-            <div className="logo">M</div>Mentor Fellowship
-          </Link>
-          <div className="header-nav">
-            <button onClick={toggleTheme} className="btn btn-ghost">
-              {theme === 'light' ? '🌙' : '☀️'} Тема
-            </button>
-            {token && user ? (
-              <>
-                <Link to={`/profile/${user.user_id}`} className="btn btn-ghost">
-                  {user.first_name || 'Профиль'}
-                </Link>
-                <button onClick={handleLogout} className="btn btn-ghost">Выйти</button>
-              </>
-            ) : (
-              <>
-                <Link to="/login" className="btn btn-ghost">Войти</Link>
-                <Link to="/signup" className="btn btn-primary">Регистрация</Link>
-              </>
-            )}
-          </div>
-        </header>
+        <Header theme={theme} toggleTheme={toggleTheme} />
         
         <div style={{ textAlign: 'center', padding: '60px 20px' }}>
           <div style={{ 
@@ -1043,29 +1022,7 @@ const CoursePage: React.FC = () => {
   if (error || !course) {
     return (
       <div className="container" style={{ padding: '0 24px', maxWidth: '1400px' }}>
-        <header className="header" style={{ padding: '12px 0' }}>
-          <Link to="/" className="brand">
-            <div className="logo">M</div>Mentor Fellowship
-          </Link>
-          <div className="header-nav">
-            <button onClick={toggleTheme} className="btn btn-ghost">
-              {theme === 'light' ? '🌙' : '☀️'} Тема
-            </button>
-            {token && user ? (
-              <>
-                <Link to={`/profile/${user.user_id}`} className="btn btn-ghost">
-                  {user.first_name || 'Профиль'}
-                </Link>
-                <button onClick={handleLogout} className="btn btn-ghost">Выйти</button>
-              </>
-            ) : (
-              <>
-                <Link to="/login" className="btn btn-ghost">Войти</Link>
-                <Link to="/signup" className="btn btn-primary">Регистрация</Link>
-              </>
-            )}
-          </div>
-        </header>
+        <Header theme={theme} toggleTheme={toggleTheme} />
         
         <div style={{ textAlign: 'center', padding: '60px 20px' }}>
           <div style={{ fontSize: '48px', marginBottom: '20px' }}>😞</div>
@@ -1094,29 +1051,7 @@ const CoursePage: React.FC = () => {
 
   return (
     <div className="container" style={{ padding: '0 24px', maxWidth: '1400px' }}>
-      <header className="header" style={{ padding: '12px 0' }}>
-        <Link to="/" className="brand">
-          <div className="logo">M</div>Mentor Fellowship
-        </Link>
-        <div className="header-nav">
-          <button onClick={toggleTheme} className="btn btn-ghost">
-            {theme === 'light' ? '🌙' : '☀️'} Тема
-          </button>
-          {token && user ? (
-            <>
-              <Link to={`/profile/${user.user_id}`} className="btn btn-ghost">
-                {user.first_name || 'Профиль'}
-              </Link>
-              <button onClick={handleLogout} className="btn btn-ghost">Выйти</button>
-            </>
-          ) : (
-            <>
-              <Link to="/login" className="btn btn-ghost">Войти</Link>
-              <Link to="/signup" className="btn btn-primary">Регистрация</Link>
-            </>
-          )}
-        </div>
-      </header>
+      <Header theme={theme} toggleTheme={toggleTheme} />
 
       <nav style={{ margin: '24px 0', fontSize: '14px' }}>
         <Link to="/" style={{ color: 'var(--muted)' }}>Главная</Link>

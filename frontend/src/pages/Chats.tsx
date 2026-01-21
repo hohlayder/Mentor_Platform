@@ -4,6 +4,7 @@ import { useAuth } from '../store/AuthContext';
 import { useWebSocket } from '../services/useWebSocket';
 import { IncomingMessage } from '../services/websocket';
 import { Link, useNavigate } from 'react-router-dom';
+import Header from "../components/Header";
 
 // Типы на основе ваших API и WebSocket документации
 interface User {
@@ -770,31 +771,7 @@ const Chats: React.FC = () => {
   if (isLoading) {
     return (
       <div className="container" style={{ padding: '0 24px', maxWidth: '1400px' }}>
-        <header className="header" style={{ padding: '12px 0' }}>
-          <Link to="/" className="brand">
-            <div className="logo">M</div>Mentor Fellowship
-          </Link>
-          <div className="header-nav">
-            <button onClick={toggleTheme} className="btn btn-ghost">
-              {theme === 'light' ? '🌙' : '☀️'} Тема
-            </button>
-            {token && user ? (
-              <>
-                <Link to="/courses" className="btn btn-ghost">Курсы</Link>
-                <Link to="/chats" className="btn btn-ghost">Чаты</Link>
-                <Link to={`/profile/${user.user_id}`} className="btn btn-ghost">
-                  {user.first_name || 'Профиль'}
-                </Link>
-                <button onClick={handleLogout} className="btn btn-ghost">Выйти</button>
-              </>
-            ) : (
-              <>
-                <Link to="/login" className="btn btn-ghost">Войти</Link>
-                <Link to="/signup" className="btn btn-primary">Регистрация</Link>
-              </>
-            )}
-          </div>
-        </header>
+        <Header theme={theme} toggleTheme={toggleTheme} />
 
         <nav style={{ marginBottom: '24px', marginTop: '20px' }}>
           <Link to="/" style={{ color: 'var(--muted)' }}>Главная</Link>
@@ -821,31 +798,7 @@ const Chats: React.FC = () => {
   return (
     <div className="container" style={{ padding: '0 24px', maxWidth: '1400px' }}>
       {/* Header */}
-      <header className="header" style={{ padding: '12px 0' }}>
-        <Link to="/" className="brand">
-          <div className="logo">M</div>Mentor Fellowship
-        </Link>
-        <div className="header-nav">
-          <button onClick={toggleTheme} className="btn btn-ghost">
-            {theme === 'light' ? '🌙' : '☀️'} Тема
-          </button>
-          {token && user ? (
-            <>
-              <Link to="/courses" className="btn btn-ghost">Курсы</Link>
-              <Link to="/chats" className="btn btn-ghost">Чаты</Link>
-              <Link to={`/profile/${user.user_id}`} className="btn btn-ghost">
-                {user.first_name || 'Профиль'}
-              </Link>
-              <button onClick={handleLogout} className="btn btn-ghost">Выйти</button>
-            </>
-          ) : (
-            <>
-              <Link to="/login" className="btn btn-ghost">Войти</Link>
-              <Link to="/signup" className="btn btn-primary">Регистрация</Link>
-            </>
-          )}
-        </div>
-      </header>
+      <Header theme={theme} toggleTheme={toggleTheme} />
 
       {/* Хлебные крошки */}
       <nav style={{ marginBottom: '24px', marginTop: '20px' }}>

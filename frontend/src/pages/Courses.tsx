@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useAuth } from '../store/AuthContext';
+import Header from '../components/Header';
 
 // Типы для курса (на основе Swagger)
 interface Post {
@@ -371,29 +372,7 @@ const CoursesPage: React.FC = () => {
   return (
     <div className="container" style={{ padding: '0 24px', maxWidth: '1400px' }}>
       {/* Header */}
-      <header className="header" style={{ padding: '12px 0' }}>
-        <Link to="/" className="brand">
-          <div className="logo">M</div>Mentor Fellowship
-        </Link>
-        <div className="header-nav">
-          <button onClick={toggleTheme} className="btn btn-ghost">
-            {theme === 'light' ? '🌙' : '☀️'} Тема
-          </button>
-          {token && user ? (
-            <>
-              <Link to={`/profile/${user.user_id}`} className="btn btn-ghost">
-                {user.first_name || 'Профиль'}
-              </Link>
-              <button onClick={handleLogout} className="btn btn-ghost">Выйти</button>
-            </>
-          ) : (
-            <>
-              <Link to="/login" className="btn btn-ghost">Войти</Link>
-              <Link to="/signup" className="btn btn-primary">Регистрация</Link>
-            </>
-          )}
-        </div>
-      </header>
+      <Header theme={theme} toggleTheme={toggleTheme} />
 
       <nav style={{ marginBottom: '24px', marginTop: '20px' }}>
         <Link to="/" style={{ color: 'var(--muted)' }}>Главная</Link>

@@ -1,7 +1,8 @@
 // src/pages/CourseFormPage.tsx (исправленная версия)
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate, useParams, useLocation } from 'react-router-dom';
+import { useNavigate, useParams, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../store/AuthContext';
+import Header from '../components/Header';
 
 // Обновленные типы на основе Swagger документации
 interface Post {

@@ -2,9 +2,7 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../store/AuthContext';
-
-// Импортируйте логотип
-import logo from '../assets/logo.jpg'; // или logo.svg, logo.webp
+import logo from '../assets/logo.jpg';
 
 interface HeaderProps {
   theme: 'light' | 'dark';
@@ -20,13 +18,25 @@ const Header: React.FC<HeaderProps> = ({ theme, toggleTheme }) => {
     navigate('/');
   };
 
+  const getAvatarUrl = (filename?: string): string => {
+    if (!filename) return '';
+    if (filename.startsWith('http://') || filename.startsWith('https://')) {
+      return filename;
+    }
+    return `http://localhost:8080/api/v1/files/avatar/${filename}`;
+  };
+
   return (
-    <header className="header" style={{ 
+    <header style={{ 
       padding: '12px 0',
       borderBottom: '1px solid var(--glass)',
-      marginBottom: '24px'
+      background: 'var(--surface)',
+      position: 'sticky',
+      top: 0,
+      zIndex: 1000,
+      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)'
     }}>
-      <div className="container" style={{ 
+      <div style={{ 
         maxWidth: '1400px',
         margin: '0 auto',
         padding: '0 24px',
@@ -34,56 +44,42 @@ const Header: React.FC<HeaderProps> = ({ theme, toggleTheme }) => {
         justifyContent: 'space-between',
         alignItems: 'center'
       }}>
-        <Link to="/" className="brand" style={{ 
-          display: 'flex',
-          alignItems: 'center',
-          gap: '12px',
-          textDecoration: 'none',
-          color: 'var(--accent)',
-          fontWeight: 600,
-          fontSize: '18px'
-        }}>
-          <img 
-            src={logo} 
-            alt="Mentor Fellowship" 
-            style={{ 
-              height: '36px',
-              width: 'auto',
-              borderRadius: '8px'
-            }} 
-          />
-          <span>Mentor Fellowship</span>
-        </Link>
+        {/* ЛЕВАЯ ЧАСТЬ: только лого и название */}
+        <div style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+          <Link to="/" style={{ 
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+            textDecoration: 'none',
+            color: 'var(--accent)',
+            fontWeight: 600,
+            fontSize: '18px'
+          }}>
+            <img 
+              src={logo} 
+              alt="Mentor Fellowship" 
+              style={{ 
+                height: '36px',
+                width: 'auto',
+                borderRadius: '8px',
+                objectFit: 'contain'
+              }} 
+            />
+            <span style={{ whiteSpace: 'nowrap' }}>Mentor Fellowship</span>
+          </Link>
+        </div>
         
-        <div className="header-nav" style={{ 
+        {/* ПРАВАЯ ЧАСТЬ: все кнопки */}
+        <div style={{ 
           display: 'flex',
           alignItems: 'center',
           gap: '12px'
         }}>
-          <button 
-            onClick={toggleTheme} 
-            className="btn btn-ghost"
-            style={{ 
-              padding: '8px 12px',
-              borderRadius: '6px',
-              border: '1px solid var(--glass)',
-              background: 'transparent',
-              color: 'var(--text)',
-              cursor: 'pointer',
-              fontSize: '14px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px'
-            }}
-          >
-            {theme === 'light' ? '🌙' : '☀️'} Тема
-          </button>
-          
           {token && user ? (
+            // Авторизованный пользователь
             <>
               <Link 
                 to="/courses" 
-                className="btn btn-ghost"
                 style={{ 
                   padding: '8px 12px',
                   borderRadius: '6px',
@@ -91,15 +87,17 @@ const Header: React.FC<HeaderProps> = ({ theme, toggleTheme }) => {
                   background: 'transparent',
                   color: 'var(--text)',
                   textDecoration: 'none',
-                  fontSize: '14px'
+                  fontSize: '14px',
+                  transition: 'all 0.2s'
                 }}
+                onMouseOver={(e) => e.currentTarget.style.background = 'var(--glass)'}
+                onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
               >
                 Курсы
               </Link>
               
               <Link 
                 to="/chats" 
-                className="btn btn-ghost"
                 style={{ 
                   padding: '8px 12px',
                   borderRadius: '6px',
@@ -107,15 +105,38 @@ const Header: React.FC<HeaderProps> = ({ theme, toggleTheme }) => {
                   background: 'transparent',
                   color: 'var(--text)',
                   textDecoration: 'none',
-                  fontSize: '14px'
+                  fontSize: '14px',
+                  transition: 'all 0.2s'
                 }}
+                onMouseOver={(e) => e.currentTarget.style.background = 'var(--glass)'}
+                onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
               >
                 Чаты
               </Link>
               
+              <button 
+                onClick={toggleTheme} 
+                style={{ 
+                  padding: '8px 12px',
+                  borderRadius: '6px',
+                  border: '1px solid var(--glass)',
+                  background: 'transparent',
+                  color: 'var(--text)',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  transition: 'all 0.2s'
+                }}
+                onMouseOver={(e) => e.currentTarget.style.background = 'var(--glass)'}
+                onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
+              >
+                {theme === 'light' ? '🌙' : '☀️'} Тема
+              </button>
+              
               <Link 
                 to={`/profile/${user.user_id}`}
-                className="btn btn-ghost"
                 style={{ 
                   padding: '8px 12px',
                   borderRadius: '6px',
@@ -126,28 +147,52 @@ const Header: React.FC<HeaderProps> = ({ theme, toggleTheme }) => {
                   fontSize: '14px',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '6px'
+                  gap: '8px',
+                  transition: 'all 0.2s'
                 }}
+                onMouseOver={(e) => e.currentTarget.style.background = 'var(--glass)'}
+                onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
               >
                 <div style={{
-                  width: '24px',
-                  height: '24px',
+                  width: '28px',
+                  height: '28px',
                   borderRadius: '50%',
-                  background: 'linear-gradient(135deg, var(--accent), var(--accent-2))',
+                  overflow: 'hidden',
+                  background: user.avatar_url ? 'transparent' : 'linear-gradient(135deg, var(--accent), var(--accent-2))',
                   display: 'grid',
                   placeContent: 'center',
                   color: 'white',
                   fontSize: '12px',
                   fontWeight: 600
                 }}>
-                  {user.first_name?.[0] || '👤'}
+                  {user.avatar_url ? (
+                    <img 
+                      src={getAvatarUrl(user.avatar_url)} 
+                      alt={`${user.first_name} ${user.last_name}`}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none';
+                        const parent = e.currentTarget.parentElement as HTMLElement;
+                        if (parent) {
+                          parent.style.background = 'linear-gradient(135deg, var(--accent), var(--accent-2))';
+                          const span = document.createElement('span');
+                          span.style.color = '#fff';
+                          span.style.fontWeight = '600';
+                          span.style.fontSize = '12px';
+                          span.textContent = `${user.first_name?.[0] || ''}${user.last_name?.[0] || ''}`;
+                          parent.appendChild(span);
+                        }
+                      }}
+                    />
+                  ) : (
+                    `${user.first_name?.[0] || ''}${user.last_name?.[0] || ''}`
+                  )}
                 </div>
-                {user.first_name || 'Профиль'}
+                <span>{user.first_name || 'Профиль'}</span>
               </Link>
               
               <button 
                 onClick={handleLogout} 
-                className="btn btn-ghost"
                 style={{ 
                   padding: '8px 12px',
                   borderRadius: '6px',
@@ -155,17 +200,20 @@ const Header: React.FC<HeaderProps> = ({ theme, toggleTheme }) => {
                   background: 'transparent',
                   color: 'var(--text)',
                   cursor: 'pointer',
-                  fontSize: '14px'
+                  fontSize: '14px',
+                  transition: 'all 0.2s'
                 }}
+                onMouseOver={(e) => e.currentTarget.style.background = 'var(--glass)'}
+                onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
               >
                 Выйти
               </button>
             </>
           ) : (
+            // Неавторизованный пользователь
             <>
               <Link 
-                to="/login" 
-                className="btn btn-ghost"
+                to="/courses" 
                 style={{ 
                   padding: '8px 12px',
                   borderRadius: '6px',
@@ -173,15 +221,56 @@ const Header: React.FC<HeaderProps> = ({ theme, toggleTheme }) => {
                   background: 'transparent',
                   color: 'var(--text)',
                   textDecoration: 'none',
-                  fontSize: '14px'
+                  fontSize: '14px',
+                  transition: 'all 0.2s'
                 }}
+                onMouseOver={(e) => e.currentTarget.style.background = 'var(--glass)'}
+                onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
+              >
+                Курсы
+              </Link>
+              
+              <button 
+                onClick={toggleTheme} 
+                style={{ 
+                  padding: '8px 12px',
+                  borderRadius: '6px',
+                  border: '1px solid var(--glass)',
+                  background: 'transparent',
+                  color: 'var(--text)',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  transition: 'all 0.2s'
+                }}
+                onMouseOver={(e) => e.currentTarget.style.background = 'var(--glass)'}
+                onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
+              >
+                {theme === 'light' ? '🌙' : '☀️'} Тема
+              </button>
+              
+              <Link 
+                to="/login" 
+                style={{ 
+                  padding: '8px 12px',
+                  borderRadius: '6px',
+                  border: '1px solid var(--glass)',
+                  background: 'transparent',
+                  color: 'var(--text)',
+                  textDecoration: 'none',
+                  fontSize: '14px',
+                  transition: 'all 0.2s'
+                }}
+                onMouseOver={(e) => e.currentTarget.style.background = 'var(--glass)'}
+                onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
               >
                 Войти
               </Link>
               
               <Link 
                 to="/signup" 
-                className="btn btn-primary"
                 style={{ 
                   padding: '8px 16px',
                   borderRadius: '6px',
@@ -190,8 +279,11 @@ const Header: React.FC<HeaderProps> = ({ theme, toggleTheme }) => {
                   color: 'white',
                   textDecoration: 'none',
                   fontSize: '14px',
-                  fontWeight: 500
+                  fontWeight: 500,
+                  transition: 'all 0.2s'
                 }}
+                onMouseOver={(e) => e.currentTarget.style.background = 'var(--accent-hover)'}
+                onMouseOut={(e) => e.currentTarget.style.background = 'var(--accent)'}
               >
                 Регистрация
               </Link>
