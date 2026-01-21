@@ -18,22 +18,31 @@ interface Post {
   avatar_url?: string | null; // Добавлено поле для аватара курса
 }
 
+// Типы для ответа API
+interface ListPostsResponse {
+  posts: Post[];
+  total_count: number;
+  next_page_token?: string;
+}
+
 // Типы для сортировки
-type SortField = 'created_at' | 'updated_at' | 'title' | 'average_rating';
+type SortField = 'created_at' | 'updated_at' | 'title';
 type SortOrder = 'asc' | 'desc';
 
 // Популярные теги
-const DEFAULT_TAGS = ['JavaScript'];
+const DEFAULT_TAGS = ['JavaScript', 'React', 'TypeScript', 'Python', 'Java', 'Frontend', 'Backend'];
 
 // Опции сортировки
 const SORT_OPTIONS = [
-  { value: 'created_at-desc', label: '📅 Новые', emoji: '📅' },
-  { value: 'created_at-asc', label: '📅 Старые', emoji: '📅' },
-  { value: 'updated_at-desc', label: '⏰ Недавно обновленные', emoji: '⏰' },
-  { value: 'average_rating-desc', label: '⭐ Высокий рейтинг', emoji: '⭐' },
-  { value: 'title-asc', label: '📈 По названию (А-Я)', emoji: '📈' },
-  { value: 'title-desc', label: '📈 По названию (Я-А)', emoji: '📈' },
+  { value: 'created_at-desc', label: 'Новые', emoji: '' },
+  { value: 'created_at-asc', label: 'Старые', emoji: '' },
+  { value: 'updated_at-desc', label: 'Недавно обновленные', emoji: '' },
+  { value: 'title-asc', label: 'По названию (А-Я)', emoji: '' },
+  { value: 'title-desc', label: 'По названию (Я-А)', emoji: '' },
 ];
+
+// Константы
+const PAGE_SIZE = 12; // Фиксированный размер страницы
 
 // Функция для управления темой
 const useTheme = () => {
@@ -95,7 +104,7 @@ const CoursesPage: React.FC = () => {
   const [showMyCourses, setShowMyCourses] = useState(false);
   const [sortBy, setSortBy] = useState<string>('created_at-desc');
   const [page, setPage] = useState(1);
-  const [pageSize] = useState(12);
+  const [pageTokens, setPageTokens] = useState<Map<number, string>>(new Map()); // Храним токены для каждой страницы
   
   // Состояние данных
   const [courses, setCourses] = useState<Post[]>([]);
@@ -104,7 +113,7 @@ const CoursesPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [popularTags, setPopularTags] = useState<string[]>(DEFAULT_TAGS);
   
-  // Извлечение тегов из URL
+  // Извлечение параметров из URL
   useEffect(() => {
     const tagsParam = searchParams.get('tags');
     if (tagsParam) {
@@ -114,17 +123,24 @@ const CoursesPage: React.FC = () => {
     if (myCoursesParam === 'true' && token) {
       setShowMyCourses(true);
     }
+    const pageParam = searchParams.get('page');
+    if (pageParam) {
+      const pageNum = parseInt(pageParam, 10);
+      if (!isNaN(pageNum) && pageNum > 0) {
+        setPage(pageNum);
+      }
+    }
   }, [searchParams, token]);
   
-  // Загрузка курсов
-  const fetchCourses = useCallback(async () => {
+  // Загрузка курсов для конкретной страницы
+  const fetchCourses = useCallback(async (pageNum: number) => {
     setIsLoading(true);
     setError(null);
     
     try {
       // Собираем параметры запроса
       const params = new URLSearchParams({
-        page_size: pageSize.toString(),
+        page_size: PAGE_SIZE.toString(),
         status: 'published', // Только опубликованные курсы
         ...(searchQuery && { search: searchQuery }),
         ...(selectedTags.length > 0 && { tags: selectedTags.join(',') }),
@@ -136,9 +152,11 @@ const CoursesPage: React.FC = () => {
       params.append('sort_field', sortField);
       params.append('sort_order', sortOrder);
       
-      // Пагинация
-      params.append('offset', ((page - 1) * pageSize).toString());
-      params.append('limit', pageSize.toString());
+      // Пагинация через page_token
+      const tokenForPage = pageTokens.get(pageNum - 1); // Токен для предыдущей страницы
+      if (pageNum > 1 && tokenForPage) {
+        params.append('page_token', tokenForPage);
+      }
       
       // Запрос к API
       const response = await fetch(`http://localhost:8080/api/v1/posts?${params}`, {
@@ -153,10 +171,16 @@ const CoursesPage: React.FC = () => {
         throw new Error(errorData.message || `Ошибка загрузки курсов: ${response.status}`);
       }
       
-      const data = await response.json();
-      // Сохраняем курсы с аватарами
+      const data: ListPostsResponse = await response.json();
+      
+      // Обновляем данные
       setCourses(data.posts || []);
       setTotalCount(data.total_count || 0);
+      
+      // Сохраняем токен для следующей страницы
+      if (data.next_page_token) {
+        setPageTokens(prev => new Map(prev).set(pageNum, data.next_page_token!));
+      }
       
       // Обновляем URL с текущими фильтрами
       const newParams = new URLSearchParams();
@@ -164,6 +188,7 @@ const CoursesPage: React.FC = () => {
       if (selectedTags.length > 0) newParams.set('tags', selectedTags.join(','));
       if (showMyCourses) newParams.set('my', 'true');
       newParams.set('sort', sortBy);
+      newParams.set('page', pageNum.toString());
       setSearchParams(newParams);
       
     } catch (err) {
@@ -172,12 +197,32 @@ const CoursesPage: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [searchQuery, selectedTags, showMyCourses, sortBy, page, pageSize, token, user, setSearchParams]);
+  }, [searchQuery, selectedTags, showMyCourses, sortBy, token, user, setSearchParams, pageTokens]);
   
-  // Загружаем курсы при изменении фильтров
+  // Загружаем курсы при изменении страницы или сбросе фильтров
   useEffect(() => {
-    fetchCourses();
-  }, [fetchCourses]);
+    // Сбрасываем токены при изменении фильтров
+    const shouldReset = searchParams.toString() === '' || 
+                       !searchParams.get('page') || 
+                       page === 1;
+    
+    if (shouldReset) {
+      setPageTokens(new Map());
+    }
+    
+    fetchCourses(page);
+  }, [page]);
+  
+  // Сбрасываем на первую страницу при изменении фильтров
+  useEffect(() => {
+    if (page !== 1) {
+      setPage(1);
+    } else {
+      // Если уже на первой странице, перезагружаем данные
+      setPageTokens(new Map());
+      fetchCourses(1);
+    }
+  }, [searchQuery, selectedTags, showMyCourses, sortBy]);
   
   // Получаем популярные теги из существующих курсов
   useEffect(() => {
@@ -206,12 +251,12 @@ const CoursesPage: React.FC = () => {
   }, []);
   
   const handleTagToggle = useCallback((tag: string) => {
-    setPage(1);
     setSelectedTags(prev => 
       prev.includes(tag) 
         ? prev.filter(t => t !== tag)
         : [...prev, tag]
     );
+    setPage(1);
   }, []);
   
   const handleAddCustomTag = useCallback(() => {
@@ -320,7 +365,8 @@ const CoursesPage: React.FC = () => {
     );
   };
   
-  const totalPages = Math.ceil(totalCount / pageSize);
+  // Корректный расчет общего количества страниц
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
   
   return (
     <div className="container" style={{ padding: '0 24px', maxWidth: '1400px' }}>
@@ -396,7 +442,7 @@ const CoursesPage: React.FC = () => {
           }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
               <h3 style={{ margin: 0, fontSize: '18px' }}>
-                ⚙️ Фильтры
+                Фильтры
               </h3>
               {(searchQuery || selectedTags.length > 0 || showMyCourses) && (
                 <button 
@@ -556,8 +602,10 @@ const CoursesPage: React.FC = () => {
                 Информация
               </div>
               <div style={{ fontSize: '12px', lineHeight: '1.5' }}>
-                <div>• Курсов: <strong>{totalCount}</strong></div>
-                <div>• Статус: <strong>Опубликованные</strong></div>
+                <div>• Всего курсов: <strong>{totalCount}</strong></div>
+                <div>• На странице: <strong>{PAGE_SIZE}</strong></div>
+                <div>• Страница: <strong>{page} из {totalPages}</strong></div>
+                <div>• Показано: <strong>{courses.length}</strong></div>
                 {showMyCourses && <div>• Режим: <strong>👤 Мои курсы</strong></div>}
               </div>
             </div>
@@ -583,7 +631,7 @@ const CoursesPage: React.FC = () => {
               </h2>
               {courses.length > 0 && (
                 <div style={{ fontSize: '14px', color: 'var(--muted)', marginTop: '4px' }}>
-                  Показано <strong>{courses.length}</strong> из <strong>{totalCount}</strong> курсов
+                  Показано <strong>{courses.length}</strong> из <strong>{totalCount}</strong> курсов • Страница <strong>{page}</strong> из <strong>{totalPages}</strong>
                 </div>
               )}
             </div>
@@ -657,7 +705,7 @@ const CoursesPage: React.FC = () => {
               <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
                 <button 
                   className="btn btn-primary" 
-                  onClick={fetchCourses}
+                  onClick={() => fetchCourses(page)}
                   style={{ padding: '10px 20px' }}
                 >
                   🔄 Попробовать снова
@@ -882,33 +930,55 @@ const CoursesPage: React.FC = () => {
                   </button>
                   
                   <div style={{ display: 'flex', gap: '8px' }}>
-                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                      let pageNum;
-                      if (totalPages <= 5) {
-                        pageNum = i + 1;
-                      } else if (page <= 3) {
-                        pageNum = i + 1;
-                      } else if (page >= totalPages - 2) {
-                        pageNum = totalPages - 4 + i;
-                      } else {
-                        pageNum = page - 2 + i;
+                    {(() => {
+                      const pages = [];
+                      
+                      // Всегда показываем первую страницу
+                      if (page > 3) {
+                        pages.push(1);
+                        if (page > 4) pages.push('...');
                       }
                       
-                      return (
-                        <button
-                          key={pageNum}
-                          className={`btn ${page === pageNum ? 'btn-primary' : 'btn-ghost'}`}
-                          onClick={() => setPage(pageNum)}
-                          style={{ 
-                            padding: '10px 16px',
-                            minWidth: '44px',
-                            fontSize: '15px'
-                          }}
-                        >
-                          {pageNum}
-                        </button>
+                      // Показываем страницы вокруг текущей
+                      for (let i = Math.max(1, page - 2); i <= Math.min(totalPages, page + 2); i++) {
+                        pages.push(i);
+                      }
+                      
+                      // Всегда показываем последнюю страницу
+                      if (page < totalPages - 2) {
+                        if (page < totalPages - 3) pages.push('...');
+                        pages.push(totalPages);
+                      }
+                      
+                      return pages.map((pageNum, index) => 
+                        pageNum === '...' ? (
+                          <span 
+                            key={`dots-${index}`} 
+                            style={{ 
+                              padding: '10px 16px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              color: 'var(--muted)'
+                            }}
+                          >
+                            ...
+                          </span>
+                        ) : (
+                          <button
+                            key={pageNum}
+                            className={`btn ${page === pageNum ? 'btn-primary' : 'btn-ghost'}`}
+                            onClick={() => setPage(pageNum as number)}
+                            style={{ 
+                              padding: '10px 16px',
+                              minWidth: '44px',
+                              fontSize: '15px'
+                            }}
+                          >
+                            {pageNum}
+                          </button>
+                        )
                       );
-                    })}
+                    })()}
                   </div>
                   
                   <button
@@ -955,6 +1025,13 @@ const CoursesPage: React.FC = () => {
                   : 'Попробуйте изменить фильтры поиска или очистить текущие'}
               </p>
               
+              {!showMyCourses && (
+                <div style={{ marginTop: '24px' }}>
+                  <Link to="/courses/new" className="btn btn-primary" style={{ padding: '12px 24px' }}>
+                    + Создать новый курс
+                  </Link>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -999,6 +1076,10 @@ const CoursesPage: React.FC = () => {
         @media (max-width: 768px) {
           .courses-grid {
             grid-template-columns: 1fr !important;
+          }
+          
+          .container > div > div:first-child {
+            position: static !important;
           }
         }
       `}</style>

@@ -80,7 +80,7 @@ const apiFetch = async <T,>(
   const baseUrl = 'http://localhost:8080';
   const url = `${baseUrl}${endpoint}`;
   
-  console.log(`🔵 API Request: ${options.method || 'GET'} ${url}`);
+  console.log(`API Request: ${options.method || 'GET'} ${url}`);
   
   const headers: Record<string, string> = {
     'Accept': 'application/json',
@@ -96,7 +96,7 @@ const apiFetch = async <T,>(
       credentials: 'include'
     });
 
-    console.log(`🟢 API Response: ${response.status} ${response.statusText}`);
+    console.log(`API Response: ${response.status} ${response.statusText}`);
 
     if (!response.ok) {
       let errorMessage = `HTTP ${response.status}`;
@@ -121,7 +121,7 @@ const apiFetch = async <T,>(
 
     return response.json();
   } catch (error: any) {
-    console.error(`🔴 API Error:`, error);
+    console.error(`API Error:`, error);
     
     if (error.name === 'TypeError' && error.message === 'Failed to fetch') {
       throw new Error('Не удалось подключиться к серверу. Проверьте:\n1. Запущен ли бэкенд на localhost:8080\n2. Настройки CORS');
@@ -157,9 +157,7 @@ const CourseEnrollPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { token, user, logout } = useAuth();
-  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
-    return localStorage.getItem('theme') as 'light' | 'dark' || 'light';
-  });
+  const { theme, toggleTheme } = useTheme();
 
   const [course, setCourse] = useState<Post | null>(null);
   const [author, setAuthor] = useState<User | null>(null);
@@ -183,15 +181,6 @@ const CourseEnrollPage: React.FC = () => {
     monday.setHours(0, 0, 0, 0);
     return monday;
   });
-
-  useEffect(() => {
-    document.body.setAttribute('data-theme', theme);
-    localStorage.setItem('theme', theme);
-  }, [theme]);
-
-  const toggleTheme = () => {
-    setTheme(prev => prev === 'light' ? 'dark' : 'light');
-  };
 
   const goToPreviousWeek = () => {
     const newDate = new Date(currentWeekStart);
@@ -281,7 +270,7 @@ const CourseEnrollPage: React.FC = () => {
 
     setLoadingSlots(true);
     try {
-      console.log('🔵 Загружаем слоты курса...');
+      console.log('Загружаем слоты курса...');
       const slotsData = await apiFetch<{ slots: SlotResponse[]; total: number }>(
         `/api/v1/posts/${id}/slots`,
         {
@@ -289,10 +278,10 @@ const CourseEnrollPage: React.FC = () => {
         }
       );
       
-      console.log(`🟢 Загружено слотов: ${slotsData.slots?.length || 0}`);
+      console.log(`Загружено слотов: ${slotsData.slots?.length || 0}`);
       setSlots(slotsData.slots || []);
     } catch (err: any) {
-      console.error('🔴 Ошибка загрузки слотов:', err);
+      console.error('Ошибка загрузки слотов:', err);
       setSlots([]);
     } finally {
       setLoadingSlots(false);
@@ -304,7 +293,7 @@ const CourseEnrollPage: React.FC = () => {
     if (!user || !token) return;
 
     try {
-      console.log('🔵 Загружаем сессии студента...');
+      console.log('Загружаем сессии студента...');
       const sessionsData = await apiFetch<ListSessionsResponse>(
         `/api/v1/students/${user.user_id}/sessions`,
         {
@@ -312,17 +301,17 @@ const CourseEnrollPage: React.FC = () => {
         }
       );
       
-      console.log(`🟢 Загружено сессий: ${sessionsData.sessions?.length || 0}`);
+      console.log(`Загружено сессий: ${sessionsData.sessions?.length || 0}`);
       setSessions(sessionsData.sessions || []);
     } catch (err: any) {
-      console.error('🔴 Ошибка загрузки сессий:', err);
+      console.error('Ошибка загрузки сессий:', err);
       setSessions([]);
     }
   }, [user, token]);
 
   // ПРЯМОЕ ОБНОВЛЕНИЕ СТАТУСА СЛОТА через /slots/{id}/status
   const updateSlotStatusDirectly = async (slotId: string, newStatus: string) => {
-    console.log(`🔵 Обновляем статус слота ${slotId} на ${newStatus}`);
+    console.log(`Обновляем статус слота ${slotId} на ${newStatus}`);
     setUpdatingSlotStatus(slotId);
     
     try {
@@ -340,7 +329,7 @@ const CourseEnrollPage: React.FC = () => {
         }
       );
       
-      console.log('🟢 Статус слота обновлен:', response);
+      console.log('Статус слота обновлен:', response);
       
       // Сразу обновляем локальное состояние
       setSlots(prev => prev.map(slot => 
@@ -349,7 +338,7 @@ const CourseEnrollPage: React.FC = () => {
       
       return response;
     } catch (err: any) {
-      console.error('🔴 Ошибка обновления статуса:', err);
+      console.error('Ошибка обновления статуса:', err);
       throw err;
     } finally {
       setUpdatingSlotStatus(null);
@@ -401,11 +390,11 @@ const CourseEnrollPage: React.FC = () => {
     setBookingSuccess(false);
 
     try {
-      console.log('🚀 Начинаем процесс бронирования...');
+      console.log('Начинаем процесс бронирования...');
       
       // 1. ПРЯМОЕ обновление статуса слота
       await updateSlotStatusDirectly(selectedSlot, 'booked');
-      console.log('✅ Статус слота обновлен на "booked"');
+      console.log('Статус слота обновлен на "booked"');
       
       // 2. Создаем сессию
       const sessionRequest: CreateSessionRequest = {
@@ -414,7 +403,7 @@ const CourseEnrollPage: React.FC = () => {
         payment_status: 'pending'
       };
       
-      console.log('🔵 Создаем сессию...');
+      console.log('Создаем сессию...');
       await apiFetch(
         '/api/v1/sessions',
         {
@@ -426,7 +415,7 @@ const CourseEnrollPage: React.FC = () => {
           body: JSON.stringify(sessionRequest)
         }
       );
-      console.log('✅ Сессия создана');
+      console.log('Сессия создана');
       
       setBookingSuccess(true);
       
@@ -439,7 +428,7 @@ const CourseEnrollPage: React.FC = () => {
       setSelectedSlot(null);
       
     } catch (err: any) {
-      console.error('❌ Ошибка бронирования:', err);
+      console.error('Ошибка бронирования:', err);
       setBookingError(err.message || 'Ошибка бронирования');
       
       // Попытка отката статуса
@@ -475,7 +464,7 @@ const CourseEnrollPage: React.FC = () => {
         throw new Error('Нельзя отменить чужую запись');
       }
 
-      console.log('🔵 Удаляем сессию...');
+      console.log('Удаляем сессию...');
       await apiFetch(
         `/api/v1/sessions/${sessionId}`,
         {
@@ -483,12 +472,12 @@ const CourseEnrollPage: React.FC = () => {
           headers: { 'Authorization': `Bearer ${token}` }
         }
       );
-      console.log('✅ Сессия удалена');
+      console.log('Сессия удалена');
 
       // ПРЯМОЕ обновление статуса слота обратно
       if (slot.status === 'booked') {
         await updateSlotStatusDirectly(slot.id, 'available');
-        console.log('✅ Статус слота обновлен на "available"');
+        console.log('Статус слота обновлен на "available"');
       }
 
       setCancellingSuccess(true);
@@ -500,7 +489,7 @@ const CourseEnrollPage: React.FC = () => {
       ]);
       
     } catch (err: any) {
-      console.error('❌ Ошибка отмены:', err);
+      console.error('Ошибка отмены:', err);
       setCancellingError(err.message || 'Ошибка отмены');
     } finally {
       setCancellingSession(null);
@@ -548,29 +537,57 @@ const CourseEnrollPage: React.FC = () => {
 
   const getSlotStatusInfo = (slot: SlotResponse) => {
     const statuses = {
-      available: { label: 'Доступен', color: '#10b981', emoji: '🟢', bgColor: 'rgba(16, 185, 129, 0.1)' },
-      booked: { label: 'Забронирован', color: '#f59e0b', emoji: '🟡', bgColor: 'rgba(245, 158, 11, 0.1)' },
-      closed: { label: 'Закрыт', color: '#ef4444', emoji: '🔴', bgColor: 'rgba(239, 68, 68, 0.1)' }
+      available: { label: 'Доступен', color: '#10b981', emoji: '', bgColor: 'rgba(16, 185, 129, 0.1)' },
+      booked: { label: 'Забронирован', color: '#f59e0b', emoji: '', bgColor: 'rgba(245, 158, 11, 0.1)' },
+      closed: { label: 'Закрыт', color: '#ef4444', emoji: '', bgColor: 'rgba(239, 68, 68, 0.1)' }
     };
     return statuses[slot.status as keyof typeof statuses] || statuses.available;
   };
 
   const isAuthor = user?.user_id === course?.author_id;
+  
+  const handleLogout = useCallback(() => {
+    logout();
+  }, [logout]);
 
   // ========== RENDER ==========
   if (loading) {
     return (
       <div className="container" style={{ padding: '0 24px', maxWidth: '1400px' }}>
-        <header className="header">
-          <Link to="/" className="brand">Mentor Fellowship</Link>
+        {/* Header с кастомным логотипом */}
+        <header className="header" style={{ padding: '12px 0' }}>
+          <Link to="/" className="brand">
+            {/* ИНСТРУКЦИЯ: Чтобы добавить кастомное изображение, замените этот div на img */}
+            {/* 
+              1. Добавьте файл логотипа в папку src/assets/
+              2. Импортируйте его: import logo from '../assets/your-logo.png';
+              3. Замените div на: <img src={logo} alt="Mentor Fellowship" style={{ height: '32px' }} />
+            */}
+            <div className="logo" style={{ 
+              width: '32px', 
+              height: '32px', 
+              background: 'linear-gradient(135deg, var(--accent), var(--accent-dark))',
+              borderRadius: '8px',
+              display: 'grid',
+              placeContent: 'center',
+              color: 'white',
+              fontWeight: 700,
+              fontSize: '16px'
+            }}>M</div>
+            <span>Mentor Fellowship</span>
+          </Link>
           <div className="header-nav">
             <button onClick={toggleTheme} className="btn btn-ghost">
-              {theme === 'light' ? '🌙' : '☀️'}
+              {theme === 'light' ? '🌙' : '☀️'} Тема
             </button>
             {token && user ? (
               <>
-                <Link to={`/profile/${user.user_id}`} className="btn btn-ghost">Профиль</Link>
-                <button onClick={logout} className="btn btn-ghost">Выйти</button>
+                <Link to="/courses" className="btn btn-ghost">Курсы</Link>
+                <Link to="/chats" className="btn btn-ghost">Чаты</Link>
+                <Link to={`/profile/${user.user_id}`} className="btn btn-ghost">
+                  {user.first_name || 'Профиль'}
+                </Link>
+                <button onClick={handleLogout} className="btn btn-ghost">Выйти</button>
               </>
             ) : (
               <>
@@ -592,14 +609,34 @@ const CourseEnrollPage: React.FC = () => {
   if (error || !course) {
     return (
       <div className="container" style={{ padding: '0 24px', maxWidth: '1400px' }}>
-        <header className="header">
-          <Link to="/" className="brand">Mentor Fellowship</Link>
+        {/* Header с кастомным логотипом */}
+        <header className="header" style={{ padding: '12px 0' }}>
+          <Link to="/" className="brand">
+            <div className="logo" style={{ 
+              width: '32px', 
+              height: '32px', 
+              background: 'linear-gradient(135deg, var(--accent), var(--accent-dark))',
+              borderRadius: '8px',
+              display: 'grid',
+              placeContent: 'center',
+              color: 'white',
+              fontWeight: 700,
+              fontSize: '16px'
+            }}>M</div>
+            <span>Mentor Fellowship</span>
+          </Link>
           <div className="header-nav">
-            <button onClick={toggleTheme} className="btn btn-ghost">Тема</button>
+            <button onClick={toggleTheme} className="btn btn-ghost">
+              {theme === 'light' ? '🌙' : '☀️'} Тема
+            </button>
             {token && user ? (
               <>
-                <Link to={`/profile/${user.user_id}`} className="btn btn-ghost">Профиль</Link>
-                <button onClick={logout} className="btn btn-ghost">Выйти</button>
+                <Link to="/courses" className="btn btn-ghost">Курсы</Link>
+                <Link to="/chats" className="btn btn-ghost">Чаты</Link>
+                <Link to={`/profile/${user.user_id}`} className="btn btn-ghost">
+                  {user.first_name || 'Профиль'}
+                </Link>
+                <button onClick={handleLogout} className="btn btn-ghost">Выйти</button>
               </>
             ) : (
               <>
@@ -611,7 +648,6 @@ const CourseEnrollPage: React.FC = () => {
         </header>
         
         <div style={{ textAlign: 'center', padding: '60px 20px' }}>
-          <div style={{ fontSize: '48px', marginBottom: '20px' }}>😞</div>
           <h3 style={{ margin: '0 0 12px 0' }}>Ошибка</h3>
           <p style={{ color: 'var(--muted)', marginBottom: '20px', whiteSpace: 'pre-line' }}>
             {error || 'Курс не найден'}
@@ -632,14 +668,34 @@ const CourseEnrollPage: React.FC = () => {
   if (isAuthor) {
     return (
       <div className="container" style={{ padding: '0 24px', maxWidth: '1400px' }}>
-        <header className="header">
-          <Link to="/" className="brand">Mentor Fellowship</Link>
+        {/* Header с кастомным логотипом */}
+        <header className="header" style={{ padding: '12px 0' }}>
+          <Link to="/" className="brand">
+            <div className="logo" style={{ 
+              width: '32px', 
+              height: '32px', 
+              background: 'linear-gradient(135deg, var(--accent), var(--accent-dark))',
+              borderRadius: '8px',
+              display: 'grid',
+              placeContent: 'center',
+              color: 'white',
+              fontWeight: 700,
+              fontSize: '16px'
+            }}>M</div>
+            <span>Mentor Fellowship</span>
+          </Link>
           <div className="header-nav">
-            <button onClick={toggleTheme} className="btn btn-ghost">Тема</button>
+            <button onClick={toggleTheme} className="btn btn-ghost">
+              {theme === 'light' ? '🌙' : '☀️'} Тема
+            </button>
             {token && user ? (
               <>
-                <Link to={`/profile/${user.user_id}`} className="btn btn-ghost">Профиль</Link>
-                <button onClick={logout} className="btn btn-ghost">Выйти</button>
+                <Link to="/courses" className="btn btn-ghost">Курсы</Link>
+                <Link to="/chats" className="btn btn-ghost">Чаты</Link>
+                <Link to={`/profile/${user.user_id}`} className="btn btn-ghost">
+                  {user.first_name || 'Профиль'}
+                </Link>
+                <button onClick={handleLogout} className="btn btn-ghost">Выйти</button>
               </>
             ) : (
               <>
@@ -657,7 +713,7 @@ const CourseEnrollPage: React.FC = () => {
             Вы не можете записаться на свой курс.
           </p>
           <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
-            <button className="btn btn-primary" onClick={() => navigate(`/course/${id}`)}>
+            <button className="btn btn-primary" onClick={() => navigate(`/courses/${id}`)}>
               Вернуться к курсу
             </button>
           </div>
@@ -669,17 +725,32 @@ const CourseEnrollPage: React.FC = () => {
   if (!token) {
     return (
       <div className="container" style={{ padding: '0 24px', maxWidth: '1400px' }}>
-        <header className="header">
-          <Link to="/" className="brand">Mentor Fellowship</Link>
+        {/* Header с кастомным логотипом */}
+        <header className="header" style={{ padding: '12px 0' }}>
+          <Link to="/" className="brand">
+            <div className="logo" style={{ 
+              width: '32px', 
+              height: '32px', 
+              background: 'linear-gradient(135deg, var(--accent), var(--accent-dark))',
+              borderRadius: '8px',
+              display: 'grid',
+              placeContent: 'center',
+              color: 'white',
+              fontWeight: 700,
+              fontSize: '16px'
+            }}>M</div>
+            <span>Mentor Fellowship</span>
+          </Link>
           <div className="header-nav">
-            <button onClick={toggleTheme} className="btn btn-ghost">Тема</button>
+            <button onClick={toggleTheme} className="btn btn-ghost">
+              {theme === 'light' ? '🌙' : '☀️'} Тема
+            </button>
             <Link to="/login" className="btn btn-ghost">Войти</Link>
             <Link to="/signup" className="btn btn-primary">Регистрация</Link>
           </div>
         </header>
         
         <div style={{ textAlign: 'center', padding: '60px 20px' }}>
-          <div style={{ fontSize: '48px', marginBottom: '20px' }}>🔒</div>
           <h3 style={{ margin: '0 0 12px 0' }}>Необходима авторизация</h3>
           <p style={{ color: 'var(--muted)', marginBottom: '20px' }}>
             Войдите в систему, чтобы записаться на курс
@@ -699,15 +770,21 @@ const CourseEnrollPage: React.FC = () => {
 
   return (
     <div className="container" style={{ padding: '0 24px', maxWidth: '1400px' }}>
-      {/* Header */}
-      <header className="header">
-        <Link to="/" className="brand">Mentor Fellowship</Link>
+      {/* Header с кастомным логотипом */}
+      <header className="header" style={{ padding: '12px 0' }}>
+        <Link to="/" className="brand">
+          <div className="logo">M</div>Mentor Fellowship
+        </Link>
         <div className="header-nav">
-          <button onClick={toggleTheme} className="btn btn-ghost">Тема</button>
+          <button onClick={toggleTheme} className="btn btn-ghost">
+            {theme === 'light' ? '🌙' : '☀️'} Тема
+          </button>
           {token && user ? (
             <>
-              <Link to={`/profile/${user.user_id}`} className="btn btn-ghost">{user.first_name || 'Профиль'}</Link>
-              <button onClick={logout} className="btn btn-ghost">Выйти</button>
+              <Link to={`/profile/${user.user_id}`} className="btn btn-ghost">
+                {user.first_name || 'Профиль'}
+              </Link>
+              <button onClick={handleLogout} className="btn btn-ghost">Выйти</button>
             </>
           ) : (
             <>
@@ -718,18 +795,22 @@ const CourseEnrollPage: React.FC = () => {
         </div>
       </header>
 
+      {/* Хлебные крошки */}
+      <nav style={{ marginBottom: '24px', marginTop: '20px' }}>
+        <Link to="/" style={{ color: 'var(--muted)' }}>Главная</Link>
+        <span style={{ margin: '0 8px', color: 'var(--muted)' }}>/</span>
+        <Link to="/courses" style={{ color: 'var(--muted)' }}>Курсы</Link>
+        <span style={{ margin: '0 8px', color: 'var(--muted)' }}>/</span>
+        <Link to={`/course/${id}`} style={{ color: 'var(--muted)' }}>{course.title}</Link>
+        <span style={{ margin: '0 8px', color: 'var(--muted)' }}>/</span>
+        <span style={{ color: 'var(--accent)' }}>Запись</span>
+      </nav>
+
       {/* Основной контент */}
       <div style={{ marginTop: '24px' }}>
-        <nav style={{ margin: '24px 0', fontSize: '14px' }}>
-          <Link to="/" style={{ color: 'var(--muted)' }}>Главная</Link> / 
-          <Link to="/courses" style={{ color: 'var(--muted)', margin: '0 8px' }}>Курсы</Link> / 
-          <Link to={`/course/${id}`} style={{ color: 'var(--muted)', marginRight: '8px' }}>{course.title}</Link> / 
-          <span style={{ color: 'var(--accent)' }}>Запись</span>
-        </nav>
-
         <div style={{ marginBottom: '32px' }}>
-          <h1 style={{ margin: '0 0 12px 0', fontSize: '28px' }}>
-            🎓 Запись на курс: {course.title}
+          <h1 style={{ margin: '0 0 12px 0', fontSize: '28px', fontWeight: 700 }}>
+            Запись на курс: {course.title}
           </h1>
           <p style={{ color: 'var(--muted)', fontSize: '16px' }}>
             Выберите удобное время для записи
@@ -737,12 +818,48 @@ const CourseEnrollPage: React.FC = () => {
         </div>
         
         {/* Информация о преподавателе */}
-        <div className="card" style={{ padding: '16px', marginBottom: '32px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{ width: '48px', height: '48px', borderRadius: '50%', overflow: 'hidden', background: 'linear-gradient(135deg, var(--accent), var(--accent-2))', display: 'grid', placeContent: 'center', color: '#fff', fontWeight: 600, fontSize: '16px' }}>
+        <div className="card" style={{ 
+          padding: '16px', 
+          marginBottom: '32px', 
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: '12px',
+          background: 'var(--surface)',
+          borderRadius: 'var(--radius)',
+          border: '1px solid var(--glass)'
+        }}>
+          <div style={{ 
+            width: '48px', 
+            height: '48px', 
+            borderRadius: '50%', 
+            overflow: 'hidden',
+            background: author?.avatar_url ? 'transparent' : 'linear-gradient(135deg, var(--accent), var(--accent-2))',
+            display: 'grid', 
+            placeContent: 'center'
+          }}>
             {author?.avatar_url ? (
-              <img src={author.avatar_url} alt={author.first_name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              <img 
+                src={getAvatarUrl(author.avatar_url)} 
+                alt={`${author.first_name} ${author.last_name}`}
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none';
+                  const parent = e.currentTarget.parentElement;
+                  if (parent) {
+                    parent.style.background = 'linear-gradient(135deg, var(--accent), var(--accent-2))';
+                    const span = document.createElement('span');
+                    span.style.color = '#fff';
+                    span.style.fontWeight = '600';
+                    span.style.fontSize = '16px';
+                    span.textContent = `${author.first_name?.[0] || ''}${author.last_name?.[0] || ''}`;
+                    parent.appendChild(span);
+                  }
+                }}
+              />
             ) : (
-              <span>{author?.first_name?.[0]}{author?.last_name?.[0]}</span>
+              <span style={{ color: '#fff', fontWeight: 600, fontSize: '16px' }}>
+                {author?.first_name?.[0]}{author?.last_name?.[0]}
+              </span>
             )}
           </div>
           <div>
@@ -755,31 +872,65 @@ const CourseEnrollPage: React.FC = () => {
 
         {/* Сообщения */}
         {bookingSuccess && (
-          <div className="card" style={{ background: 'rgba(34, 197, 94, 0.1)', borderColor: '#10b981', color: '#10b981', marginBottom: '16px' }}>
-            ✅ Запись успешна! Статус слота обновлен через PATCH /slots/{'{id}'}/status
+          <div className="card" style={{ 
+            background: 'rgba(34, 197, 94, 0.1)', 
+            borderColor: '#10b981', 
+            color: '#10b981', 
+            marginBottom: '16px',
+            padding: '12px 16px',
+            borderRadius: '8px'
+          }}>
+            Запись успешна!
           </div>
         )}
         
         {cancellingSuccess && (
-          <div className="card" style={{ background: 'rgba(245, 158, 11, 0.1)', borderColor: '#f59e0b', color: '#f59e0b', marginBottom: '16px' }}>
-            ✅ Запись отменена! Статус слота обновлен через PATCH /slots/{'{id}'}/status
+          <div className="card" style={{ 
+            background: 'rgba(245, 158, 11, 0.1)', 
+            borderColor: '#f59e0b', 
+            color: '#f59e0b', 
+            marginBottom: '16px',
+            padding: '12px 16px',
+            borderRadius: '8px'
+          }}>
+            Запись отменена!
           </div>
         )}
         
         {bookingError && (
-          <div className="card" style={{ background: 'rgba(239, 68, 68, 0.1)', borderColor: '#ef4444', color: '#ef4444', marginBottom: '16px' }}>
-            ❌ {bookingError}
+          <div className="card" style={{ 
+            background: 'rgba(239, 68, 68, 0.1)', 
+            borderColor: '#ef4444', 
+            color: '#ef4444', 
+            marginBottom: '16px',
+            padding: '12px 16px',
+            borderRadius: '8px'
+          }}>
+            {bookingError}
           </div>
         )}
         
         {cancellingError && (
-          <div className="card" style={{ background: 'rgba(239, 68, 68, 0.1)', borderColor: '#ef4444', color: '#ef4444', marginBottom: '16px' }}>
-            ❌ {cancellingError}
+          <div className="card" style={{ 
+            background: 'rgba(239, 68, 68, 0.1)', 
+            borderColor: '#ef4444', 
+            color: '#ef4444', 
+            marginBottom: '16px',
+            padding: '12px 16px',
+            borderRadius: '8px'
+          }}>
+            {cancellingError}
           </div>
         )}
 
         {/* Навигация по неделям */}
-        <div className="card" style={{ marginBottom: '24px', padding: '16px' }}>
+        <div className="card" style={{ 
+          marginBottom: '24px', 
+          padding: '16px',
+          background: 'var(--surface)',
+          borderRadius: 'var(--radius)',
+          border: '1px solid var(--glass)'
+        }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div style={{ display: 'flex', gap: '10px' }}>
               <button onClick={goToPreviousWeek} className="btn btn-ghost">← Назад</button>
@@ -796,37 +947,93 @@ const CourseEnrollPage: React.FC = () => {
         <div>
           {loadingSlots ? (
             <div style={{ textAlign: 'center', padding: '40px' }}>
-              <div style={{ width: '40px', height: '40px', border: '3px solid var(--glass)', borderTopColor: 'var(--accent)', borderRadius: '50%', margin: '0 auto 20px', animation: 'spin 1s linear infinite' }} />
+              <div style={{ 
+                width: '40px', 
+                height: '40px', 
+                border: '3px solid var(--glass)', 
+                borderTopColor: 'var(--accent)', 
+                borderRadius: '50%', 
+                margin: '0 auto 20px', 
+                animation: 'spin 1s linear infinite' 
+              }} />
               <p>Загрузка слотов...</p>
             </div>
           ) : slots.length === 0 ? (
-            <div className="card" style={{ textAlign: 'center', padding: '40px', background: 'var(--glass)' }}>
+            <div className="card" style={{ 
+              textAlign: 'center', 
+              padding: '40px', 
+              background: 'var(--glass)',
+              borderRadius: '8px',
+              marginBottom: '24px'
+            }}>
               <div style={{ fontSize: '48px', marginBottom: '20px' }}>📅</div>
               <h3 style={{ margin: '0 0 12px 0' }}>Нет доступных слотов</h3>
               <p style={{ color: 'var(--muted)', marginBottom: '20px' }}>
                 Автор курса еще не создал слоты для записи.
               </p>
-              <button className="btn btn-primary" onClick={() => navigate(`/course/${id}`)}>
+              <button 
+                className="btn btn-primary" 
+                onClick={() => navigate(`/courses/${id}`)}
+                style={{ padding: '10px 20px' }}
+              >
                 Вернуться к курсу
               </button>
             </div>
           ) : (
             <>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '12px', marginBottom: '32px' }}>
+              {/* ОБНОВЛЕННЫЙ ГРИД: фиксированные равные колонки */}
+              <div style={{ 
+                display: 'grid', 
+                gridTemplateColumns: 'repeat(7, 1fr)', // 7 равных колонок для дней недели
+                gap: '12px', 
+                marginBottom: '32px'
+              }}>
                 {weekDays.map((day, dayIndex) => {
                   const daySlots = getSlotsForDay(day);
                   const isPastDay = new Date(day) < new Date(new Date().setHours(0, 0, 0, 0));
                   
                   return (
-                    <div key={dayIndex} className="card" style={{ padding: '12px', minHeight: '250px', opacity: isPastDay ? 0.7 : 1 }}>
-                      <div style={{ fontWeight: 600, marginBottom: '10px', fontSize: '13px', color: isPastDay ? 'var(--muted)' : 'var(--accent)', textAlign: 'center', paddingBottom: '6px', borderBottom: '1px solid var(--glass)' }}>
+                    <div 
+                      key={dayIndex} 
+                      className="card" 
+                      style={{ 
+                        padding: '12px', 
+                        minHeight: '250px', // Фиксированная высота для симметрии
+                        height: '280px', // Добавляем фиксированную высоту
+                        display: 'flex',
+                        flexDirection: 'column',
+                        opacity: isPastDay ? 0.7 : 1,
+                        background: 'var(--surface)',
+                        borderRadius: '8px',
+                        border: '1px solid var(--glass)'
+                      }}
+                    >
+                      {/* Заголовок дня */}
+                      <div style={{ 
+                        fontWeight: 600, 
+                        marginBottom: '10px', 
+                        fontSize: '13px', 
+                        color: isPastDay ? 'var(--muted)' : 'var(--accent)', 
+                        textAlign: 'center', 
+                        paddingBottom: '6px', 
+                        borderBottom: '1px solid var(--glass)',
+                        flexShrink: 0 // Фиксируем размер заголовка
+                      }}>
                         <div>{day.toLocaleDateString('ru-RU', { weekday: 'short', day: 'numeric' })}</div>
                         <div style={{ fontSize: '10px', marginTop: '4px', color: 'var(--muted)' }}>
                           {daySlots.length} слотов
                         </div>
                       </div>
                       
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', maxHeight: '180px', overflowY: 'auto' }}>
+                      {/* Контейнер для слотов с фиксированной высотой и скроллом */}
+                      <div style={{ 
+                        flex: 1, // Занимает все доступное пространство
+                        display: 'flex', 
+                        flexDirection: 'column', 
+                        gap: '4px', 
+                        overflowY: 'auto',
+                        paddingRight: '2px' // Для отступа под скролл
+                      }}>
                         {daySlots.map(slot => {
                           const isAvailable = isSlotAvailable(slot);
                           const isSelected = selectedSlot === slot.id;
@@ -852,37 +1059,82 @@ const CourseEnrollPage: React.FC = () => {
                                 textAlign: 'center',
                                 marginBottom: '2px',
                                 opacity: isAvailable ? 1 : 0.6,
-                                position: 'relative'
+                                position: 'relative',
+                                minHeight: '70px', // Фиксированная минимальная высота слота
+                                display: 'flex',
+                                flexDirection: 'column',
+                                justifyContent: 'center'
                               }}
                             >
                               {isUpdating && (
-                                <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(255, 255, 255, 0.8)', display: 'grid', placeContent: 'center', borderRadius: '6px' }}>
-                                  <div style={{ width: '16px', height: '16px', border: '2px solid var(--accent)', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+                                <div style={{ 
+                                  position: 'absolute', 
+                                  top: 0, 
+                                  left: 0, 
+                                  right: 0, 
+                                  bottom: 0, 
+                                  background: 'rgba(255, 255, 255, 0.8)', 
+                                  display: 'grid', 
+                                  placeContent: 'center', 
+                                  borderRadius: '6px' 
+                                }}>
+                                  <div style={{ 
+                                    width: '16px', 
+                                    height: '16px', 
+                                    border: '2px solid var(--accent)', 
+                                    borderTopColor: 'transparent', 
+                                    borderRadius: '50%', 
+                                    animation: 'spin 1s linear infinite' 
+                                  }} />
                                 </div>
                               )}
                               
                               <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px' }}>
                                   <span style={{ fontSize: '12px' }}>{isBookedByStudent ? '✅' : statusInfo.emoji}</span>
-                                  <div style={{ fontWeight: 600, fontSize: '10px', color: isBookedByStudent ? '#f59e0b' : (isSelected ? '#fff' : statusInfo.color) }}>
+                                  <div style={{ 
+                                    fontWeight: 600, 
+                                    fontSize: '10px', 
+                                    color: isBookedByStudent ? '#f59e0b' : (isSelected ? '#fff' : statusInfo.color) 
+                                  }}>
                                     {startTime}
                                   </div>
                                 </div>
                                 
-                                <div style={{ fontSize: '9px', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: isBookedByStudent ? '#f59e0b' : (isSelected ? '#fff' : 'inherit') }}>
+                                <div style={{ 
+                                  fontSize: '9px', 
+                                  fontWeight: 500, 
+                                  whiteSpace: 'nowrap', 
+                                  overflow: 'hidden', 
+                                  textOverflow: 'ellipsis', 
+                                  color: isBookedByStudent ? '#f59e0b' : (isSelected ? '#fff' : 'inherit') 
+                                }}>
                                   {slot.title}
                                 </div>
                                 
-                                <div style={{ fontSize: '9px', opacity: 0.8, color: isBookedByStudent ? '#f59e0b' : (isSelected ? '#fff' : 'inherit') }}>
+                                <div style={{ 
+                                  fontSize: '9px', 
+                                  opacity: 0.8, 
+                                  color: isBookedByStudent ? '#f59e0b' : (isSelected ? '#fff' : 'inherit') 
+                                }}>
                                   {duration}
                                 </div>
                                 
-                                <div style={{ fontSize: '8px', color: isBookedByStudent ? '#f59e0b' : (isSelected ? '#fff' : statusInfo.color), fontWeight: 600 }}>
+                                <div style={{ 
+                                  fontSize: '8px', 
+                                  color: isBookedByStudent ? '#f59e0b' : (isSelected ? '#fff' : statusInfo.color), 
+                                  fontWeight: 600,
+                                  marginTop: '2px'
+                                }}>
                                   {statusInfo.label.toUpperCase()}
                                 </div>
                                 
                                 {isBookedByStudent && studentSession && (
-                                  <div style={{ marginTop: '4px', borderTop: '1px solid rgba(245, 158, 11, 0.3)', paddingTop: '4px' }}>
+                                  <div style={{ 
+                                    marginTop: '4px', 
+                                    borderTop: '1px solid rgba(245, 158, 11, 0.3)', 
+                                    paddingTop: '4px' 
+                                  }}>
                                     <button
                                       onClick={(e) => {
                                         e.stopPropagation();
@@ -920,8 +1172,14 @@ const CourseEnrollPage: React.FC = () => {
 
               {/* Информация о выбранном слоте */}
               {selectedSlotData && !isSlotBookedByStudent(selectedSlotData) && (
-                <div className="card" style={{ marginBottom: '24px', padding: '16px', border: '2px solid var(--accent)' }}>
-                  <h4 style={{ margin: '0 0 12px 0', fontSize: '16px' }}>🎯 Выбранный слот:</h4>
+                <div className="card" style={{ 
+                  marginBottom: '24px', 
+                  padding: '16px', 
+                  border: '2px solid var(--accent)',
+                  background: 'var(--surface)',
+                  borderRadius: '8px'
+                }}>
+                  <h4 style={{ margin: '0 0 12px 0', fontSize: '16px' }}>Выбранный слот:</h4>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '16px', alignItems: 'start' }}>
                     <div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
@@ -929,17 +1187,10 @@ const CourseEnrollPage: React.FC = () => {
                         <div style={{ fontWeight: 600, fontSize: '15px' }}>{selectedSlotData.title}</div>
                       </div>
                       <div style={{ fontSize: '13px', color: 'var(--muted)', marginBottom: '4px' }}>
-                        📅 {new Date(selectedSlotData.start_time).toLocaleDateString('ru-RU', { weekday: 'long', day: 'numeric', month: 'long' })}
+                        {new Date(selectedSlotData.start_time).toLocaleDateString('ru-RU', { weekday: 'long', day: 'numeric', month: 'long' })}
                       </div>
                       <div style={{ fontSize: '13px', color: 'var(--muted)', marginBottom: '4px' }}>
-                        ⏰ {formatTime(selectedSlotData.start_time)} ({formatDuration(selectedSlotData.duration_minutes)})
-                      </div>
-                      <div style={{ fontSize: '12px', marginTop: '12px', padding: '8px', background: 'rgba(79, 70, 229, 0.1)', borderRadius: '6px' }}>
-                        <div style={{ fontWeight: 600, color: 'var(--accent)' }}>Будет использовано:</div>
-                        <code style={{ fontSize: '10px', color: 'var(--muted)', display: 'block', marginTop: '4px' }}>
-                          PATCH /api/v1/slots/{selectedSlotData.id}/status<br/>
-                          body: {"{"} "status": "booked" {"}"}
-                        </code>
+                        {formatTime(selectedSlotData.start_time)} ({formatDuration(selectedSlotData.duration_minutes)})
                       </div>
                     </div>
                   </div>
@@ -947,7 +1198,14 @@ const CourseEnrollPage: React.FC = () => {
               )}
 
               {/* Кнопки действий */}
-              <div style={{ marginTop: '20px', display: 'flex', gap: '12px', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap' }}>
+              <div style={{ 
+                marginTop: '20px', 
+                display: 'flex', 
+                gap: '12px', 
+                alignItems: 'center', 
+                justifyContent: 'center', 
+                flexWrap: 'wrap' 
+              }}>
                 {selectedSlotData && !isSlotBookedByStudent(selectedSlotData) && (
                   <button
                     className="btn btn-primary"
@@ -959,7 +1217,11 @@ const CourseEnrollPage: React.FC = () => {
                   </button>
                 )}
                 
-                <button className="btn btn-ghost" onClick={() => navigate(`/course/${id}`)} style={{ padding: '12px 20px', fontSize: '14px' }}>
+                <button 
+                  className="btn btn-ghost" 
+                  onClick={() => navigate(`/courses/${id}`)} 
+                  style={{ padding: '12px 20px', fontSize: '14px' }}
+                >
                   Вернуться к курсу
                 </button>
               </div>
@@ -968,8 +1230,13 @@ const CourseEnrollPage: React.FC = () => {
         </div>
       </div>
 
-      <footer style={{ marginTop: '60px', paddingTop: '40px', borderTop: '1px solid var(--glass)' }}>
-        <div style={{ textAlign: 'center', color: 'var(--muted)', fontSize: '14px', padding: '20px 0' }}>
+      <footer style={{ 
+        marginTop: '60px', 
+        paddingTop: '40px', 
+        borderTop: '1px solid var(--glass)',
+        textAlign: 'center' 
+      }}>
+        <div style={{ color: 'var(--muted)', fontSize: '14px', padding: '20px 0' }}>
           © {new Date().getFullYear()} Mentor Fellowship
         </div>
       </footer>
@@ -986,28 +1253,14 @@ const CourseEnrollPage: React.FC = () => {
           padding: 0 24px;
         }
         
-        .header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          padding: 20px 0;
-          border-bottom: 1px solid var(--glass);
-        }
-        
         .brand {
-          font-size: 20px;
+          font-size: 18px;
           font-weight: 600;
           color: var(--accent);
           text-decoration: none;
           display: flex;
           align-items: center;
-          gap: 8px;
-        }
-        
-        .header-nav {
-          display: flex;
           gap: 10px;
-          align-items: center;
         }
         
         .btn {
@@ -1022,6 +1275,7 @@ const CourseEnrollPage: React.FC = () => {
         .btn-primary {
           background: var(--accent);
           color: white;
+          border: none;
         }
         
         .btn-primary:hover {
@@ -1044,28 +1298,9 @@ const CourseEnrollPage: React.FC = () => {
         }
         
         .card {
-          background: var(--card-bg);
+          background: var(--surface);
           border: 1px solid var(--glass);
           border-radius: 8px;
-          padding: 16px;
-        }
-        
-        :root {
-          --accent: #4f46e5;
-          --accent-hover: #4338ca;
-          --glass: rgba(0, 0, 0, 0.1);
-          --text: #333;
-          --muted: #666;
-          --card-bg: #fff;
-        }
-        
-        [data-theme="dark"] {
-          --accent: #6366f1;
-          --accent-hover: #4f46e5;
-          --glass: rgba(255, 255, 255, 0.1);
-          --text: #fff;
-          --muted: #aaa;
-          --card-bg: #1a1a1a;
         }
       `}</style>
     </div>

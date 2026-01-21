@@ -1,8 +1,9 @@
 // src/pages/Chats.tsx
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, CSSProperties } from 'react';
 import { useAuth } from '../store/AuthContext';
 import { useWebSocket } from '../services/useWebSocket';
 import { IncomingMessage } from '../services/websocket';
+import { Link, useNavigate } from 'react-router-dom';
 
 // Типы на основе ваших API и WebSocket документации
 interface User {
@@ -43,8 +44,56 @@ interface ChatMessagesResponse {
   has_more: boolean;
 }
 
+// Функция для управления темой
+const useTheme = () => {
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    const savedTheme = localStorage.getItem('theme') as 'light' | 'dark';
+    return savedTheme || 'light';
+  });
+
+  useEffect(() => {
+    document.body.setAttribute('data-theme', theme);
+    localStorage.setItem('theme', theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme(prev => prev === 'light' ? 'dark' : 'light');
+  };
+
+  return { theme, toggleTheme };
+};
+
+// Функция для получения правильного URL аватара
+const getAvatarUrl = (avatarUrl: string | null | undefined): string => {
+  if (!avatarUrl) return '';
+  
+  // Если URL уже полный (http или https)
+  if (avatarUrl.startsWith('http')) {
+    return avatarUrl;
+  }
+  
+  // Если это имя файла
+  if (avatarUrl && !avatarUrl.includes('/')) {
+    return `http://localhost:8080/api/v1/files/avatar/${avatarUrl}`;
+  }
+  
+  // Если это относительный путь
+  if (avatarUrl.startsWith('/')) {
+    return `http://localhost:8080${avatarUrl}`;
+  }
+  
+  // Если это путь без префикса http
+  if (avatarUrl.startsWith('files/avatar/')) {
+    return `http://localhost:8080/api/v1/${avatarUrl}`;
+  }
+  
+  return avatarUrl;
+};
+
 const Chats: React.FC = () => {
-  const { token, user } = useAuth();
+  const navigate = useNavigate();
+  const { token, user, logout } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const { 
     isConnected, 
     connect, 
@@ -72,33 +121,6 @@ const Chats: React.FC = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  // Функция для получения правильного URL аватара
-  const getAvatarUrl = (avatarUrl: string | null | undefined): string => {
-    if (!avatarUrl) return '';
-    
-    // Если URL уже полный (http или https)
-    if (avatarUrl.startsWith('http')) {
-      return avatarUrl;
-    }
-    
-    // Если это имя файла
-    if (avatarUrl && !avatarUrl.includes('/')) {
-      return `http://localhost:8080/api/v1/files/avatar/${avatarUrl}`;
-    }
-    
-    // Если это относительный путь
-    if (avatarUrl.startsWith('/')) {
-      return `http://localhost:8080${avatarUrl}`;
-    }
-    
-    // Если это путь без префикса http
-    if (avatarUrl.startsWith('files/avatar/')) {
-      return `http://localhost:8080/api/v1/${avatarUrl}`;
-    }
-    
-    return avatarUrl;
-  };
 
   // Подключение WebSocket при наличии токена
   useEffect(() => {
@@ -719,57 +741,207 @@ const Chats: React.FC = () => {
     );
   };
 
+  const handleLogout = useCallback(() => {
+    logout();
+  }, [logout]);
+
+  // Стили для элементов чата с hover эффектом
+  const chatItemStyle: CSSProperties = {
+    marginBottom: '8px',
+    cursor: 'pointer',
+    padding: '12px',
+    borderRadius: '12px',
+    transition: 'all var(--transition)'
+  };
+
+  const getChatItemStyle = (chat: Chat): CSSProperties => {
+    const isSelected = selectedChat?.id === chat.id;
+    return {
+      ...chatItemStyle,
+      backgroundColor: isSelected ? 'var(--accent-light)' : '',
+      border: isSelected ? '1px solid var(--accent)' : '',
+    };
+  };
+
+  const chatItemHoverStyle: CSSProperties = {
+    backgroundColor: 'var(--accent-light)'
+  };
+
   if (isLoading) {
     return (
-      <div className="container">
-        <div className="card">Загрузка чатов...</div>
+      <div className="container" style={{ padding: '0 24px', maxWidth: '1400px' }}>
+        <header className="header" style={{ padding: '12px 0' }}>
+          <Link to="/" className="brand">
+            <div className="logo">M</div>Mentor Fellowship
+          </Link>
+          <div className="header-nav">
+            <button onClick={toggleTheme} className="btn btn-ghost">
+              {theme === 'light' ? '🌙' : '☀️'} Тема
+            </button>
+            {token && user ? (
+              <>
+                <Link to="/courses" className="btn btn-ghost">Курсы</Link>
+                <Link to="/chats" className="btn btn-ghost">Чаты</Link>
+                <Link to={`/profile/${user.user_id}`} className="btn btn-ghost">
+                  {user.first_name || 'Профиль'}
+                </Link>
+                <button onClick={handleLogout} className="btn btn-ghost">Выйти</button>
+              </>
+            ) : (
+              <>
+                <Link to="/login" className="btn btn-ghost">Войти</Link>
+                <Link to="/signup" className="btn btn-primary">Регистрация</Link>
+              </>
+            )}
+          </div>
+        </header>
+
+        <nav style={{ marginBottom: '24px', marginTop: '20px' }}>
+          <Link to="/" style={{ color: 'var(--muted)' }}>Главная</Link>
+          <span style={{ margin: '0 8px', color: 'var(--muted)' }}>/</span>
+          <span style={{ color: 'var(--accent)' }}>Чаты</span>
+        </nav>
+
+        <div className="card" style={{ textAlign: 'center', padding: '40px' }}>
+          <div style={{ 
+            width: '40px', 
+            height: '40px', 
+            border: '3px solid var(--glass)',
+            borderTopColor: 'var(--accent)',
+            borderRadius: '50%',
+            margin: '0 auto 20px',
+            animation: 'spin 1s linear infinite'
+          }} />
+          <h3 style={{ marginBottom: '12px' }}>Загружаем чаты...</h3>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="container">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--gap-lg)' }}>
-        <h1 style={{ margin: 0 }}>Сообщения</h1>
+    <div className="container" style={{ padding: '0 24px', maxWidth: '1400px' }}>
+      {/* Header */}
+      <header className="header" style={{ padding: '12px 0' }}>
+        <Link to="/" className="brand">
+          <div className="logo">M</div>Mentor Fellowship
+        </Link>
+        <div className="header-nav">
+          <button onClick={toggleTheme} className="btn btn-ghost">
+            {theme === 'light' ? '🌙' : '☀️'} Тема
+          </button>
+          {token && user ? (
+            <>
+              <Link to="/courses" className="btn btn-ghost">Курсы</Link>
+              <Link to="/chats" className="btn btn-ghost">Чаты</Link>
+              <Link to={`/profile/${user.user_id}`} className="btn btn-ghost">
+                {user.first_name || 'Профиль'}
+              </Link>
+              <button onClick={handleLogout} className="btn btn-ghost">Выйти</button>
+            </>
+          ) : (
+            <>
+              <Link to="/login" className="btn btn-ghost">Войти</Link>
+              <Link to="/signup" className="btn btn-primary">Регистрация</Link>
+            </>
+          )}
+        </div>
+      </header>
+
+      {/* Хлебные крошки */}
+      <nav style={{ marginBottom: '24px', marginTop: '20px' }}>
+        <Link to="/" style={{ color: 'var(--muted)' }}>Главная</Link>
+        <span style={{ margin: '0 8px', color: 'var(--muted)' }}>/</span>
+        <span style={{ color: 'var(--accent)' }}>Чаты</span>
+      </nav>
+
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        alignItems: 'center', 
+        marginBottom: 'var(--gap-lg)',
+        padding: '16px 20px',
+        background: 'var(--surface)',
+        borderRadius: 'var(--radius)',
+        boxShadow: 'var(--shadow-sm)'
+      }}>
+        <h1 style={{ margin: 0, fontSize: '20px', fontWeight: 700 }}>Сообщения</h1>
         <button
           className="btn btn-primary"
           onClick={() => setShowCreateChatModal(true)}
+          style={{ 
+            padding: '10px 20px',
+            fontSize: '14px',
+            fontWeight: 600
+          }}
         >
           + Новый чат
         </button>
       </div>
       
-      <div className="chat-layout">
+      <div className="chat-layout" style={{ 
+        display: 'grid',
+        gridTemplateColumns: '380px 1fr',
+        gap: '24px',
+        marginTop: '16px'
+      }}>
         {/* Список чатов */}
-        <div className="chat-list">
-          <div style={{ padding: 'var(--gap-sm)', borderBottom: '1px solid var(--glass)' }}>
+        <div className="chat-list" style={{ 
+          background: 'var(--surface)',
+          borderRadius: 'var(--radius)',
+          border: '1px solid var(--glass)',
+          overflow: 'hidden',
+          display: 'flex',
+          flexDirection: 'column'
+        }}>
+          {/* Заголовок списка чатов */}
+          <div style={{ 
+            padding: '16px',
+            borderBottom: '1px solid var(--glass)',
+            background: 'var(--accent-lightest)'
+          }}>
+            <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--muted)', marginBottom: '8px' }}>
+              Мои чаты ({chats.length})
+            </div>
             <input 
               type="text" 
-              placeholder="Поиск чатов..." 
-              style={{ width: '100%', marginBottom: 'var(--gap-sm)' }}
+              placeholder="Поиск чатов или пользователей..." 
+              style={{ 
+                width: '100%',
+                padding: '10px 14px',
+                borderRadius: '8px',
+                border: '1px solid var(--glass)',
+                backgroundColor: 'transparent',
+                color: 'var(--text)',
+                fontSize: '14px'
+              }}
             />
-            <div className="chips">
-              <span className="chip active">Все</span>
-            </div>
           </div>
           
-          <div style={{ paddingTop: 'var(--gap-sm)' }}>
+          {/* Контейнер чатов */}
+          <div style={{ 
+            flex: 1,
+            overflowY: 'auto',
+            padding: '8px'
+          }}>
             {!chats || chats.length === 0 ? (
               <div style={{ 
                 textAlign: 'center', 
-                padding: 'var(--gap-lg)', 
+                padding: '40px 20px', 
                 color: 'var(--muted)',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
-                gap: 'var(--gap-md)'
+                gap: '16px'
               }}>
                 <div style={{ fontSize: '48px' }}>💬</div>
-                <div>У вас пока нет чатов</div>
+                <div style={{ fontSize: '16px', fontWeight: 500 }}>У вас пока нет чатов</div>
+                <div style={{ fontSize: '14px', maxWidth: '300px', lineHeight: '1.5' }}>
+                  Начните общение, создав новый чат
+                </div>
                 <button
                   className="btn btn-primary"
                   onClick={() => setShowCreateChatModal(true)}
-                  style={{ marginTop: 'var(--gap-sm)' }}
+                  style={{ marginTop: '8px', padding: '10px 20px' }}
                 >
                   Создать первый чат
                 </button>
@@ -779,20 +951,28 @@ const Chats: React.FC = () => {
                 <div 
                   key={chat.id}
                   className={`card ${selectedChat?.id === chat.id ? 'selected' : ''}`}
-                  style={{ 
-                    marginBottom: 'var(--gap-sm)', 
-                    cursor: 'pointer',
-                    backgroundColor: selectedChat?.id === chat.id ? 'var(--accent-light)' : '',
-                    border: selectedChat?.id === chat.id ? '1px solid var(--accent)' : ''
-                  }}
+                  style={getChatItemStyle(chat)}
                   onClick={() => {
                     setSelectedChat(chat);
                   }}
+                  onMouseEnter={(e) => {
+                    const target = e.currentTarget;
+                    if (selectedChat?.id !== chat.id) {
+                      target.style.backgroundColor = 'var(--accent-light)';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    const target = e.currentTarget;
+                    if (selectedChat?.id !== chat.id) {
+                      target.style.backgroundColor = '';
+                    }
+                  }}
                 >
-                  <div style={{ display: 'flex', gap: 'var(--gap-sm)', alignItems: 'center' }}>
+                  <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                    {/* Аватар */}
                     <div style={{
-                      width: '40px',
-                      height: '40px',
+                      width: '48px',
+                      height: '48px',
                       borderRadius: '50%',
                       overflow: 'hidden',
                       background: chat.other_user?.avatar_url ? 'transparent' : 'linear-gradient(135deg, var(--accent), var(--accent-2))',
@@ -814,7 +994,7 @@ const Chats: React.FC = () => {
                             const parent = e.currentTarget.parentElement;
                             if (parent) {
                               const span = document.createElement('span');
-                              span.style.fontSize = '16px';
+                              span.style.fontSize = '18px';
                               span.style.color = '#fff';
                               span.style.fontWeight = '600';
                               span.textContent = getOtherUserInitials(chat);
@@ -823,23 +1003,38 @@ const Chats: React.FC = () => {
                           }}
                         />
                       ) : (
-                        <span style={{ fontSize: '16px', color: '#fff', fontWeight: 600 }}>
+                        <span style={{ fontSize: '18px', color: '#fff', fontWeight: 600 }}>
                           {getOtherUserInitials(chat)}
                         </span>
                       )}
                     </div>
                     
+                    {/* Информация о чате */}
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <div>
-                          <div style={{ fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ 
+                            fontWeight: 600, 
+                            fontSize: '14px',
+                            whiteSpace: 'nowrap', 
+                            overflow: 'hidden', 
+                            textOverflow: 'ellipsis',
+                            marginBottom: '4px'
+                          }}>
                             {getOtherUserName(chat)}
                           </div>
-                          <div style={{ fontSize: '14px', color: 'var(--muted)', marginTop: '4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                            {chat.last_message?.content || 'Нет сообщений'}
+                          <div style={{ 
+                            fontSize: '13px', 
+                            color: 'var(--muted)', 
+                            whiteSpace: 'nowrap', 
+                            overflow: 'hidden', 
+                            textOverflow: 'ellipsis',
+                            lineHeight: '1.4'
+                          }}>
+                            {chat.last_message?.content || 'Начните общение'}
                           </div>
                         </div>
-                        <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: '8px' }}>
+                        <div style={{ textAlign: 'right', flexShrink: 0, minWidth: '60px' }}>
                           <div style={{ fontSize: '12px', color: 'var(--muted)' }}>
                             {chat.last_message ? formatDate(chat.last_message.created_at) : ''}
                           </div>
@@ -854,7 +1049,9 @@ const Chats: React.FC = () => {
                               alignItems: 'center',
                               justifyContent: 'center',
                               fontSize: '12px',
-                              marginTop: '4px'
+                              fontWeight: '600',
+                              marginTop: '4px',
+                              marginLeft: 'auto'
                             }}>
                               {chat.unread_count}
                             </div>
@@ -870,14 +1067,29 @@ const Chats: React.FC = () => {
         </div>
         
         {/* Окно чата */}
-        <div className="chat-window">
+        <div className="chat-window" style={{ 
+          background: 'var(--surface)',
+          borderRadius: 'var(--radius)',
+          border: '1px solid var(--glass)',
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden'
+        }}>
           {selectedChat ? (
             <>
-              <div className="chat-header">
-                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--gap-sm)' }}>
+              {/* Заголовок чата */}
+              <div style={{ 
+                padding: '16px 20px',
+                borderBottom: '1px solid var(--glass)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                background: 'var(--accent-lightest)'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                   <div style={{
-                    width: '40px',
-                    height: '40px',
+                    width: '44px',
+                    height: '44px',
                     borderRadius: '50%',
                     overflow: 'hidden',
                     background: selectedChat.other_user?.avatar_url ? 'transparent' : 'linear-gradient(135deg, var(--accent), var(--accent-2))',
@@ -899,7 +1111,7 @@ const Chats: React.FC = () => {
                           const parent = e.currentTarget.parentElement;
                           if (parent) {
                             const span = document.createElement('span');
-                            span.style.fontSize = '16px';
+                            span.style.fontSize = '18px';
                             span.style.color = '#fff';
                             span.style.fontWeight = '600';
                             span.textContent = getOtherUserInitials(selectedChat);
@@ -908,49 +1120,65 @@ const Chats: React.FC = () => {
                         }}
                       />
                     ) : (
-                      <span style={{ fontSize: '16px', color: '#fff', fontWeight: 600 }}>
+                      <span style={{ fontSize: '18px', color: '#fff', fontWeight: 600 }}>
                         {getOtherUserInitials(selectedChat)}
                       </span>
                     )}
                   </div>
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 700 }}>{getOtherUserName(selectedChat)}</div>
-                    <div style={{ fontSize: '14px', color: 'var(--muted)' }}>
+                    <div style={{ fontWeight: 700, fontSize: '16px' }}>{getOtherUserName(selectedChat)}</div>
+                    <div style={{ 
+                      fontSize: '13px', 
+                      color: 'var(--muted)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px'
+                    }}>
+                      <div style={{
+                        width: '8px',
+                        height: '8px',
+                        borderRadius: '50%',
+                        backgroundColor: isConnected ? '#10B981' : '#EF4444'
+                      }} />
                       {isConnected ? 'онлайн' : 'оффлайн'}
                     </div>
                   </div>
                 </div>
-                <div className="header-nav">
-                  <button className="btn btn-ghost">⋮</button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  {/* кнопки на верхней панели чата*/}
                 </div>
               </div>
               
-              {/* Контейнер сообщений с обработкой прокрутки */}
+              {/* Контейнер сообщений */}
               <div 
-                className="messages" 
                 ref={messagesContainerRef}
                 style={{ 
-                  position: 'relative',
-                  overflowY: 'auto',
                   flex: 1,
-                  padding: 'var(--gap-md)',
-                  maxHeight: 'calc(100vh - 200px)'
+                  overflowY: 'auto',
+                  padding: '20px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '16px',
+                  maxHeight: 'calc(100vh - 300px)'
                 }}
               >
                 {/* Кнопка для загрузки старых сообщений */}
                 {hasMore && !isLoadingMore && nextCursor && (
                   <div style={{ 
                     textAlign: 'center', 
-                    padding: '10px',
-                    marginBottom: '10px'
+                    marginBottom: '16px'
                   }}>
                     <button
                       className="btn btn-outline"
                       onClick={loadMoreMessages}
                       style={{ 
-                        fontSize: '12px',
-                        padding: '5px 10px',
-                        opacity: 0.7
+                        fontSize: '13px',
+                        padding: '8px 16px',
+                        borderRadius: '20px',
+                        border: '1px solid var(--glass)',
+                        backgroundColor: 'var(--surface)',
+                        color: 'var(--text)',
+                        cursor: 'pointer'
                       }}
                     >
                       Загрузить предыдущие сообщения
@@ -971,8 +1199,25 @@ const Chats: React.FC = () => {
                 )}
                 
                 {(!messages || messages.length === 0) && !isLoading ? (
-                  <div style={{ textAlign: 'center', padding: 'var(--gap-lg)', color: 'var(--muted)' }}>
-                    Начните общение
+                  <div style={{ 
+                    textAlign: 'center', 
+                    padding: '40px 20px', 
+                    color: 'var(--muted)',
+                    flex: 1,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '16px'
+                  }}>
+                    <h3 style={{ fontSize: '18px', fontWeight: 600 }}>Начните общение</h3>
+                    <p style={{ 
+                      fontSize: '14px', 
+                      maxWidth: '300px',
+                      lineHeight: '1.5'
+                    }}>
+                      Отправьте первое сообщение, чтобы начать диалог с {getOtherUserName(selectedChat)}
+                    </p>
                   </div>
                 ) : (
                   (messages || []).map(message => {
@@ -985,15 +1230,14 @@ const Chats: React.FC = () => {
                           display: 'flex',
                           gap: '8px',
                           alignItems: 'flex-start',
-                          marginBottom: '12px',
                           flexDirection: isOwnMessage ? 'row-reverse' : 'row'
                         }}
                       >
                         {/* Аватарка для входящих сообщений */}
                         {!isOwnMessage && selectedChat.other_user && (
                           <div style={{
-                            width: '32px',
-                            height: '32px',
+                            width: '36px',
+                            height: '36px',
                             borderRadius: '50%',
                             overflow: 'hidden',
                             background: selectedChat.other_user?.avatar_url ? 'transparent' : 'linear-gradient(135deg, var(--accent-2), var(--accent-3))',
@@ -1013,7 +1257,7 @@ const Chats: React.FC = () => {
                                 }}
                               />
                             ) : (
-                              <span style={{ fontSize: '12px', color: '#fff', fontWeight: 600 }}>
+                              <span style={{ fontSize: '14px', color: '#fff', fontWeight: 600 }}>
                                 {getOtherUserInitials(selectedChat)}
                               </span>
                             )}
@@ -1024,12 +1268,13 @@ const Chats: React.FC = () => {
                         <div 
                           style={{ 
                             maxWidth: '70%',
-                            padding: '12px',
-                            borderRadius: '18px',
-                            backgroundColor: isOwnMessage ? 'var(--accent)' : 'var(--surface)',
+                            padding: '12px 16px',
+                            borderRadius: '20px',
+                            backgroundColor: isOwnMessage ? 'var(--accent)' : 'var(--accent-light)',
                             color: isOwnMessage ? 'white' : 'var(--text)',
                             border: !isOwnMessage ? '1px solid var(--glass)' : 'none',
-                            alignSelf: 'flex-start'
+                            alignSelf: 'flex-start',
+                            boxShadow: 'var(--shadow-sm)'
                           }}
                         >
                           {message.reply_to && (
@@ -1044,7 +1289,11 @@ const Chats: React.FC = () => {
                             </div>
                           )}
                           
-                          <div style={{ wordBreak: 'break-word' }}>{message.content}</div>
+                          <div style={{ 
+                            wordBreak: 'break-word',
+                            fontSize: '14px',
+                            lineHeight: '1.5'
+                          }}>{message.content}</div>
                           
                           {(message.attachments || []).map(attachment => (
                             <div key={attachment.id} style={{ marginTop: '8px' }}>
@@ -1061,7 +1310,7 @@ const Chats: React.FC = () => {
                               ) : (
                                 <div style={{
                                   padding: '8px 12px',
-                                  backgroundColor: isOwnMessage ? 'rgba(255,255,255,0.1)' : 'var(--accent-light)',
+                                  backgroundColor: isOwnMessage ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)',
                                   borderRadius: '12px',
                                   display: 'flex',
                                   alignItems: 'center',
@@ -1087,7 +1336,7 @@ const Chats: React.FC = () => {
                             display: 'flex',
                             justifyContent: 'space-between',
                             alignItems: 'center',
-                            fontSize: '11px',
+                            fontSize: '12px',
                             color: isOwnMessage ? 'rgba(255,255,255,0.7)' : 'var(--muted)',
                             marginTop: '6px',
                             gap: '8px'
@@ -1098,7 +1347,7 @@ const Chats: React.FC = () => {
                                 display: 'flex', 
                                 alignItems: 'center', 
                                 gap: '2px',
-                                fontSize: '10px'
+                                fontSize: '11px'
                               }}>
                                 {message.is_read ? '✓✓' : '✓'}
                               </span>
@@ -1108,7 +1357,7 @@ const Chats: React.FC = () => {
                         
                         {/* Пустой блок для выравнивания исходящих сообщений */}
                         {isOwnMessage && (
-                          <div style={{ width: '32px', flexShrink: 0 }} />
+                          <div style={{ width: '36px', flexShrink: 0 }} />
                         )}
                       </div>
                     );
@@ -1117,83 +1366,90 @@ const Chats: React.FC = () => {
                 <div ref={messagesEndRef} />
               </div>
               
+              {/* Панель ввода сообщения */}
               <div style={{ 
-                display: 'flex', 
-                gap: 'var(--gap-sm)', 
-                alignItems: 'flex-end',
+                padding: '16px 20px',
                 borderTop: '1px solid var(--glass)',
-                paddingTop: 'var(--gap-sm)',
-                paddingBottom: 'var(--gap-sm)'
+                backgroundColor: 'var(--accent-lightest)'
               }}>
-                <button 
-                  className="btn btn-ghost"
-                  onClick={() => fileInputRef.current?.click()}
-                  style={{ 
-                    flexShrink: 0,
-                    width: '44px',
-                    height: '44px',
-                    borderRadius: '50%',
-                    display: 'grid',
-                    placeContent: 'center'
-                  }}
-                >
-                  📎
-                </button>
-                
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  style={{ display: 'none' }}
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) {
-                      console.log('Выбран файл:', file);
-                    }
-                    e.target.value = '';
-                  }}
-                />
-                
-                <div style={{ flex: 1, position: 'relative' }}>
-                  <textarea
-                    value={newMessage}
-                    onChange={(e) => setNewMessage(e.target.value)}
-                    onKeyPress={handleKeyPress}
-                    placeholder="Введите сообщение..."
-                    style={{
-                      width: '100%',
-                      minHeight: '44px',
-                      maxHeight: '120px',
-                      padding: '12px',
-                      paddingRight: '60px',
-                      borderRadius: '24px',
-                      border: '1px solid var(--glass)',
-                      backgroundColor: 'transparent',
-                      color: 'var(--text)',
-                      resize: 'none',
-                      fontFamily: 'inherit',
-                      fontSize: '14px',
-                      lineHeight: '1.4'
+                <div style={{ 
+                  display: 'flex', 
+                  gap: '12px', 
+                  alignItems: 'flex-end'
+                }}>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    {/* Здесь могут быть вложения файлов*/}
+                  </div>
+                  
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    style={{ display: 'none' }}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        console.log('Выбран файл:', file);
+                      }
+                      e.target.value = '';
                     }}
                   />
                   
-                  <button
-                    className="btn btn-primary"
-                    onClick={sendMessage}
-                    disabled={!newMessage.trim() || !isConnected}
-                    style={{
-                      position: 'absolute',
-                      right: '8px',
-                      bottom: '8px',
-                      width: '36px',
-                      height: '36px',
-                      borderRadius: '50%',
-                      padding: 0,
-                      display: 'grid',
-                      placeContent: 'center'
-                    }}
-                  >
-                    ↗
-                  </button>
+                  <div style={{ flex: 1, position: 'relative' }}>
+                    <textarea
+                      value={newMessage}
+                      onChange={(e) => setNewMessage(e.target.value)}
+                      onKeyPress={handleKeyPress}
+                      placeholder={`Сообщение для ${getOtherUserName(selectedChat)}...`}
+                      style={{
+                        width: '100%',
+                        minHeight: '44px',
+                        maxHeight: '120px',
+                        padding: '12px 16px',
+                        paddingRight: '50px',
+                        borderRadius: '22px',
+                        border: '1px solid var(--glass)',
+                        backgroundColor: 'var(--surface)',
+                        color: 'var(--text)',
+                        resize: 'none',
+                        fontFamily: 'inherit',
+                        fontSize: '14px',
+                        lineHeight: '1.4',
+                        transition: 'border-color var(--transition)'
+                      }}
+                      onFocus={(e) => {
+                        e.target.style.outline = 'none';
+                        e.target.style.borderColor = 'var(--accent)';
+                        e.target.style.boxShadow = '0 0 0 3px var(--accent-light)';
+                      }}
+                      onBlur={(e) => {
+                        e.target.style.borderColor = 'var(--glass)';
+                        e.target.style.boxShadow = 'none';
+                      }}
+                    />
+                    
+                    <button
+                      className="btn btn-primary"
+                      onClick={sendMessage}
+                      disabled={!newMessage.trim() || !isConnected}
+                      style={{
+                        position: 'absolute',
+                        right: '8px',
+                        bottom: '8px',
+                        width: '34px',
+                        height: '34px',
+                        borderRadius: '50%',
+                        padding: 0,
+                        display: 'grid',
+                        placeContent: 'center',
+                        backgroundColor: isConnected ? 'var(--accent)' : 'var(--muted)',
+                        border: 'none',
+                        cursor: newMessage.trim() && isConnected ? 'pointer' : 'not-allowed',
+                        opacity: newMessage.trim() && isConnected ? 1 : 0.6
+                      }}
+                    >
+                      ↗
+                    </button>
+                  </div>
                 </div>
               </div>
             </>
@@ -1204,19 +1460,30 @@ const Chats: React.FC = () => {
               alignItems: 'center', 
               justifyContent: 'center',
               height: '100%',
-              color: 'var(--muted)'
+              color: 'var(--muted)',
+              padding: '40px 20px',
+              textAlign: 'center'
             }}>
-              <div style={{ fontSize: '48px', marginBottom: 'var(--gap-md)' }}>💬</div>
-              <h3>Выберите чат</h3>
-              <p style={{ textAlign: 'center', maxWidth: '300px' }}>
-                Выберите существующий чат из списка или создайте новый
+              <div style={{ fontSize: '64px', marginBottom: '20px' }}>💬</div>
+              <h3 style={{ fontSize: '20px', fontWeight: 600, marginBottom: '12px' }}>Выберите чат</h3>
+              <p style={{ 
+                fontSize: '14px', 
+                maxWidth: '300px',
+                lineHeight: '1.5',
+                marginBottom: '24px'
+              }}>
+                Выберите существующий чат из списка или создайте новый для начала общения
               </p>
               <button
                 className="btn btn-primary"
                 onClick={() => setShowCreateChatModal(true)}
-                style={{ marginTop: 'var(--gap-md)' }}
+                style={{ 
+                  padding: '12px 24px',
+                  fontSize: '14px',
+                  fontWeight: 600
+                }}
               >
-                + Создать чат
+                + Создать новый чат
               </button>
             </div>
           )}
@@ -1234,23 +1501,69 @@ const Chats: React.FC = () => {
         display: 'flex',
         alignItems: 'center',
         gap: '8px',
-        padding: '8px 12px',
+        padding: '10px 16px',
         backgroundColor: 'var(--surface)',
-        borderRadius: 'var(--radius)',
-        boxShadow: 'var(--shadow-sm)',
+        borderRadius: '12px',
+        boxShadow: 'var(--shadow-md)',
         border: '1px solid var(--glass)',
         fontSize: '14px',
-        zIndex: 100
+        zIndex: 100,
+        backdropFilter: 'blur(10px)'
       }}>
         <div style={{
-          width: '8px',
-          height: '8px',
+          width: '10px',
+          height: '10px',
           borderRadius: '50%',
           backgroundColor: isConnected ? '#10B981' : '#EF4444',
           animation: isConnected ? 'pulse 2s infinite' : 'none'
         }} />
-        {isConnected ? 'Подключено' : 'Отключено'}
+        {isConnected ? 'Подключено к чатам' : 'Отключено от сервера'}
       </div>
+
+      {/* CSS стили */}
+      <style>{`
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.5; }
+        }
+        
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+        
+        .chat-layout {
+          min-height: calc(100vh - 200px);
+        }
+        
+        /* Адаптивность */
+        @media (max-width: 1200px) {
+          .chat-layout {
+            grid-template-columns: 320px 1fr !important;
+          }
+        }
+        
+        @media (max-width: 992px) {
+          .chat-layout {
+            grid-template-columns: 1fr !important;
+          }
+          
+          .chat-list {
+            height: 300px !important;
+            margin-bottom: 24px;
+          }
+        }
+        
+        @media (max-width: 768px) {
+          .container {
+            padding: 0 16px !important;
+          }
+          
+          .header-nav {
+            gap: 8px !important;
+          }
+        }
+      `}</style>
     </div>
   );
 };
