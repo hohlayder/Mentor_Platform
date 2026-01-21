@@ -131,6 +131,28 @@ const apiFetch = async <T,>(
   }
 };
 
+const getUserAvatarUrl = (avatarUrl?: string | null): string => {
+  if (!avatarUrl) return '';
+
+  if (avatarUrl.startsWith('http')) {
+    return avatarUrl;
+  }
+
+  if (avatarUrl && !avatarUrl.includes('/')) {
+    return `http://localhost:8080/api/v1/files/avatar/${avatarUrl}`;
+  }
+
+  if (avatarUrl.startsWith('/')) {
+    return `http://localhost:8080${avatarUrl}`;
+  }
+
+  if (avatarUrl.startsWith('files/avatar/')) {
+    return `http://localhost:8080/api/v1/${avatarUrl}`;
+  }
+
+  return avatarUrl;
+};
+
 const CourseEnrollPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -234,7 +256,10 @@ const CourseEnrollPage: React.FC = () => {
             `/api/v1/users/${courseData.post.author_id}`,
             { headers }
           );
-          setAuthor(authorData);
+          setAuthor({
+            ...authorData,
+            avatar_url: getUserAvatarUrl(authorData.avatar_url)
+          });
         } catch (err) {
           console.warn('Не удалось загрузить информацию об авторе:', err);
         }
