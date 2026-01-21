@@ -34,11 +34,11 @@ const DEFAULT_TAGS = ['JavaScript', 'React', 'TypeScript', 'Python', 'Java', 'Fr
 
 // Опции сортировки
 const SORT_OPTIONS = [
-  { value: 'created_at-desc', label: '📅 Новые', emoji: '📅' },
-  { value: 'created_at-asc', label: '📅 Старые', emoji: '📅' },
-  { value: 'updated_at-desc', label: '⏰ Недавно обновленные', emoji: '⏰' },
-  { value: 'title-asc', label: '📈 По названию (А-Я)', emoji: '📈' },
-  { value: 'title-desc', label: '📈 По названию (Я-А)', emoji: '📈' },
+  { value: 'created_at-desc', label: 'Новые', emoji: '' },
+  { value: 'created_at-asc', label: 'Старые', emoji: '' },
+  { value: 'updated_at-desc', label: 'Недавно обновленные', emoji: '' },
+  { value: 'title-asc', label: 'По названию (А-Я)', emoji: '' },
+  { value: 'title-desc', label: 'По названию (Я-А)', emoji: '' },
 ];
 
 // Константы
@@ -442,7 +442,7 @@ const CoursesPage: React.FC = () => {
           }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
               <h3 style={{ margin: 0, fontSize: '18px' }}>
-                ⚙️ Фильтры
+                Фильтры
               </h3>
               {(searchQuery || selectedTags.length > 0 || showMyCourses) && (
                 <button 
