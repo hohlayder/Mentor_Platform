@@ -759,7 +759,7 @@ func (h *SessionHandler) DeleteSession(c *gin.Context) {
 		return
 	}
 
-	if slot.MentorID != userId {
+	if slot.MentorID != userId  && session.StudentID != userId{
 		c.JSON(http.StatusForbidden, utils.ErrorResponse{
 			Error:   "FORBIDDEN_ERROR",
 			Message: "Only the mentor can delete a session",
