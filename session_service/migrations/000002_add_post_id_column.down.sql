@@ -1,0 +1,2 @@
+ALTER TABLE slots 
+DROP COLUMN IF EXISTS post_id;
