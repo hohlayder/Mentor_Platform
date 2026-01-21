@@ -124,7 +124,7 @@ func InitRoutes(handlers Handlers) *gin.Engine {
 				slots.POST("", handlers.SessionHandler.CreateSlot)
 				slots.GET("/:id", handlers.SessionHandler.GetSlot)
 				slots.PUT("/:id", handlers.SessionHandler.UpdateSlot)
-				slots.PATCH("/:id/status", handlers.SessionHandler.UpdateSlotStatus)
+				slots.POST("/:id/status", handlers.SessionHandler.UpdateSlotStatus)
 				slots.DELETE("/:id", handlers.SessionHandler.DeleteSlot)
 			}
 			sessions := protected.Group("/sessions")
