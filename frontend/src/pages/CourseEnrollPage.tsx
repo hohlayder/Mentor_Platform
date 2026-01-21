@@ -80,7 +80,7 @@ const apiFetch = async <T,>(
   const baseUrl = 'http://localhost:8080';
   const url = `${baseUrl}${endpoint}`;
   
-  console.log(`🔵 API Request: ${options.method || 'GET'} ${url}`);
+  console.log(`API Request: ${options.method || 'GET'} ${url}`);
   
   const headers: Record<string, string> = {
     'Accept': 'application/json',
@@ -96,7 +96,7 @@ const apiFetch = async <T,>(
       credentials: 'include'
     });
 
-    console.log(`🟢 API Response: ${response.status} ${response.statusText}`);
+    console.log(`API Response: ${response.status} ${response.statusText}`);
 
     if (!response.ok) {
       let errorMessage = `HTTP ${response.status}`;
@@ -121,7 +121,7 @@ const apiFetch = async <T,>(
 
     return response.json();
   } catch (error: any) {
-    console.error(`🔴 API Error:`, error);
+    console.error(`API Error:`, error);
     
     if (error.name === 'TypeError' && error.message === 'Failed to fetch') {
       throw new Error('Не удалось подключиться к серверу. Проверьте:\n1. Запущен ли бэкенд на localhost:8080\n2. Настройки CORS');
@@ -256,7 +256,7 @@ const CourseEnrollPage: React.FC = () => {
 
     setLoadingSlots(true);
     try {
-      console.log('🔵 Загружаем слоты курса...');
+      console.log('Загружаем слоты курса...');
       const slotsData = await apiFetch<{ slots: SlotResponse[]; total: number }>(
         `/api/v1/posts/${id}/slots`,
         {
@@ -264,10 +264,10 @@ const CourseEnrollPage: React.FC = () => {
         }
       );
       
-      console.log(`🟢 Загружено слотов: ${slotsData.slots?.length || 0}`);
+      console.log(`Загружено слотов: ${slotsData.slots?.length || 0}`);
       setSlots(slotsData.slots || []);
     } catch (err: any) {
-      console.error('🔴 Ошибка загрузки слотов:', err);
+      console.error('Ошибка загрузки слотов:', err);
       setSlots([]);
     } finally {
       setLoadingSlots(false);
@@ -279,7 +279,7 @@ const CourseEnrollPage: React.FC = () => {
     if (!user || !token) return;
 
     try {
-      console.log('🔵 Загружаем сессии студента...');
+      console.log('Загружаем сессии студента...');
       const sessionsData = await apiFetch<ListSessionsResponse>(
         `/api/v1/students/${user.user_id}/sessions`,
         {
@@ -287,17 +287,17 @@ const CourseEnrollPage: React.FC = () => {
         }
       );
       
-      console.log(`🟢 Загружено сессий: ${sessionsData.sessions?.length || 0}`);
+      console.log(`Загружено сессий: ${sessionsData.sessions?.length || 0}`);
       setSessions(sessionsData.sessions || []);
     } catch (err: any) {
-      console.error('🔴 Ошибка загрузки сессий:', err);
+      console.error('Ошибка загрузки сессий:', err);
       setSessions([]);
     }
   }, [user, token]);
 
   // ПРЯМОЕ ОБНОВЛЕНИЕ СТАТУСА СЛОТА через /slots/{id}/status
   const updateSlotStatusDirectly = async (slotId: string, newStatus: string) => {
-    console.log(`🔵 Обновляем статус слота ${slotId} на ${newStatus}`);
+    console.log(`Обновляем статус слота ${slotId} на ${newStatus}`);
     setUpdatingSlotStatus(slotId);
     
     try {
@@ -315,7 +315,7 @@ const CourseEnrollPage: React.FC = () => {
         }
       );
       
-      console.log('🟢 Статус слота обновлен:', response);
+      console.log('Статус слота обновлен:', response);
       
       // Сразу обновляем локальное состояние
       setSlots(prev => prev.map(slot => 
@@ -324,7 +324,7 @@ const CourseEnrollPage: React.FC = () => {
       
       return response;
     } catch (err: any) {
-      console.error('🔴 Ошибка обновления статуса:', err);
+      console.error('Ошибка обновления статуса:', err);
       throw err;
     } finally {
       setUpdatingSlotStatus(null);
@@ -376,11 +376,11 @@ const CourseEnrollPage: React.FC = () => {
     setBookingSuccess(false);
 
     try {
-      console.log('🚀 Начинаем процесс бронирования...');
+      console.log('Начинаем процесс бронирования...');
       
       // 1. ПРЯМОЕ обновление статуса слота
       await updateSlotStatusDirectly(selectedSlot, 'booked');
-      console.log('✅ Статус слота обновлен на "booked"');
+      console.log('Статус слота обновлен на "booked"');
       
       // 2. Создаем сессию
       const sessionRequest: CreateSessionRequest = {
@@ -389,7 +389,7 @@ const CourseEnrollPage: React.FC = () => {
         payment_status: 'pending'
       };
       
-      console.log('🔵 Создаем сессию...');
+      console.log('Создаем сессию...');
       await apiFetch(
         '/api/v1/sessions',
         {
@@ -401,7 +401,7 @@ const CourseEnrollPage: React.FC = () => {
           body: JSON.stringify(sessionRequest)
         }
       );
-      console.log('✅ Сессия создана');
+      console.log('Сессия создана');
       
       setBookingSuccess(true);
       
@@ -414,7 +414,7 @@ const CourseEnrollPage: React.FC = () => {
       setSelectedSlot(null);
       
     } catch (err: any) {
-      console.error('❌ Ошибка бронирования:', err);
+      console.error('Ошибка бронирования:', err);
       setBookingError(err.message || 'Ошибка бронирования');
       
       // Попытка отката статуса
@@ -450,7 +450,7 @@ const CourseEnrollPage: React.FC = () => {
         throw new Error('Нельзя отменить чужую запись');
       }
 
-      console.log('🔵 Удаляем сессию...');
+      console.log('Удаляем сессию...');
       await apiFetch(
         `/api/v1/sessions/${sessionId}`,
         {
@@ -458,12 +458,12 @@ const CourseEnrollPage: React.FC = () => {
           headers: { 'Authorization': `Bearer ${token}` }
         }
       );
-      console.log('✅ Сессия удалена');
+      console.log('Сессия удалена');
 
       // ПРЯМОЕ обновление статуса слота обратно
       if (slot.status === 'booked') {
         await updateSlotStatusDirectly(slot.id, 'available');
-        console.log('✅ Статус слота обновлен на "available"');
+        console.log('Статус слота обновлен на "available"');
       }
 
       setCancellingSuccess(true);
@@ -475,7 +475,7 @@ const CourseEnrollPage: React.FC = () => {
       ]);
       
     } catch (err: any) {
-      console.error('❌ Ошибка отмены:', err);
+      console.error('Ошибка отмены:', err);
       setCancellingError(err.message || 'Ошибка отмены');
     } finally {
       setCancellingSession(null);
@@ -523,9 +523,9 @@ const CourseEnrollPage: React.FC = () => {
 
   const getSlotStatusInfo = (slot: SlotResponse) => {
     const statuses = {
-      available: { label: 'Доступен', color: '#10b981', emoji: '🟢', bgColor: 'rgba(16, 185, 129, 0.1)' },
-      booked: { label: 'Забронирован', color: '#f59e0b', emoji: '🟡', bgColor: 'rgba(245, 158, 11, 0.1)' },
-      closed: { label: 'Закрыт', color: '#ef4444', emoji: '🔴', bgColor: 'rgba(239, 68, 68, 0.1)' }
+      available: { label: 'Доступен', color: '#10b981', emoji: '', bgColor: 'rgba(16, 185, 129, 0.1)' },
+      booked: { label: 'Забронирован', color: '#f59e0b', emoji: '', bgColor: 'rgba(245, 158, 11, 0.1)' },
+      closed: { label: 'Закрыт', color: '#ef4444', emoji: '', bgColor: 'rgba(239, 68, 68, 0.1)' }
     };
     return statuses[slot.status as keyof typeof statuses] || statuses.available;
   };
@@ -586,7 +586,6 @@ const CourseEnrollPage: React.FC = () => {
         </header>
         
         <div style={{ textAlign: 'center', padding: '60px 20px' }}>
-          <div style={{ fontSize: '48px', marginBottom: '20px' }}>😞</div>
           <h3 style={{ margin: '0 0 12px 0' }}>Ошибка</h3>
           <p style={{ color: 'var(--muted)', marginBottom: '20px', whiteSpace: 'pre-line' }}>
             {error || 'Курс не найден'}
@@ -632,7 +631,7 @@ const CourseEnrollPage: React.FC = () => {
             Вы не можете записаться на свой курс.
           </p>
           <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
-            <button className="btn btn-primary" onClick={() => navigate(`/course/${id}`)}>
+            <button className="btn btn-primary" onClick={() => navigate(`/courses/${id}`)}>
               Вернуться к курсу
             </button>
           </div>
@@ -654,7 +653,6 @@ const CourseEnrollPage: React.FC = () => {
         </header>
         
         <div style={{ textAlign: 'center', padding: '60px 20px' }}>
-          <div style={{ fontSize: '48px', marginBottom: '20px' }}>🔒</div>
           <h3 style={{ margin: '0 0 12px 0' }}>Необходима авторизация</h3>
           <p style={{ color: 'var(--muted)', marginBottom: '20px' }}>
             Войдите в систему, чтобы записаться на курс
@@ -704,7 +702,7 @@ const CourseEnrollPage: React.FC = () => {
 
         <div style={{ marginBottom: '32px' }}>
           <h1 style={{ margin: '0 0 12px 0', fontSize: '28px' }}>
-            🎓 Запись на курс: {course.title}
+            Запись на курс: {course.title}
           </h1>
           <p style={{ color: 'var(--muted)', fontSize: '16px' }}>
             Выберите удобное время для записи
@@ -731,25 +729,25 @@ const CourseEnrollPage: React.FC = () => {
         {/* Сообщения */}
         {bookingSuccess && (
           <div className="card" style={{ background: 'rgba(34, 197, 94, 0.1)', borderColor: '#10b981', color: '#10b981', marginBottom: '16px' }}>
-            ✅ Запись успешна! Статус слота обновлен через PATCH /slots/{'{id}'}/status
+            Запись успешна!
           </div>
         )}
         
         {cancellingSuccess && (
           <div className="card" style={{ background: 'rgba(245, 158, 11, 0.1)', borderColor: '#f59e0b', color: '#f59e0b', marginBottom: '16px' }}>
-            ✅ Запись отменена! Статус слота обновлен через PATCH /slots/{'{id}'}/status
+            Запись отменена!
           </div>
         )}
         
         {bookingError && (
           <div className="card" style={{ background: 'rgba(239, 68, 68, 0.1)', borderColor: '#ef4444', color: '#ef4444', marginBottom: '16px' }}>
-            ❌ {bookingError}
+            {bookingError}
           </div>
         )}
         
         {cancellingError && (
           <div className="card" style={{ background: 'rgba(239, 68, 68, 0.1)', borderColor: '#ef4444', color: '#ef4444', marginBottom: '16px' }}>
-            ❌ {cancellingError}
+            {cancellingError}
           </div>
         )}
 
@@ -781,7 +779,7 @@ const CourseEnrollPage: React.FC = () => {
               <p style={{ color: 'var(--muted)', marginBottom: '20px' }}>
                 Автор курса еще не создал слоты для записи.
               </p>
-              <button className="btn btn-primary" onClick={() => navigate(`/course/${id}`)}>
+              <button className="btn btn-primary" onClick={() => navigate(`/courses/${id}`)}>
                 Вернуться к курсу
               </button>
             </div>
@@ -896,7 +894,7 @@ const CourseEnrollPage: React.FC = () => {
               {/* Информация о выбранном слоте */}
               {selectedSlotData && !isSlotBookedByStudent(selectedSlotData) && (
                 <div className="card" style={{ marginBottom: '24px', padding: '16px', border: '2px solid var(--accent)' }}>
-                  <h4 style={{ margin: '0 0 12px 0', fontSize: '16px' }}>🎯 Выбранный слот:</h4>
+                  <h4 style={{ margin: '0 0 12px 0', fontSize: '16px' }}>Выбранный слот:</h4>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '16px', alignItems: 'start' }}>
                     <div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
@@ -904,10 +902,10 @@ const CourseEnrollPage: React.FC = () => {
                         <div style={{ fontWeight: 600, fontSize: '15px' }}>{selectedSlotData.title}</div>
                       </div>
                       <div style={{ fontSize: '13px', color: 'var(--muted)', marginBottom: '4px' }}>
-                        📅 {new Date(selectedSlotData.start_time).toLocaleDateString('ru-RU', { weekday: 'long', day: 'numeric', month: 'long' })}
+                        {new Date(selectedSlotData.start_time).toLocaleDateString('ru-RU', { weekday: 'long', day: 'numeric', month: 'long' })}
                       </div>
                       <div style={{ fontSize: '13px', color: 'var(--muted)', marginBottom: '4px' }}>
-                        ⏰ {formatTime(selectedSlotData.start_time)} ({formatDuration(selectedSlotData.duration_minutes)})
+                        {formatTime(selectedSlotData.start_time)} ({formatDuration(selectedSlotData.duration_minutes)})
                       </div>
                       <div style={{ fontSize: '12px', marginTop: '12px', padding: '8px', background: 'rgba(79, 70, 229, 0.1)', borderRadius: '6px' }}>
                         <div style={{ fontWeight: 600, color: 'var(--accent)' }}>Будет использовано:</div>
@@ -934,7 +932,7 @@ const CourseEnrollPage: React.FC = () => {
                   </button>
                 )}
                 
-                <button className="btn btn-ghost" onClick={() => navigate(`/course/${id}`)} style={{ padding: '12px 20px', fontSize: '14px' }}>
+                <button className="btn btn-ghost" onClick={() => navigate(`/courses/${id}`)} style={{ padding: '12px 20px', fontSize: '14px' }}>
                   Вернуться к курсу
                 </button>
               </div>
