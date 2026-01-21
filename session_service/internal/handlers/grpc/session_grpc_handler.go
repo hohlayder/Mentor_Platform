@@ -169,7 +169,24 @@ func (h *SessionHandler) UpdateSession(ctx context.Context, req *sessionv1.Updat
 }
 
 func (h *SessionHandler) DeleteSession(ctx context.Context, req *sessionv1.DeleteSessionRequest) (*sessionv1.DeleteSessionResponse, error) {
-	err := h.sessionService.DeleteSession(ctx, req.SessionId)
+	if req.SessionId == "" {
+		return nil, status.Error(codes.InvalidArgument, "session_id is required")
+	}
+
+	session, err := h.sessionService.GetSession(ctx, req.SessionId)
+	if err != nil {
+		slog.Error("get session before delete failed", "error", err)
+		switch {
+		case errors.Is(err, services.ErrInvalidSessionID):
+			return nil, status.Error(codes.InvalidArgument, err.Error())
+		case errors.Is(err, services.ErrSessionNotFound):
+			return nil, status.Error(codes.NotFound, err.Error())
+		default:
+			return nil, status.Error(codes.Internal, "failed to get session")
+		}
+	}
+
+	err = h.sessionService.DeleteSession(ctx, req.SessionId)
 	if err != nil {
 		slog.Error("session failed", "error", err)
 		switch {
@@ -180,6 +197,11 @@ func (h *SessionHandler) DeleteSession(ctx context.Context, req *sessionv1.Delet
 		default:
 			return nil, status.Error(codes.Internal, "failed to delete session")
 		}
+	}
+
+	if err := h.slotService.UpdateSlotStatus(ctx, session.SlotId, "available"); err != nil {
+		slog.Error("failed to update slot status after session delete", "error", err, "slot_id", session.SlotId)
+		return nil, status.Error(codes.Internal, "failed to update slot status")
 	}
 
 	return &sessionv1.DeleteSessionResponse{

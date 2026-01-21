@@ -301,3 +301,25 @@ func (r *SlotRepository) GetAvailableSlotsByPost(ctx context.Context, postID str
 
     return slots, nil
 }
+
+func (r *SlotRepository) CloseExpiredSlots(ctx context.Context) (int64, error) {
+    query := `
+        UPDATE slots
+        SET status = 'closed',
+            updated_at = NOW()
+        WHERE status IN ('available', 'booked')
+          AND (start_time + (duration_minutes || ' minutes')::interval) <= NOW()
+    `
+
+    result, err := r.db.ExecContext(ctx, query)
+    if err != nil {
+        return 0, fmt.Errorf("failed to close expired slots: %w", err)
+    }
+
+    rowsAffected, err := result.RowsAffected()
+    if err != nil {
+        return 0, fmt.Errorf("failed to get rows affected: %w", err)
+    }
+
+    return rowsAffected, nil
+}
