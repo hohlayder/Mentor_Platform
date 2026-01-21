@@ -95,7 +95,9 @@ func (h *UserHandler) GetUserCount(c *gin.Context) {
         return
     }
 
-    c.JSON(http.StatusOK, count)
+    c.JSON(http.StatusOK, domain.UserCountResponse{
+        UserCount: count,
+    })
 }
 
 // DeleteUser удаляет пользователя
@@ -167,6 +169,7 @@ func (h *UserHandler) GetProfile(c *gin.Context) {
         handleGRPCError(c, err)
         return 
     }
+    slog.Info("check valid data", "profile", profile, "posts", posts)
 
     profileWithPostsInterest := domain.ProfileWithPostsResponse{
         Profile: profile,

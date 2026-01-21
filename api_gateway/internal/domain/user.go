@@ -32,34 +32,34 @@ type GetUserByEmailRequest struct {
 }
 
 type MentorProfile struct {
-	UserID            string  `json:"user_id"`
-	WithdrawalAddress *string `json:"withdrawal_address,omitempty"`
-	Rating            float64 `json:"rating"`
-	Description       *string `json:"description,omitempty"`
-	CreatedAt         time.Time  `json:"created_at"`
+	UserID            string    `json:"user_id"`
+	WithdrawalAddress *string   `json:"withdrawal_address,omitempty"`
+	Rating            float64   `json:"rating"`
+	Description       *string   `json:"description,omitempty"`
+	CreatedAt         time.Time `json:"created_at"`
 }
 
 type StudentProfile struct {
-	UserID                 string  `json:"user_id"`
-	LearningGoals          *string `json:"learning_goals,omitempty"`
-	PreferredLearningStyle *string `json:"preferred_learning_style,omitempty"`
-	CreatedAt              time.Time  `json:"created_at"`
+	UserID                 string    `json:"user_id"`
+	LearningGoals          *string   `json:"learning_goals,omitempty"`
+	PreferredLearningStyle *string   `json:"preferred_learning_style,omitempty"`
+	CreatedAt              time.Time `json:"created_at"`
 }
 
 type TeachingSkill struct {
-	SkillID           string `json:"skill_id"`
-	UserID            string `json:"user_id"`
-	SkillName         string `json:"skill_name"`
-	ProficiencyLevel  string `json:"proficiency_level"`
-	YearsOfExperience int32  `json:"years_of_experience"`
+	SkillID           string    `json:"skill_id"`
+	UserID            string    `json:"user_id"`
+	SkillName         string    `json:"skill_name"`
+	ProficiencyLevel  string    `json:"proficiency_level"`
+	YearsOfExperience int32     `json:"years_of_experience"`
 	CreatedAt         time.Time `json:"created_at"`
 }
 
 type LearningSkill struct {
-	SkillID          string `json:"skill_id"`
-	UserID           string `json:"user_id"`
-	SkillName        string `json:"skill_name"`
-	ProficiencyLevel string `json:"proficiency_level"`
+	SkillID          string    `json:"skill_id"`
+	UserID           string    `json:"user_id"`
+	SkillName        string    `json:"skill_name"`
+	ProficiencyLevel string    `json:"proficiency_level"`
 	CreatedAt        time.Time `json:"created_at"`
 }
 
@@ -116,10 +116,10 @@ type LearningSkillUpdate struct {
 }
 
 type UserCountResponse struct {
-	UserCount string `json:"user_count"`
+	UserCount int64 `json:"user_count"`
 }
 
 type ProfileWithPostsResponse struct {
-	Profile *ProfileResponse
-	Posts *GetFavoritePostsResponse
+	Profile *ProfileResponse `json:"profile"`
+	Posts   *GetFavoritePostsResponse `json:"posts"`
 }

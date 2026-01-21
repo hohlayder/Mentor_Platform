@@ -1,18 +1,74 @@
-// src/pages/EditProfilePage.tsx
 import React, { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '../store/AuthContext'
 
-// Типы на основе Swagger
+// Типы на основе Go структур
 interface User {
   user_id: string
-  email: string
   first_name: string
   last_name: string
-  avatar_url?: string
+  email: string
+  avatar_url?: string | null
   created_at: string
 }
 
+interface MentorProfile {
+  user_id: string
+  description?: string | null
+  rating?: number | null
+  withdrawal_address?: string | null
+  created_at: string
+}
+
+interface StudentProfile {
+  user_id: string
+  learning_goals?: string | null
+  preferred_learning_style?: string | null
+  created_at: string
+}
+
+interface TeachingSkill {
+  skill_id: string
+  skill_name: string
+  proficiency_level: string
+  years_of_experience?: number | null
+  user_id: string
+  created_at: string
+}
+
+interface LearningSkill {
+  skill_id: string
+  skill_name: string
+  proficiency_level: string
+  user_id: string
+  created_at: string
+}
+
+interface ProfileResponse {
+  user: User
+  mentor?: MentorProfile | null
+  student?: StudentProfile | null
+  teaching_skills: TeachingSkill[]
+  learning_skills: LearningSkill[]
+}
+
+interface ProfileWithPostsResponse {
+  Profile?: ProfileResponse
+  profile?: ProfileResponse
+  posts?: {
+    posts: any[]
+    next_page_token?: string
+    total_count: number
+  }
+  // Если данные могут приходить без обертки Profile
+  user?: User
+  mentor?: MentorProfile
+  student?: StudentProfile
+  teaching_skills?: TeachingSkill[]
+  learning_skills?: LearningSkill[]
+}
+
+// Типы для обновления
 interface MentorUpdate {
   description?: string
   withdrawal_address?: string
@@ -43,28 +99,11 @@ interface UpdateProfileRequest {
   teaching_skills?: TeachingSkillsUpdate
 }
 
-interface ProfileResponse {
-  user: User
-  mentor?: {
-    user_id: string
-    description?: string
-    rating?: number
-    withdrawal_address?: string
-    created_at: string
-  }
-  student?: {
-    user_id: string
-    learning_goals?: string
-    preferred_learning_style?: string
-    created_at: string
-  }
-  teaching_skills?: Array<{
-    skill_id: string
-    skill_name: string
-    proficiency_level: string
-    years_of_experience?: number
-    created_at: string
-  }>
+// Тип для ошибок аватара
+interface AvatarErrorResponse {
+  details?: string
+  error?: string
+  message?: string
 }
 
 const EditProfilePage: React.FC = () => {
@@ -73,6 +112,14 @@ const EditProfilePage: React.FC = () => {
   const { user: currentUser, token, setUser } = useAuth()
   const fileInputRef = useRef<HTMLInputElement>(null)
 
+  console.log('🟢 EditProfilePage рендерится!', { 
+    id, 
+    hasToken: !!token, 
+    currentUser: currentUser?.user_id,
+    path: window.location.pathname 
+  });
+
+  
   const [formData, setFormData] = useState<UpdateProfileRequest>({
     first_name: '',
     last_name: '',
@@ -87,23 +134,19 @@ const EditProfilePage: React.FC = () => {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
   
-  // Состояния для переключателей
   const [isMentor, setIsMentor] = useState(false)
   const [isStudent, setIsStudent] = useState(false)
   
-  // Данные ментора (заполняются только если isMentor = true)
   const [mentorData, setMentorData] = useState<MentorUpdate>({
     description: '',
     withdrawal_address: ''
   })
   
-  // Данные студента (заполняются только если isStudent = true)
   const [studentData, setStudentData] = useState<StudentUpdate>({
     learning_goals: '',
     preferred_learning_style: ''
   })
 
-  // Навыки преподавания
   const [teachingSkills, setTeachingSkills] = useState<TeachingSkillUpdate[]>([])
   const [newTeachingSkill, setNewTeachingSkill] = useState<TeachingSkillUpdate>({
     skill_name: '',
@@ -118,6 +161,33 @@ const EditProfilePage: React.FC = () => {
     { value: 'expert', label: 'Эксперт' }
   ]
 
+  // Функция для получения правильного URL аватара
+  const getAvatarUrl = (avatarUrl: string | null | undefined): string => {
+    if (!avatarUrl) return ''
+    
+    // Если URL уже полный (http или https)
+    if (avatarUrl.startsWith('http')) {
+      return avatarUrl
+    }
+    
+    // Если это имя файла
+    if (avatarUrl && !avatarUrl.includes('/')) {
+      return `http://localhost:8080/api/v1/files/avatar/${avatarUrl}`
+    }
+    
+    // Если это относительный путь
+    if (avatarUrl.startsWith('/')) {
+      return `http://localhost:8080${avatarUrl}`
+    }
+    
+    // Если это путь без префикса http
+    if (avatarUrl.startsWith('files/avatar/')) {
+      return `http://localhost:8080/api/v1/${avatarUrl}`
+    }
+    
+    return avatarUrl
+  }
+
   // Проверка прав доступа
   useEffect(() => {
     if (!currentUser || !id || currentUser.user_id !== id) {
@@ -129,70 +199,171 @@ const EditProfilePage: React.FC = () => {
   // Загрузка профиля
   useEffect(() => {
     if (!id || !token) return
-
+    
     const loadProfile = async () => {
       setLoading(true)
       try {
+        console.log(`🔍 Загрузка профиля для редактирования ID: ${id}`)
+        
         const response = await fetch(`http://localhost:8080/api/v1/profiles/${id}`, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
           }
         })
-
+  
         if (!response.ok) {
-          throw new Error('Не удалось загрузить профиль')
+          const errorText = await response.text();
+          console.error('❌ HTTP ошибка:', response.status, errorText);
+          throw new Error(`HTTP ${response.status}: Не удалось загрузить профиль`)
         }
-
-        const data: ProfileResponse = await response.json()
-        setProfile(data)
-
-        // Заполняем форму текущими данными
+  
+        const responseText = await response.text()
+        console.log('✅ Сырой ответ:', responseText)
+        
+        let apiData;
+        try {
+          apiData = JSON.parse(responseText);
+          console.log('✅ Парсинг JSON успешен');
+        } catch (parseError) {
+          console.error('❌ Ошибка парсинга JSON:', parseError)
+          throw new Error('Некорректный ответ от сервера')
+        }
+        
+        // ВАЖНО: Сначала выведем всю структуру ответа
+        console.group('📊 СТРУКТУРА ОТВЕТА API');
+        console.log('Тип данных:', typeof apiData);
+        console.log('Все ключи:', Object.keys(apiData || {}));
+        console.log('Полный ответ:', JSON.stringify(apiData, null, 2));
+        console.groupEnd();
+        
+        // Определяем, где находятся данные профиля
+        let profileData = null;
+        
+        // Вариант 1: Проверяем различные возможные структуры
+        if (apiData && typeof apiData === 'object') {
+          // Самый частый случай: apiData.Profile
+          if (apiData.Profile && typeof apiData.Profile === 'object') {
+            console.log('📌 Используем apiData.Profile');
+            profileData = apiData.Profile;
+          }
+          // Вариант с маленькой буквы
+          else if (apiData.profile && typeof apiData.profile === 'object') {
+            console.log('📌 Используем apiData.profile');
+            profileData = apiData.profile;
+          }
+          // Возможно данные уже в корне
+          else if (apiData.user_id || apiData.first_name || apiData.email) {
+            console.log('📌 Используем корневые данные');
+            profileData = apiData;
+          }
+          // Возможно это уже готовый ProfileResponse
+          else if (apiData.user && typeof apiData.user === 'object') {
+            console.log('📌 apiData это уже ProfileResponse');
+            profileData = apiData;
+          }
+        }
+        
+        if (!profileData) {
+          console.error('❌ Данные профиля не найдены ни в одном формате');
+          console.log('apiData:', apiData);
+          throw new Error('Данные профиля не найдены');
+        }
+        
+        console.log('📌 Найденные данные профиля:', profileData);
+        
+        // Определяем данные пользователя
+        let userData = null;
+        
+        if (profileData.user && typeof profileData.user === 'object') {
+          console.log('📌 Используем profileData.user');
+          userData = profileData.user;
+        } else {
+          console.log('📌 Используем profileData как userData');
+          userData = profileData;
+        }
+        
+        console.log('📌 Данные пользователя:', userData);
+        
+        if (!userData) {
+          console.error('❌ Данные пользователя не найдены');
+          throw new Error('Данные пользователя не найдены');
+        }
+        
+        // Нормализуем данные пользователя
+        const normalizedUser: User = {
+          user_id: userData.user_id || userData.UserID || userData.id || id || '',
+          first_name: userData.first_name || userData.FirstName || '',
+          last_name: userData.last_name || userData.LastName || '',
+          email: userData.email || userData.Email || '',
+          avatar_url: getAvatarUrl(userData.avatar_url || userData.AvatarURL || null),
+          created_at: userData.created_at || userData.CreatedAt || ''
+        };
+        
+        console.log('✅ Нормализованные данные пользователя:', normalizedUser);
+        
+        // Проверяем обязательные поля
+        if (!normalizedUser.user_id || !normalizedUser.first_name) {
+          console.error('❌ Обязательные поля отсутствуют:', normalizedUser);
+          throw new Error('Недостаточно данных пользователя');
+        }
+        
+        // Создаем нормализованный профиль
+        const normalizedProfile: ProfileResponse = {
+          user: normalizedUser,
+          mentor: profileData.mentor || null,
+          student: profileData.student || null,
+          teaching_skills: profileData.teaching_skills || profileData.teachingSkills || [],
+          learning_skills: profileData.learning_skills || profileData.learningSkills || []
+        };
+        
+        console.log('✅ Нормализованный профиль:', normalizedProfile);
+        
+        // Устанавливаем состояние
+        setProfile(normalizedProfile);
         setFormData({
-          first_name: data.user.first_name,
-          last_name: data.user.last_name,
-          email: data.user.email,
-          avatar_url: data.user.avatar_url || ''
-        })
-
-        // Устанавливаем флаги ролей
-        setIsMentor(!!data.mentor)
-        setIsStudent(!!data.student)
-
-        // Заполняем данные ментора если есть
-        if (data.mentor) {
+          first_name: normalizedUser.first_name || '',
+          last_name: normalizedUser.last_name || '',
+          email: normalizedUser.email || '',
+          avatar_url: normalizedUser.avatar_url || ''
+        });
+        setIsMentor(!!normalizedProfile.mentor);
+        setIsStudent(!!normalizedProfile.student);
+        
+        if (normalizedProfile.mentor) {
           setMentorData({
-            description: data.mentor.description || '',
-            withdrawal_address: data.mentor.withdrawal_address || ''
-          })
+            description: normalizedProfile.mentor.description || '',
+            withdrawal_address: normalizedProfile.mentor.withdrawal_address || ''
+          });
         }
-
-        // Заполняем данные студента если есть
-        if (data.student) {
+        
+        if (normalizedProfile.student) {
           setStudentData({
-            learning_goals: data.student.learning_goals || '',
-            preferred_learning_style: data.student.preferred_learning_style || ''
-          })
+            learning_goals: normalizedProfile.student.learning_goals || '',
+            preferred_learning_style: normalizedProfile.student.preferred_learning_style || ''
+          });
         }
-
-        // Заполняем навыки преподавания если есть
-        if (data.teaching_skills) {
-          setTeachingSkills(data.teaching_skills.map(skill => ({
+        
+        if (normalizedProfile.teaching_skills && normalizedProfile.teaching_skills.length > 0) {
+          setTeachingSkills(normalizedProfile.teaching_skills.map(skill => ({
             skill_name: skill.skill_name,
             proficiency_level: skill.proficiency_level,
-            years_of_experience: skill.years_of_experience
-          })))
+            years_of_experience: skill.years_of_experience || undefined
+          })));
         }
-
+        
+        console.log('✅ Профиль успешно загружен!');
+  
       } catch (err: any) {
-        setError(err.message || 'Ошибка загрузки профиля')
+        console.error('❌ Ошибка загрузки профиля:', err);
+        setError(err.message || 'Ошибка загрузки профиля');
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
     }
-
-    loadProfile()
-  }, [id, token])
+  
+    loadProfile();
+  }, [id, token]);
 
   // Обработка изменения базовых полей
   const handleBasicChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -246,68 +417,132 @@ const EditProfilePage: React.FC = () => {
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
-
+  
     // Проверка типа файла
-    if (!file.type.startsWith('image/')) {
-      setError('Пожалуйста, выберите изображение')
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/svg+xml']
+    const fileExtension = file.name.split('.').pop()?.toLowerCase()
+    const allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'svg']
+    
+    if (!allowedTypes.includes(file.type) && !allowedExtensions.includes(fileExtension || '')) {
+      setError('Разрешены только форматы: JPG, JPEG, PNG, GIF, SVG')
       return
     }
-
-    // Проверка размера файла (максимум 5MB)
+  
     if (file.size > 5 * 1024 * 1024) {
       setError('Размер файла не должен превышать 5MB')
       return
     }
-
+  
     setUploading(true)
     setError(null)
-
+  
     try {
-      // Создаем FormData
       const formData = new FormData()
-      formData.append('file', file)
-      formData.append('user_id', id!)
-
-      // Пробуем загрузить на сервер (если есть endpoint)
-      const uploadResponse = await fetch('http://localhost:8080/api/v1/upload/avatar', {
+      formData.append('avatar', file)
+  
+      // ИСПРАВЛЕННЫЙ ЭНДПОИНТ
+      const uploadResponse = await fetch('http://localhost:8080/api/v1/files/avatar', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
         },
         body: formData
       })
-
-      let avatarUrl = ''
-
-      if (uploadResponse.ok) {
-        // Если сервер поддерживает загрузку
-        const uploadData = await uploadResponse.json()
-        avatarUrl = uploadData.url || uploadData.avatar_url
-      } else {
-        // Если нет endpoint для загрузки, создаем локальный URL
-        console.warn('Endpoint загрузки недоступен, используем локальный URL')
-        avatarUrl = URL.createObjectURL(file)
+  
+      let responseData: any;
+      try {
+        responseData = await uploadResponse.json()
+      } catch {
+        throw new Error('Некорректный ответ от сервера')
       }
-
-      // Обновляем в форме
+  
+      if (!uploadResponse.ok) {
+        // Обработка различных ошибок согласно документации
+        let errorMessage = 'Ошибка загрузки аватара'
+        
+        switch (uploadResponse.status) {
+          case 400:
+            errorMessage = responseData.message || 'Неверный формат файла'
+            break
+          case 401:
+            errorMessage = 'Требуется авторизация'
+            break
+          case 413:
+            errorMessage = responseData.message || 'Файл слишком большой'
+            break
+          case 500:
+            errorMessage = responseData.message || 'Ошибка сервера'
+            break
+          default:
+            errorMessage = responseData.message || `Ошибка ${uploadResponse.status}`
+        }
+        
+        throw new Error(errorMessage)
+      }
+  
+      console.log('✅ Ответ от сервера при загрузке аватара:', responseData)
+      
+      // Обрабатываем разные форматы ответа
+      let avatarUrl = responseData.uri || responseData.filename || responseData.url || responseData.avatar_url
+      
+      // Формируем полный URL если нужно
+      avatarUrl = getAvatarUrl(avatarUrl)
+      
+      console.log('✅ Аватар загружен, URL:', avatarUrl)
+      
+      // Обновляем форму
       setFormData(prev => ({
         ...prev,
         avatar_url: avatarUrl
       }))
-
-    } catch (err: any) {
-      console.error('Ошибка загрузки аватара:', err)
-      // В случае ошибки все равно создаем локальный URL для предпросмотра
-      if (file) {
-        const localUrl = URL.createObjectURL(file)
-        setFormData(prev => ({
+  
+      // Также обновляем профиль для немедленного отображения
+      if (profile) {
+        setProfile(prev => prev ? {
           ...prev,
-          avatar_url: localUrl
-        }))
+          user: {
+            ...prev.user,
+            avatar_url: avatarUrl
+          }
+        } : null)
       }
+  
+    } catch (err: any) {
+      console.error('❌ Ошибка загрузки аватара:', err)
+      setError(err.message || 'Ошибка при загрузке аватара')
+      
+      // Локальный URL для предпросмотра (опционально)
+      const localUrl = URL.createObjectURL(file)
+      setFormData(prev => ({
+        ...prev,
+        avatar_url: localUrl
+      }))
+      
+      // Освобождаем память при размонтировании
+      setTimeout(() => URL.revokeObjectURL(localUrl), 1000)
     } finally {
       setUploading(false)
     }
+  }
+
+  // Удаление аватара
+  const handleRemoveAvatar = () => {
+    setFormData(prev => ({
+      ...prev,
+      avatar_url: ''
+    }))
+    
+    if (profile) {
+      setProfile(prev => prev ? {
+        ...prev,
+        user: {
+          ...prev.user,
+          avatar_url: null
+        }
+      } : null)
+    }
+    
+    console.log('✅ Аватар удален локально')
   }
 
   // Отправка формы
@@ -318,59 +553,58 @@ const EditProfilePage: React.FC = () => {
     setSuccess(false)
 
     try {
-      // Подготавливаем данные для отправки
       const updateData: UpdateProfileRequest = {}
 
-      // Базовые поля
-      if (formData.first_name && formData.first_name !== profile?.user.first_name) {
+      // Базовые поля - всегда отправляем если изменились
+      if (formData.first_name !== profile?.user.first_name) {
         updateData.first_name = formData.first_name
       }
-      if (formData.last_name && formData.last_name !== profile?.user.last_name) {
+      if (formData.last_name !== profile?.user.last_name) {
         updateData.last_name = formData.last_name
       }
-      if (formData.email && formData.email !== profile?.user.email) {
+      if (formData.email !== profile?.user.email) {
         updateData.email = formData.email
       }
       if (formData.avatar_url !== profile?.user.avatar_url) {
         updateData.avatar_url = formData.avatar_url
       }
 
-      // Данные ментора (только если галочка установлена)
+      // Данные ментора
       if (isMentor) {
         updateData.mentor_data = {}
-        if (mentorData.description) {
+        if (mentorData.description !== (profile?.mentor?.description || '')) {
           updateData.mentor_data.description = mentorData.description
         }
-        if (mentorData.withdrawal_address) {
+        if (mentorData.withdrawal_address !== (profile?.mentor?.withdrawal_address || '')) {
           updateData.mentor_data.withdrawal_address = mentorData.withdrawal_address
         }
 
-        // Навыки преподавания (только если есть)
         if (teachingSkills.length > 0) {
           updateData.teaching_skills = {
             teaching_skills: teachingSkills
           }
         }
-      } else {
-        // Если галочка снята - удаляем менторские данные
+      } else if (profile?.mentor) {
+        // Если галочка снята, но ментор был - удаляем
         updateData.mentor_data = {}
       }
 
-      // Данные студента (только если галочка установлена)
+      // Данные студента
       if (isStudent) {
         updateData.student_data = {}
-        if (studentData.learning_goals) {
+        if (studentData.learning_goals !== (profile?.student?.learning_goals || '')) {
           updateData.student_data.learning_goals = studentData.learning_goals
         }
-        if (studentData.preferred_learning_style) {
+        if (studentData.preferred_learning_style !== (profile?.student?.preferred_learning_style || '')) {
           updateData.student_data.preferred_learning_style = studentData.preferred_learning_style
         }
-      } else {
-        // Если галочка снята - удаляем студенческие данные
+      } else if (profile?.student) {
+        // Если галочка снята, но студент был - удаляем
         updateData.student_data = {}
       }
 
-      // Отправка запроса
+      console.log('Sending update data:', updateData)
+
       const response = await fetch(`http://localhost:8080/api/v1/profiles/${id}`, {
         method: 'PUT',
         headers: {
@@ -381,14 +615,23 @@ const EditProfilePage: React.FC = () => {
       })
 
       if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.message || 'Ошибка обновления профиля')
+        const errorText = await response.text()
+        console.error('Update error response:', errorText)
+        
+        let errorMessage = 'Ошибка обновления профиля'
+        try {
+          const errorData = JSON.parse(errorText)
+          errorMessage = errorData.message || errorData.error || errorMessage
+        } catch {
+          errorMessage = errorText || errorMessage
+        }
+        
+        throw new Error(errorMessage)
       }
 
       const result = await response.json()
       console.log('Profile updated:', result)
 
-      // Обновляем пользователя в AuthContext
       if (currentUser) {
         const updatedUser = {
           ...currentUser,
@@ -428,6 +671,46 @@ const EditProfilePage: React.FC = () => {
     )
   }
 
+  // Добавляем проверку перед рендерингом формы
+  if (error || !profile || !profile.user) {
+    return (
+      <div className="container">
+        <div style={{ textAlign: 'center', padding: '60px 20px' }}>
+          <div className="logo" style={{ 
+            margin: '0 auto 20px', 
+            background: '#ef4444'
+          }}>
+            <span>⚠️</span>
+          </div>
+          <h3 style={{ margin: '0 0 12px 0' }}>Ошибка</h3>
+          <p style={{ color: 'var(--muted)', marginBottom: '20px' }}>
+            {error || 'Профиль не найден'}
+          </p>
+          <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
+            <button
+              className="btn btn-primary"
+              onClick={() => window.location.reload()}
+            >
+              Попробовать снова
+            </button>
+            <button
+              className="btn btn-ghost"
+              onClick={() => navigate(`/profile/${id}`)}
+            >
+              Назад к профилю
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Безопасное получение данных для отображения
+  const firstNameInitial = formData.first_name?.[0] || profile.user.first_name?.[0] || ''
+  const lastNameInitial = formData.last_name?.[0] || profile.user.last_name?.[0] || ''
+  const initials = `${firstNameInitial}${lastNameInitial}` || 'U'
+  const currentAvatarUrl = getAvatarUrl(formData.avatar_url)
+
   return (
     <div className="container">
       <div style={{ maxWidth: '800px', margin: '0 auto' }}>
@@ -447,7 +730,6 @@ const EditProfilePage: React.FC = () => {
           Обновите информацию о себе. Вы можете быть одновременно и ментором, и студентом.
         </p>
 
-        {/* Уведомления */}
         {success && (
           <div className="card" style={{ 
             marginBottom: '24px',
@@ -483,7 +765,10 @@ const EditProfilePage: React.FC = () => {
             borderColor: 'rgba(239, 68, 68, 0.2)',
             color: '#ef4444'
           }}>
-            {error}
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+              <span style={{ fontSize: '18px' }}>⚠️</span>
+              <div>{error}</div>
+            </div>
           </div>
         )}
 
@@ -551,21 +836,33 @@ const EditProfilePage: React.FC = () => {
                   height: '80px', 
                   borderRadius: '50%',
                   overflow: 'hidden',
-                  background: formData.avatar_url ? 'transparent' : 'linear-gradient(135deg, var(--accent), var(--accent-2))',
+                  background: currentAvatarUrl ? 'transparent' : 'linear-gradient(135deg, var(--accent), var(--accent-2))',
                   display: 'grid',
                   placeContent: 'center',
                   color: '#fff',
                   fontWeight: 600,
                   fontSize: '24px'
                 }}>
-                  {formData.avatar_url ? (
+                  {currentAvatarUrl ? (
                     <img 
-                      src={formData.avatar_url} 
+                      src={currentAvatarUrl} 
                       alt="Аватар" 
                       style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none'
+                        const parent = e.currentTarget.parentElement
+                        if (parent) {
+                          const span = document.createElement('span')
+                          span.style.fontSize = '24px'
+                          span.style.color = '#fff'
+                          span.style.fontWeight = '600'
+                          span.textContent = initials
+                          parent.appendChild(span)
+                        }
+                      }}
                     />
                   ) : (
-                    <span>{formData.first_name?.[0]}{formData.last_name?.[0]}</span>
+                    <span>{initials}</span>
                   )}
                 </div>
 
@@ -574,7 +871,7 @@ const EditProfilePage: React.FC = () => {
                     type="file"
                     ref={fileInputRef}
                     onChange={handleAvatarUpload}
-                    accept="image/*"
+                    accept=".jpg,.jpeg,.png,.gif,.svg,image/jpeg,image/jpg,image/png,image/gif,image/svg+xml"
                     style={{ display: 'none' }}
                   />
                   
@@ -583,17 +880,17 @@ const EditProfilePage: React.FC = () => {
                       type="button"
                       className="btn btn-outline"
                       onClick={() => fileInputRef.current?.click()}
-                      disabled={uploading}
+                      disabled={uploading || saving}
                     >
                       {uploading ? 'Загрузка...' : 'Выбрать файл'}
                     </button>
                     
-                    {formData.avatar_url && (
+                    {currentAvatarUrl && (
                       <button
                         type="button"
                         className="btn btn-ghost"
-                        onClick={() => setFormData(prev => ({ ...prev, avatar_url: '' }))}
-                        disabled={uploading}
+                        onClick={handleRemoveAvatar}
+                        disabled={uploading || saving}
                       >
                         Удалить
                       </button>
@@ -601,8 +898,14 @@ const EditProfilePage: React.FC = () => {
                   </div>
                   
                   <div style={{ fontSize: '13px', color: 'var(--muted)', marginTop: '8px' }}>
-                    Рекомендуемый размер: 300×300 пикселей, формат JPG или PNG
+                    Максимальный размер: 5MB. Разрешенные форматы: JPG, JPEG, PNG, GIF, SVG
                   </div>
+                  
+                  {uploading && (
+                    <div style={{ fontSize: '13px', color: 'var(--accent)', marginTop: '4px' }}>
+                      ⏳ Загружается...
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -667,7 +970,7 @@ const EditProfilePage: React.FC = () => {
               </label>
             </div>
 
-            {/* Менторская информация (раскрывается при активации) */}
+            {/* Менторская информация */}
             {isMentor && (
               <div style={{ 
                 marginTop: '20px', 
@@ -712,7 +1015,6 @@ const EditProfilePage: React.FC = () => {
                     Навыки преподавания
                   </h4>
                   
-                  {/* Существующие навыки */}
                   {teachingSkills.length > 0 && (
                     <div style={{ marginBottom: '16px' }}>
                       <div className="chips">
@@ -743,7 +1045,6 @@ const EditProfilePage: React.FC = () => {
                     </div>
                   )}
 
-                  {/* Форма добавления нового навыка */}
                   <div style={{ 
                     padding: '16px', 
                     background: 'var(--glass)', 
@@ -866,7 +1167,7 @@ const EditProfilePage: React.FC = () => {
               </label>
             </div>
 
-            {/* Студенческая информация (раскрывается при активации) */}
+            {/* Студенческая информация */}
             {isStudent && (
               <div style={{ 
                 marginTop: '20px', 
@@ -920,7 +1221,7 @@ const EditProfilePage: React.FC = () => {
               type="button"
               onClick={() => navigate(`/profile/${id}`)}
               className="btn btn-ghost"
-              disabled={saving}
+              disabled={saving || uploading}
             >
               Отмена
             </button>
@@ -928,7 +1229,7 @@ const EditProfilePage: React.FC = () => {
             <button
               type="submit"
               className="btn btn-primary"
-              disabled={saving}
+              disabled={saving || uploading}
             >
               {saving ? 'Сохранение...' : 'Сохранить изменения'}
             </button>
@@ -936,7 +1237,6 @@ const EditProfilePage: React.FC = () => {
         </form>
       </div>
 
-      {/* Стили для анимации */}
       <style>{`
         @keyframes fadeIn {
           from {

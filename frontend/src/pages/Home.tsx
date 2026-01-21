@@ -34,6 +34,8 @@ export const Home: React.FC = () => {
     courses: true,
     teachers: true
   });
+  const [userCount, setUserCount] = useState<number | null>(null);
+  const [loadingUserCount, setLoadingUserCount] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const { token, user, logout } = useAuth();
@@ -110,6 +112,50 @@ export const Home: React.FC = () => {
       setLoading(prev => ({ ...prev, teachers: false }));
     }
   }, [courses]);
+
+  useEffect(() => {
+    const fetchUserCount = async () => {
+      try {
+        setLoadingUserCount(true);
+        const response = await fetch('http://localhost:8080/api/v1/users/all');
+        
+        if (!response.ok) {
+          throw new Error(`Ошибка загрузки количества пользователей: ${response.status}`);
+        }
+  
+        const data = await response.json();
+        console.log('Полученные данные о пользователях:', data); // Для отладки
+        
+        // Проверяем разные возможные форматы
+        if (typeof data.user_count === 'number') {
+          // Если это число напрямую
+          setUserCount(data.user_count);
+        } else if (typeof data.user_count === 'string') {
+          // Если все-таки строка (как в Swagger)
+          const count = parseInt(data.user_count, 10);
+          if (!isNaN(count)) {
+            setUserCount(count);
+          } else {
+            console.error('Неверный формат user_count (строка не число):', data.user_count);
+            setUserCount(0);
+          }
+        } else if (typeof data === 'number') {
+          // Если API возвращает просто число напрямую
+          setUserCount(data);
+        } else {
+          console.error('Неподдерживаемый формат ответа:', data);
+          setUserCount(0);
+        }
+      } catch (err: any) {
+        console.error('Ошибка загрузки количества пользователей:', err);
+        setUserCount(0); // Устанавливаем 0 вместо null
+      } finally {
+        setLoadingUserCount(false);
+      }
+    };
+  
+    fetchUserCount();
+  }, []);
 
   const toggleTheme = () => {
     const newTheme = theme === "light" ? "dark" : "light";
@@ -332,7 +378,17 @@ export const Home: React.FC = () => {
               <div>Активных менторов</div>
             </div>
             <div>
-              <div style={{ fontSize: '24px', fontWeight: 'bold' }}>Долбанный бекенд</div>
+              {loadingUserCount ? (
+                <div style={{ fontSize: '24px', fontWeight: 'bold', color: 'var(--muted)' }}>
+                  ...
+                </div>
+              ) : userCount !== null ? (
+                <div style={{ fontSize: '24px', fontWeight: 'bold' }}>{userCount}</div>
+              ) : (
+                <div style={{ fontSize: '24px', fontWeight: 'bold', color: 'var(--error)' }}>
+                  0
+                </div>
+              )}
               <div>Пользователей</div>
             </div>
           </div>

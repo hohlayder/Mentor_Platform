@@ -1,6 +1,6 @@
-// hooks/useWebSocket.ts
+// src/hooks/useWebSocket.ts
 import { useEffect, useState, useCallback } from 'react';
-import { websocketService } from './websocket';
+import { websocketService, IncomingMessage, OutgoingMessage } from '../services/websocket';
 
 export const useWebSocket = () => {
   const [isConnected, setIsConnected] = useState(false);
@@ -30,9 +30,13 @@ export const useWebSocket = () => {
     websocketService.sendTextMessage(chatId, content, replyTo);
   }, []);
 
-  const onChatMessage = useCallback((handler: (message: any) => void) => {
+  const sendMessage = useCallback((message: OutgoingMessage) => {
+    websocketService.sendMessage(message);
+  }, []);
+
+  const onChatMessage = useCallback((handler: (message: IncomingMessage) => void) => {
     websocketService.onChatMessage(handler);
-    return () => websocketService.offMessage('chat_message', handler);
+    return () => websocketService.offMessage('message', handler);
   }, []);
 
   const onNotification = useCallback((handler: (notification: any) => void) => {
@@ -45,7 +49,7 @@ export const useWebSocket = () => {
     connect,
     disconnect,
     sendTextMessage,
-    sendMessage: websocketService.sendMessage.bind(websocketService),
+    sendMessage,
     onChatMessage,
     onNotification
   };

@@ -102,11 +102,11 @@ func (r *ChatRepository) GetUserChats(ctx context.Context, userId string, limit 
 }
 
 func (r *ChatRepository) GetChatMessages(ctx context.Context, chatId string, limit int32, cursor *domain.Cursor) (*domain.GetChatMessagesResponse, error) {
-	var messages []domain.Message
+    var messages []domain.Message
 
-	fetchLimit := limit + 1
+    fetchLimit := limit + 1
 
-	query := `
+    query := `
         SELECT *
         FROM direct_messages
         WHERE chat_id = $1
@@ -117,44 +117,62 @@ func (r *ChatRepository) GetChatMessages(ctx context.Context, chatId string, lim
             OR
             ($2::timestamptz IS NULL AND $3::uuid IS NULL)
         )
-        ORDER BY created_at ASC, id ASC
+        ORDER BY created_at DESC, id DESC
         LIMIT $4`
 
-	var cursorTime sql.NullTime
+    var cursorTime sql.NullTime
     var cursorId sql.NullString
     
     if cursor != nil {
         cursorTime = sql.NullTime{Time: cursor.CreatedAt, Valid: true}
         cursorId = sql.NullString{String: cursor.ID.String(), Valid: true}
+        slog.Info("Используем курсор", "cursorTime", cursorTime.Time, "cursorID", cursorId.String)
+    } else {
+        slog.Info("Курсора нет, загружаем самые свежие сообщения")
     }
 
-	err := r.db.SelectContext(ctx, &messages, query, chatId, cursorTime, cursorId, fetchLimit) 
-	if err != nil {
-		return nil, fmt.Errorf("failed to get messages: %w", err)
-	}
+    err := r.db.SelectContext(ctx, &messages, query, chatId, cursorTime, cursorId, fetchLimit) 
+    if err != nil {
+        return nil, fmt.Errorf("failed to get messages: %w", err)
+    }
 
-	messagesWithAttachments, err := r.loadMessageAttachments(ctx, messages)
+    slog.Info("Получено сообщений из БД", "count", len(messages))
+    if len(messages) > 0 {
+        slog.Info("Первое сообщение", "created_at", messages[0].CreatedAt, "id", messages[0].ID)
+        slog.Info("Последнее сообщение", "created_at", messages[len(messages)-1].CreatedAt, "id", messages[len(messages)-1].ID)
+    }
+
+    messagesWithAttachments, err := r.loadMessageAttachments(ctx, messages)
     if err != nil {
         return nil, fmt.Errorf("failed to load attachments: %w", err)
     }
     
-	hasMore := len(messagesWithAttachments) > int(limit)
+    hasMore := len(messagesWithAttachments) > int(limit)
     if hasMore {
         messagesWithAttachments = messagesWithAttachments[:limit] 
     }
 
-    slog.Info("information", "hasMore", hasMore, "message_att", messagesWithAttachments, "limit", limit, "len", len(messagesWithAttachments))
+    // ВАЖНО: Переворачиваем чтобы получить хронологический порядок
+    messagesWithAttachments = reverseMessages(messagesWithAttachments)
+
+    slog.Info("После reverse", "count", len(messagesWithAttachments))
+    if len(messagesWithAttachments) > 0 {
+        slog.Info("Самое старое (первое)", "created_at", messagesWithAttachments[0].CreatedAt, "id", messagesWithAttachments[0].ID)
+        slog.Info("Самое свежее (последнее)", "created_at", messagesWithAttachments[len(messagesWithAttachments)-1].CreatedAt, "id", messagesWithAttachments[len(messagesWithAttachments)-1].ID)
+    }
 
     var nextCursor *domain.Cursor
     if hasMore && len(messagesWithAttachments) > 0 {
-        lastMessage := messagesWithAttachments[len(messagesWithAttachments)-1]
+        // ВАЖНО: Курсор должен быть на САМОМ СТАРОМ сообщении в наборе (первом после reverse)
+        oldestMessage := messagesWithAttachments[0]
         nextCursor = &domain.Cursor{
-            ID:        lastMessage.ID,
-            CreatedAt: lastMessage.CreatedAt,
+            ID:        oldestMessage.ID,
+            CreatedAt: oldestMessage.CreatedAt,
         }
+        slog.Info("Следующий курсор", "cursorID", nextCursor.ID, "cursorTime", nextCursor.CreatedAt)
+    } else {
+        slog.Info("Больше сообщений нет, курсор не возвращаем")
     }
-
-    slog.Info("next cursor", "next_cursor", nextCursor)
     
     return &domain.GetChatMessagesResponse{
         Messages:   messagesWithAttachments,
@@ -309,4 +327,12 @@ func (r *ChatRepository) ValidateMessagesInChat(ctx context.Context, chatID stri
     }
 
     return validMessageIDs, nil
+}
+
+func reverseMessages(messages []domain.Message) []domain.Message {
+    reversed := make([]domain.Message, len(messages))
+    for i, j := 0, len(messages)-1; i < len(messages); i, j = i+1, j-1 {
+        reversed[i] = messages[j]
+    }
+    return reversed
 }
