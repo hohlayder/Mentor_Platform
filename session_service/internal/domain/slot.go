@@ -7,6 +7,7 @@ import (
 type Slot struct {
 	SlotId          string    `db:"id"`
 	MentorId        string    `db:"mentor_id"`
+	PostId          *string   `db:"post_id"`  // Новое поле, может быть nil
 	Title           string    `db:"title"`
 	Description     *string   `db:"description"`
 	StartTime       time.Time `db:"start_time"`
@@ -17,7 +18,6 @@ type Slot struct {
 	CreatedAt       time.Time `db:"created_at"`
 	UpdatedAt       time.Time `db:"updated_at"`
 }
-
 type Session struct {
 	Id            string    `db:"id"`
 	SlotId        string    `db:"slot_id"`
@@ -39,6 +39,7 @@ type SessionUpdate struct {
 
 type SlotUpdate struct {
 	SlotId          string     `db:"slot_id"`
+	PostId          *string    `db:"post_id"`  // Новое поле
 	Title           *string    `db:"title"`
 	Description     *string    `db:"description"`
 	StartTime       *time.Time `db:"start_time"`
