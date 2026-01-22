@@ -81,7 +81,8 @@ func (s *PostService) GetPost(ctx context.Context, postID string) (*domain.Post,
 func (s *PostService) ListPosts(ctx context.Context, req domain.ListPostsRequest) (*domain.ListPostsResponse, error) {
 	var statusEnum postsv1.PostStatus
 	if req.Status != "" {
-		if val, ok := postsv1.PostStatus_value[req.Status]; ok {
+		upperStatus := strings.ToUpper(req.Status)
+		if val, ok := postsv1.PostStatus_value[upperStatus]; ok {
 			statusEnum = postsv1.PostStatus(val)
 		}
 	}
