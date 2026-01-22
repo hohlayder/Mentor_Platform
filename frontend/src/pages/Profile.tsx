@@ -668,13 +668,16 @@ const ProfilePage: React.FC = () => {
         const userId = normalizedData.user?.user_id || id;
         if (normalizedData.mentor || normalizedData.user) {
           try {
+            const isOwnProfile = authUser?.user_id === userId;
             const params = new URLSearchParams({
               author_id: userId,
-              status: 'published',
               page_size: '20',
               sort_field: 'created_at',
               sort_order: 'desc'
             });
+            if (!isOwnProfile) {
+              params.set('status', 'published');
+            }
 
             console.log('Loading courses with params:', params.toString());
             
