@@ -486,7 +486,6 @@ export const Home: React.FC = () => {
               <Link to="/">Главная страница</Link>
               <Link to="/courses">Поиск курсов</Link>
               <Link to="/profile">Профиль</Link>
-              <Link to="/notifications">Уведомления</Link>
             </div>
             <div>
               <h4>Топ категории</h4>
