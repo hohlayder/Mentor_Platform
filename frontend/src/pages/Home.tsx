@@ -520,7 +520,7 @@ export const Home: React.FC = () => {
             color: 'var(--muted)',
             fontSize: '14px'
           }}>
-            © 2025 Mentor Fellowship. Все права защищены.
+            © 2026 Mentor Fellowship. Все права защищены.
           </div>
         </div>
       </footer>

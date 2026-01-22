@@ -140,26 +140,68 @@ const CoursesPage: React.FC = () => {
     
     try {
       // Собираем параметры запроса
-      const params = new URLSearchParams({
+      const baseParams = new URLSearchParams({
         page_size: PAGE_SIZE.toString(),
-        status: 'published', // Только опубликованные курсы
+        status: 'published', // Ð´Ð¾ÑÑÑÐ¿Ð½Ñ ÑÐ¾Ð»ÑÐºÐ¾ Ð¾Ð¿ÑÐ±Ð»Ð¸ÐºÐ¾Ð²Ð°Ð½Ð½ÑÐµ Ð¿Ð¾ÑÑÑ
         ...(searchQuery && { search: searchQuery }),
         ...(selectedTags.length > 0 && { tags: selectedTags.join(',') }),
-        ...(showMyCourses && user && { author_id: user.user_id }), // Фильтр по автору
+        ...(showMyCourses && user && { author_id: user.user_id }), // ÑÐ¾Ð»ÑÐºÐ¾ Ð¼Ð¾Ð¸ ÐºÑÑÑÑ
       });
       
-      // Добавляем сортировку
       const [sortField, sortOrder] = sortBy.split('-') as [SortField, SortOrder];
-      params.append('sort_field', sortField);
-      params.append('sort_order', sortOrder);
+      baseParams.append('sort_field', sortField);
+      baseParams.append('sort_order', sortOrder);
       
-      // Пагинация через page_token
-      const tokenForPage = pageTokens.get(pageNum - 1); // Токен для предыдущей страницы
+      let tokenForPage = pageTokens.get(pageNum - 1);
+      let updatedTokens: Map<number, string> | null = null;
+      
+      if (pageNum > 1 && !tokenForPage) {
+        updatedTokens = new Map(pageTokens);
+        
+        let lastKnownPage = 0;
+        for (const [pageKey] of updatedTokens) {
+          if (pageKey < pageNum && pageKey > lastKnownPage) {
+            lastKnownPage = pageKey;
+          }
+        }
+        
+        let tokenCursor = lastKnownPage > 0 ? updatedTokens.get(lastKnownPage) || '' : '';
+        
+        for (let p = Math.max(1, lastKnownPage + 1); p < pageNum; p++) {
+          const pageParams = new URLSearchParams(baseParams);
+          if (p > 1 && tokenCursor) {
+            pageParams.append('page_token', tokenCursor);
+          }
+          
+          const prefetchResponse = await fetch(`http://localhost:8080/api/v1/posts?${pageParams}`, {
+            headers: {
+              ...(token && { Authorization: `Bearer ${token}` }),
+              'Content-Type': 'application/json',
+            },
+          });
+          
+          if (!prefetchResponse.ok) {
+            break;
+          }
+          
+          const prefetchData: ListPostsResponse = await prefetchResponse.json();
+          if (!prefetchData.next_page_token) {
+            tokenCursor = '';
+            break;
+          }
+          
+          updatedTokens.set(p, prefetchData.next_page_token);
+          tokenCursor = prefetchData.next_page_token;
+        }
+        
+        tokenForPage = updatedTokens.get(pageNum - 1);
+      }
+      
+      const params = new URLSearchParams(baseParams);
       if (pageNum > 1 && tokenForPage) {
         params.append('page_token', tokenForPage);
       }
       
-      // Запрос к API
       const response = await fetch(`http://localhost:8080/api/v1/posts?${params}`, {
         headers: {
           ...(token && { Authorization: `Bearer ${token}` }),
@@ -180,7 +222,13 @@ const CoursesPage: React.FC = () => {
       
       // Сохраняем токен для следующей страницы
       if (data.next_page_token) {
-        setPageTokens(prev => new Map(prev).set(pageNum, data.next_page_token!));
+        setPageTokens(prev => {
+          const next = updatedTokens ? new Map(updatedTokens) : new Map(prev);
+          next.set(pageNum, data.next_page_token!);
+          return next;
+        });
+      } else if (updatedTokens) {
+        setPageTokens(new Map(updatedTokens));
       }
       
       // Обновляем URL с текущими фильтрами

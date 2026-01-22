@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../store/AuthContext';
 import Header from '../components/Header';
@@ -21,6 +21,8 @@ const useTheme = () => {
 
   return { theme, toggleTheme };
 };
+
+const RATINGS_PAGE_SIZE = 10;
 
 // Типы (обновлены в соответствии с документацией)
 interface Post {
@@ -61,6 +63,16 @@ interface User {
   avatar_url?: string;
   created_at: string;
 }
+
+interface Rating {
+  id: string;
+  post_id: string;
+  user_id: string;
+  rate: number;
+  comment?: string;
+  created_at: string;
+}
+
 
 interface APIProfileResponse {
   Profile?: {
@@ -192,7 +204,7 @@ const getAvatarUrl = (avatarUrl: string | null | undefined): string => {
 
 // Вспомогательная функция для получения правильного URL аватара поста
 const getPostAvatarUrl = (postId: string, avatarUrl: string | null | undefined): string => {
-  if (!avatarUrl) return `http://localhost:8080/api/v1/files/posts/avatar/default`;
+  if (!avatarUrl) return '';
   
   // Если URL уже полный (http или https)
   if (avatarUrl.startsWith('http')) {
@@ -460,6 +472,13 @@ const CoursePage: React.FC = () => {
   const [favoriteCount, setFavoriteCount] = useState(0);
   const [isFavorite, setIsFavorite] = useState(false);
   const [favoriteLoading, setFavoriteLoading] = useState(false);
+  const [ratings, setRatings] = useState<Rating[]>([]);
+  const [ratingsNextToken, setRatingsNextToken] = useState<string | null>(null);
+  const [ratingsTotalCount, setRatingsTotalCount] = useState(0);
+  const [ratingsLoading, setRatingsLoading] = useState(false);
+  const [ratingUsers, setRatingUsers] = useState<Record<string, User>>({});
+  const [ratingUsersLoading, setRatingUsersLoading] = useState(false);
+  const [ratingsError, setRatingsError] = useState<string | null>(null);
 
   // Функция для нормализации статуса
   const normalizeStatus = (status: string): 'published' | 'draft' | 'archived' => {
@@ -578,6 +597,114 @@ const CoursePage: React.FC = () => {
       console.error('Ошибка проверки избранного:', err);
     }
   };
+
+  const loadRatingUsers = useCallback(async (userIds: string[]) => {
+    const idsToLoad = Array.from(new Set(userIds)).filter((userId) => userId && !ratingUsers[userId]);
+    if (idsToLoad.length === 0) {
+      return;
+    }
+
+    setRatingUsersLoading(true);
+    try {
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      const results = await Promise.all(
+        idsToLoad.map(async (userId) => {
+          try {
+            const response = await fetch(`http://localhost:8080/api/v1/users/${userId}`, { headers });
+            if (!response.ok) {
+              return null;
+            }
+            const data = await response.json();
+            return data as User;
+          } catch {
+            return null;
+          }
+        })
+      );
+
+      const nextUsers: Record<string, User> = {};
+      for (const userData of results) {
+        if (userData && userData.user_id) {
+          nextUsers[userData.user_id] = userData;
+        }
+      }
+
+      if (Object.keys(nextUsers).length > 0) {
+        setRatingUsers((prev) => ({ ...prev, ...nextUsers }));
+      }
+    } finally {
+      setRatingUsersLoading(false);
+    }
+  }, [ratingUsers, token]);
+
+  const loadRatings = useCallback(async (reset: boolean = false) => {
+    if (!id) return;
+
+    setRatingsLoading(true);
+    setRatingsError(null);
+    if (reset) {
+      setRatings([]);
+      setRatingsNextToken(null);
+    }
+
+    try {
+      const params = new URLSearchParams({
+        page_size: RATINGS_PAGE_SIZE.toString()
+      });
+
+      const pageToken = reset ? null : ratingsNextToken;
+      if (pageToken) {
+        params.append('page_token', pageToken);
+      }
+
+      const response = await fetch(
+        `http://localhost:8080/api/v1/posts/${id}/ratings?${params}`,
+        {
+          headers: {
+            ...(token && { Authorization: `Bearer ${token}` }),
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to load ratings: ${response.status}`);
+      }
+
+      const data = await response.json();
+      const incoming = Array.isArray(data.ratings) ? data.ratings : [];
+
+      setRatings(prev => reset ? incoming : [...prev, ...incoming]);
+      if (incoming.length > 0) {
+        loadRatingUsers(incoming.map((item: any) => item.user_id));
+      }
+      setRatingsNextToken(data.next_page_token || null);
+      setRatingsTotalCount(data.total_count || 0);
+
+      if (typeof data.average_rating === 'number' && typeof data.ratings_count === 'number') {
+        setCourse(prev => prev ? {
+          ...prev,
+          average_rating: data.average_rating,
+          ratings_count: data.ratings_count
+        } : prev);
+      }
+    } catch (err) {
+      console.error('Failed to load ratings:', err);
+      setRatingsError(err instanceof Error ? err.message : 'Failed to load ratings');
+    } finally {
+      setRatingsLoading(false);
+    }
+  }, [id, ratingsNextToken, token, loadRatingUsers]);
+
+
+
+
 
   // Функция добавления в избранное
   const addToFavorite = async () => {
@@ -713,11 +840,7 @@ const CoursePage: React.FC = () => {
             const postAvatarUrl = getPostAvatarUrl(loadedCourse.id, loadedCourse.avatar_url);
             setPostAvatarUrl(postAvatarUrl);
           } else {
-            const postAvatarUrl = `http://localhost:8080/api/v1/files/posts/avatar/default`;
-            const response = await fetch(postAvatarUrl, { method: 'HEAD' });
-            if (response.ok) {
-              setPostAvatarUrl(postAvatarUrl);
-            }
+            setPostAvatarUrl('');
           }
         } catch (err) {
           console.warn('Не удалось загрузить аватар поста:', err);
@@ -811,6 +934,7 @@ const CoursePage: React.FC = () => {
         
         // 6. Проверяем, добавлен ли курс в избранное у пользователя
         await checkIfFavorite();
+        await loadRatings(true);
 
       } catch (err: any) {
         console.error('Ошибка загрузки курса:', err);
@@ -821,13 +945,14 @@ const CoursePage: React.FC = () => {
     };
 
     loadCourse();
-  }, [id, token, navigate]);
+  }, [id, token, navigate, loadRatings]);
 
   // Проверяем, является ли пользователь автором курса
   const isAuthor = user?.user_id === course?.author_id;
   const canEdit = isAuthor && token;
   const canRate = !isAuthor && token;
   const statusInfo = course ? getStatusInfo(course.status) : getStatusInfo('');
+  const reviewsCount = ratingsTotalCount || course?.ratings_count || 0;
 
   // Функции для работы с курсом
   const updateCourseStatus = async (newStatus: 'draft' | 'published' | 'archived') => {
@@ -895,6 +1020,7 @@ const CoursePage: React.FC = () => {
       setRating(0);
       setReview('');
       setActiveTab('reviews');
+      await loadRatings(true);
       showNotification('Спасибо за ваш отзыв!', 'success');
     } catch (err: any) {
       console.error('Ошибка оценки курса:', err);
@@ -1624,7 +1750,7 @@ const CoursePage: React.FC = () => {
               )}
               
               <div>
-                {course.ratings_count && course.ratings_count > 0 ? (
+                {reviewsCount > 0 ? (
                   <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--muted)' }}>
                     <div style={{ fontSize: '48px', marginBottom: '16px' }}>⭐</div>
                     <h4 style={{ margin: '0 0 8px 0', color: 'var(--text)', fontSize: '18px' }}>
@@ -1640,6 +1766,65 @@ const CoursePage: React.FC = () => {
                   </div>
                 )}
               </div>
+
+              {ratingsLoading && ratings.length === 0 && (
+                <div style={{ textAlign: 'center', padding: '20px', color: 'var(--muted)' }}>
+                  Loading reviews...
+                </div>
+              )}
+
+              {ratingsError && (
+                <div style={{ textAlign: 'center', padding: '20px', color: '#ef4444' }}>
+                  {ratingsError}
+                </div>
+              )}
+
+              {ratings.length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '16px' }}>
+                  {ratings.map((item) => (
+                    <div key={item.id} className="card" style={{ padding: '16px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                        <div style={{ fontWeight: 600 }}>
+                          {ratingUsers[item.user_id]
+                            ? `${ratingUsers[item.user_id].first_name || ''} ${ratingUsers[item.user_id].last_name || ''}`.trim() || ratingUsers[item.user_id].email || item.user_id.slice(0, 8)
+                            : item.user_id ? `User ${item.user_id.slice(0, 8)}` : 'User'}
+                        </div>
+                        <div style={{ fontSize: '12px', color: 'var(--muted)' }}>
+                          {item.created_at ? new Date(item.created_at).toLocaleDateString('ru-RU') : ''}
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: item.comment ? '8px' : 0 }}>
+                        <span style={{ fontWeight: 600 }}>
+                          {item.rate}/5
+                        </span>
+                      </div>
+                      {item.comment && (
+                        <div style={{ color: 'var(--text)', lineHeight: 1.5 }}>
+                          {item.comment}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {ratingUsersLoading && ratings.length > 0 && (
+                <div style={{ textAlign: 'center', padding: '8px', color: 'var(--muted)', fontSize: '12px' }}>
+                  Loading reviewer names...
+                </div>
+              )}
+
+                            {ratingsNextToken && !ratingsLoading && (
+                <div style={{ marginTop: '16px', textAlign: 'center' }}>
+                  <button
+                    className="btn btn-outline"
+                    onClick={() => loadRatings()}
+                    style={{ padding: '8px 16px' }}
+                  >
+                    Load more reviews
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>

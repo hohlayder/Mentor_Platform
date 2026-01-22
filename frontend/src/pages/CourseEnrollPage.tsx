@@ -154,6 +154,24 @@ const getUserAvatarUrl = (avatarUrl?: string | null): string => {
   return avatarUrl;
 };
 
+const useTheme = () => {
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    const savedTheme = localStorage.getItem('theme') as 'light' | 'dark';
+    return savedTheme || 'light';
+  });
+
+  useEffect(() => {
+    document.body.setAttribute('data-theme', theme);
+    localStorage.setItem('theme', theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme(prev => prev === 'light' ? 'dark' : 'light');
+  };
+
+  return { theme, toggleTheme };
+};
+
 const CourseEnrollPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -685,7 +703,7 @@ const CourseEnrollPage: React.FC = () => {
           }}>
             {author?.avatar_url ? (
               <img 
-                src={getAvatarUrl(author.avatar_url)} 
+                src={getUserAvatarUrl(author.avatar_url)} 
                 alt={`${author.first_name} ${author.last_name}`}
                 style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                 onError={(e) => {
