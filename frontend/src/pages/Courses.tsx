@@ -16,7 +16,7 @@ interface Post {
   ratings_count: number;
   created_at: string;
   updated_at: string;
-  avatar_url?: string | null; // Добавлено поле для аватара курса
+  avatar_url?: string | null;
 }
 
 // Типы для ответа API
@@ -43,7 +43,7 @@ const SORT_OPTIONS = [
 ];
 
 // Константы
-const PAGE_SIZE = 12; // Фиксированный размер страницы
+const PAGE_SIZE = 12;
 
 // Функция для управления темой
 const useTheme = () => {
@@ -68,27 +68,22 @@ const useTheme = () => {
 const getPostAvatarUrl = (postId: string, avatarUrl?: string | null): string => {
   if (!avatarUrl) return '';
   
-  // Если это уже полный URL, возвращаем как есть
   if (avatarUrl.startsWith('http://') || avatarUrl.startsWith('https://')) {
     return avatarUrl;
   }
   
-  // Если это просто имя файла, формируем URL
   if (!avatarUrl.includes('/')) {
     return `http://localhost:8080/api/v1/files/posts/avatar/${avatarUrl}`;
   }
   
-  // Если это относительный путь
   if (avatarUrl.startsWith('/')) {
     return `http://localhost:8080${avatarUrl}`;
   }
   
-  // Если это путь без префикса http
   if (avatarUrl.startsWith('files/posts/avatar/')) {
     return `http://localhost:8080/api/v1/${avatarUrl}`;
   }
   
-  // По умолчанию используем эндпоинт с post_id
   return `http://localhost:8080/api/v1/files/posts/avatar/${postId}`;
 };
 
@@ -105,7 +100,7 @@ const CoursesPage: React.FC = () => {
   const [showMyCourses, setShowMyCourses] = useState(false);
   const [sortBy, setSortBy] = useState<string>('created_at-desc');
   const [page, setPage] = useState(1);
-  const [pageTokens, setPageTokens] = useState<Map<number, string>>(new Map()); // Храним токены для каждой страницы
+  const [pageTokens, setPageTokens] = useState<Map<number, string>>(new Map());
   
   // Состояние данных
   const [courses, setCourses] = useState<Post[]>([]);
@@ -113,28 +108,59 @@ const CoursesPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [popularTags, setPopularTags] = useState<string[]>(DEFAULT_TAGS);
+
+  // Флаг для предотвращения двойной загрузки
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
   
-  // Извлечение параметров из URL
+  // Инициализация состояния из URL при первом рендере
   useEffect(() => {
+    const search = searchParams.get('search') || '';
     const tagsParam = searchParams.get('tags');
+    const myParam = searchParams.get('my');
+    const pageParam = searchParams.get('page');
+    const sortParam = searchParams.get('sort');
+
+    setSearchQuery(search);
+    
     if (tagsParam) {
       setSelectedTags(tagsParam.split(','));
     }
-    const myCoursesParam = searchParams.get('my');
-    if (myCoursesParam === 'true' && token) {
+    
+    if (myParam === 'true') {
       setShowMyCourses(true);
     }
-    const pageParam = searchParams.get('page');
+    
+    if (sortParam) {
+      setSortBy(sortParam);
+    }
+    
     if (pageParam) {
       const pageNum = parseInt(pageParam, 10);
       if (!isNaN(pageNum) && pageNum > 0) {
         setPage(pageNum);
       }
     }
-  }, [searchParams, token]);
+  }, []);
+
+  // Обновление URL при изменении состояния фильтров
+  useEffect(() => {
+    if (isInitialLoad) {
+      setIsInitialLoad(false);
+      return;
+    }
+
+    const newParams = new URLSearchParams();
+    if (searchQuery) newParams.set('search', searchQuery);
+    if (selectedTags.length > 0) newParams.set('tags', selectedTags.join(','));
+    if (showMyCourses) newParams.set('my', 'true');
+    newParams.set('sort', sortBy);
+    newParams.set('page', page.toString());
+    
+    setSearchParams(newParams, { replace: true });
+  }, [searchQuery, selectedTags, showMyCourses, sortBy, page, setSearchParams, isInitialLoad]);
   
   // Загрузка курсов для конкретной страницы
-  const fetchCourses = useCallback(async (pageNum: number) => {
+  const fetchCourses = useCallback(async (pageNum: number = page) => {
     setIsLoading(true);
     setError(null);
     
@@ -142,62 +168,18 @@ const CoursesPage: React.FC = () => {
       // Собираем параметры запроса
       const baseParams = new URLSearchParams({
         page_size: PAGE_SIZE.toString(),
-        status: 'published', // Ð´Ð¾ÑÑÑÐ¿Ð½Ñ ÑÐ¾Ð»ÑÐºÐ¾ Ð¾Ð¿ÑÐ±Ð»Ð¸ÐºÐ¾Ð²Ð°Ð½Ð½ÑÐµ Ð¿Ð¾ÑÑÑ
+        status: 'published',
         ...(searchQuery && { search: searchQuery }),
         ...(selectedTags.length > 0 && { tags: selectedTags.join(',') }),
-        ...(showMyCourses && user && { author_id: user.user_id }), // ÑÐ¾Ð»ÑÐºÐ¾ Ð¼Ð¾Ð¸ ÐºÑÑÑÑ
+        ...(showMyCourses && user && { author_id: user.user_id }),
       });
       
       const [sortField, sortOrder] = sortBy.split('-') as [SortField, SortOrder];
       baseParams.append('sort_field', sortField);
       baseParams.append('sort_order', sortOrder);
       
-      let tokenForPage = pageTokens.get(pageNum - 1);
-      let updatedTokens: Map<number, string> | null = null;
-      
-      if (pageNum > 1 && !tokenForPage) {
-        updatedTokens = new Map(pageTokens);
-        
-        let lastKnownPage = 0;
-        for (const [pageKey] of updatedTokens) {
-          if (pageKey < pageNum && pageKey > lastKnownPage) {
-            lastKnownPage = pageKey;
-          }
-        }
-        
-        let tokenCursor = lastKnownPage > 0 ? updatedTokens.get(lastKnownPage) || '' : '';
-        
-        for (let p = Math.max(1, lastKnownPage + 1); p < pageNum; p++) {
-          const pageParams = new URLSearchParams(baseParams);
-          if (p > 1 && tokenCursor) {
-            pageParams.append('page_token', tokenCursor);
-          }
-          
-          const prefetchResponse = await fetch(`http://localhost:8080/api/v1/posts?${pageParams}`, {
-            headers: {
-              ...(token && { Authorization: `Bearer ${token}` }),
-              'Content-Type': 'application/json',
-            },
-          });
-          
-          if (!prefetchResponse.ok) {
-            break;
-          }
-          
-          const prefetchData: ListPostsResponse = await prefetchResponse.json();
-          if (!prefetchData.next_page_token) {
-            tokenCursor = '';
-            break;
-          }
-          
-          updatedTokens.set(p, prefetchData.next_page_token);
-          tokenCursor = prefetchData.next_page_token;
-        }
-        
-        tokenForPage = updatedTokens.get(pageNum - 1);
-      }
-      
-      const params = new URLSearchParams(baseParams);
+      // Пагинация через page_token
+      const tokenForPage = pageTokens.get(pageNum - 1);
       if (pageNum > 1 && tokenForPage) {
         params.append('page_token', tokenForPage);
       }
@@ -231,47 +213,32 @@ const CoursesPage: React.FC = () => {
         setPageTokens(new Map(updatedTokens));
       }
       
-      // Обновляем URL с текущими фильтрами
-      const newParams = new URLSearchParams();
-      if (searchQuery) newParams.set('search', searchQuery);
-      if (selectedTags.length > 0) newParams.set('tags', selectedTags.join(','));
-      if (showMyCourses) newParams.set('my', 'true');
-      newParams.set('sort', sortBy);
-      newParams.set('page', pageNum.toString());
-      setSearchParams(newParams);
-      
     } catch (err) {
       console.error('Ошибка при загрузке курсов:', err);
       setError(err instanceof Error ? err.message : 'Неизвестная ошибка');
     } finally {
       setIsLoading(false);
     }
-  }, [searchQuery, selectedTags, showMyCourses, sortBy, token, user, setSearchParams, pageTokens]);
+  }, [searchQuery, selectedTags, showMyCourses, sortBy, token, user, pageTokens, page]);
   
-  // Загружаем курсы при изменении страницы или сбросе фильтров
+  // Загружаем курсы при изменении фильтров или страницы
   useEffect(() => {
-    // Сбрасываем токены при изменении фильтров
-    const shouldReset = searchParams.toString() === '' || 
-                       !searchParams.get('page') || 
-                       page === 1;
-    
-    if (shouldReset) {
-      setPageTokens(new Map());
-    }
-    
-    fetchCourses(page);
-  }, [page]);
-  
-  // Сбрасываем на первую страницу при изменении фильтров
+    // Сбрасываем токены пагинации при изменении фильтров (кроме page)
+    setPageTokens(new Map());
+    fetchCourses(1); // Всегда загружаем первую страницу при изменении фильтров
+  }, [searchQuery, selectedTags, showMyCourses, sortBy]);
+
+  // Загружаем курсы при изменении страницы
   useEffect(() => {
-    if (page !== 1) {
-      setPage(1);
-    } else {
-      // Если уже на первой странице, перезагружаем данные
+    // Не загружаем если это первая страница и фильтры не менялись
+    if (page === 1 && !isInitialLoad) {
+      // Для первой страницы сбрасываем токены и загружаем заново
       setPageTokens(new Map());
       fetchCourses(1);
+    } else if (page > 1) {
+      fetchCourses(page);
     }
-  }, [searchQuery, selectedTags, showMyCourses, sortBy]);
+  }, [page]);
   
   // Получаем популярные теги из существующих курсов
   useEffect(() => {
@@ -325,7 +292,9 @@ const CoursesPage: React.FC = () => {
     setSearchQuery('');
     setSelectedTags([]);
     setShowMyCourses(false);
+    setSortBy('created_at-desc');
     setPage(1);
+    setPageTokens(new Map());
     setSearchParams({});
   }, [setSearchParams]);
   
@@ -343,10 +312,6 @@ const CoursesPage: React.FC = () => {
     setShowMyCourses(prev => !prev);
     setPage(1);
   }, []);
-  
-  const handleLogout = useCallback(() => {
-    logout();
-  }, [logout]);
   
   // Функция для рендеринга изображения курса
   const renderCourseImage = (course: Post) => {
@@ -367,7 +332,6 @@ const CoursesPage: React.FC = () => {
             left: 0
           }}
           onError={(e) => {
-            // Если изображение не загружается, показываем fallback
             e.currentTarget.style.display = 'none';
             const parent = e.currentTarget.parentElement;
             if (parent) {
@@ -393,7 +357,6 @@ const CoursesPage: React.FC = () => {
       );
     }
     
-    // Если нет аватара, показываем градиент с первой буквой
     return (
       <div style={{
         width: '100%',
@@ -417,9 +380,25 @@ const CoursesPage: React.FC = () => {
   // Корректный расчет общего количества страниц
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
   
+  // Обработчики пагинации
+  const handlePrevPage = useCallback(() => {
+    if (page > 1) {
+      setPage(prev => prev - 1);
+    }
+  }, [page]);
+  
+  const handleNextPage = useCallback(() => {
+    if (page < totalPages) {
+      setPage(prev => prev + 1);
+    }
+  }, [page, totalPages]);
+  
+  const handlePageClick = useCallback((pageNum: number) => {
+    setPage(pageNum);
+  }, []);
+  
   return (
     <div className="container" style={{ padding: '0 24px', maxWidth: '1400px' }}>
-      {/* Header */}
       <Header theme={theme} toggleTheme={toggleTheme} />
 
       <nav style={{ marginBottom: '24px', marginTop: '20px' }}>
@@ -428,7 +407,6 @@ const CoursesPage: React.FC = () => {
         <span style={{ color: 'var(--accent)' }}>Курсы</span>
       </nav>
       
-      {/* Основной контент */}
       <div style={{ display: 'flex', gap: '32px', marginTop: '24px' }}>
         {/* Левая панель - Фильтры */}
         <div style={{ 
@@ -438,13 +416,13 @@ const CoursesPage: React.FC = () => {
           height: 'fit-content',
           alignSelf: 'flex-start'
         }}>
-          {/* Блок поиска - компактный */}
+          {/* Блок поиска */}
           <div style={{ 
             marginBottom: '24px',
             background: 'var(--surface)',
             borderRadius: 'var(--radius)',
             padding: '16px',
-            border: '1px solid var(--glass)',
+            border: '1px solid var(--border)',
             boxShadow: 'var(--shadow-sm)'
           }}>
             <div className="search" style={{ margin: 0 }}>
@@ -454,7 +432,15 @@ const CoursesPage: React.FC = () => {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onKeyDown={handleKeyDown}
-                style={{ width: '100%' }}
+                style={{ 
+                  width: '100%',
+                  padding: '10px 14px',
+                  borderRadius: '8px',
+                  border: '1px solid var(--border)',
+                  background: 'var(--surface)',
+                  color: 'var(--text)',
+                  fontSize: '14px'
+                }}
               />
             </div>
           </div>
@@ -464,18 +450,23 @@ const CoursesPage: React.FC = () => {
             background: 'var(--surface)',
             borderRadius: 'var(--radius)',
             padding: '20px',
-            border: '1px solid var(--glass)',
+            border: '1px solid var(--border)',
             boxShadow: 'var(--shadow-sm)'
           }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
-              <h3 style={{ margin: 0, fontSize: '18px' }}>
+              <h3 style={{ margin: 0, fontSize: '18px', color: 'var(--text)' }}>
                 Фильтры
               </h3>
               {(searchQuery || selectedTags.length > 0 || showMyCourses) && (
                 <button 
                   className="btn btn-ghost" 
                   onClick={handleClearFilters}
-                  style={{ fontSize: '13px', padding: '5px 10px' }}
+                  style={{ 
+                    fontSize: '13px', 
+                    padding: '5px 10px',
+                    color: 'var(--muted)',
+                    border: '1px solid var(--border)'
+                  }}
                 >
                   Сбросить
                 </button>
@@ -493,7 +484,7 @@ const CoursesPage: React.FC = () => {
                   padding: '10px',
                   borderRadius: '10px',
                   background: showMyCourses ? 'var(--accent-light)' : 'transparent',
-                  border: `1px solid ${showMyCourses ? 'var(--accent)' : 'var(--glass)'}`,
+                  border: `1px solid ${showMyCourses ? 'var(--accent)' : 'var(--border)'}`,
                   cursor: 'pointer',
                   transition: 'all var(--transition)'
                 }} onClick={toggleMyCourses}>
@@ -511,7 +502,10 @@ const CoursesPage: React.FC = () => {
                       <span style={{ color: 'white', fontSize: '12px' }}>✓</span>
                     )}
                   </div>
-                  <span style={{ fontWeight: showMyCourses ? 600 : 400 }}>
+                  <span style={{ 
+                    fontWeight: showMyCourses ? 600 : 400,
+                    color: 'var(--text)'
+                  }}>
                     👤 Мои курсы
                   </span>
                 </div>
@@ -541,7 +535,13 @@ const CoursesPage: React.FC = () => {
                     key={tag}
                     className={`chip ${selectedTags.includes(tag) ? 'active' : ''}`}
                     onClick={() => handleTagToggle(tag)}
-                    style={{ fontSize: '13px', padding: '6px 10px' }}
+                    style={{ 
+                      fontSize: '13px', 
+                      padding: '6px 10px',
+                      background: selectedTags.includes(tag) ? 'var(--chip-active-bg)' : 'var(--chip-bg)',
+                      color: selectedTags.includes(tag) ? 'var(--chip-active-text)' : 'var(--chip-text)',
+                      border: `1px solid ${selectedTags.includes(tag) ? 'var(--chip-active-bg)' : 'var(--chip-border)'}`
+                    }}
                   >
                     {tag}
                   </button>
@@ -564,14 +564,26 @@ const CoursesPage: React.FC = () => {
                   style={{ 
                     flex: 1, 
                     padding: '8px 12px',
-                    fontSize: '14px'
+                    fontSize: '14px',
+                    borderRadius: '8px',
+                    border: '1px solid var(--border)',
+                    background: 'var(--surface)',
+                    color: 'var(--text)'
                   }}
                 />
                 <button 
                   className="btn btn-primary"
                   onClick={handleAddCustomTag}
                   disabled={!customTag.trim()}
-                  style={{ padding: '8px 12px', fontSize: '14px' }}
+                  style={{ 
+                    padding: '8px 12px', 
+                    fontSize: '14px',
+                    background: 'var(--accent)',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '8px',
+                    cursor: 'pointer'
+                  }}
                 >
                   +
                 </button>
@@ -594,7 +606,10 @@ const CoursesPage: React.FC = () => {
                         alignItems: 'center', 
                         gap: '6px',
                         padding: '6px 10px',
-                        fontSize: '13px'
+                        fontSize: '13px',
+                        background: 'var(--chip-active-bg)',
+                        color: 'var(--chip-active-text)',
+                        border: '1px solid var(--chip-active-bg)'
                       }}
                     >
                       {tag}
@@ -606,7 +621,8 @@ const CoursesPage: React.FC = () => {
                           cursor: 'pointer', 
                           padding: '0', 
                           color: 'inherit',
-                          fontSize: '12px'
+                          fontSize: '12px',
+                          opacity: 0.7
                         }}
                       >
                         ✕
@@ -620,20 +636,66 @@ const CoursesPage: React.FC = () => {
             {/* Статистика */}
             <div style={{ 
               padding: '16px', 
-              background: 'var(--accent-lightest)',
+              background: 'var(--card-bg)',
               borderRadius: '8px',
-              border: '1px solid var(--glass)',
-              fontSize: '13px'
+              border: '1px solid var(--border)',
+              fontSize: '13px',
+              color: 'var(--text)'
             }}>
-              <div style={{ color: 'var(--muted)', marginBottom: '8px' }}>
-                Информация
+              <div style={{ 
+                color: 'var(--muted)', 
+                marginBottom: '8px',
+                fontWeight: 500,
+                fontSize: '13px'
+              }}>
+                📊 Информация
               </div>
-              <div style={{ fontSize: '12px', lineHeight: '1.5' }}>
-                <div>• Всего курсов: <strong>{totalCount}</strong></div>
-                <div>• На странице: <strong>{PAGE_SIZE}</strong></div>
-                <div>• Страница: <strong>{page} из {totalPages}</strong></div>
-                <div>• Показано: <strong>{courses.length}</strong></div>
-                {showMyCourses && <div>• Режим: <strong>👤 Мои курсы</strong></div>}
+              <div style={{ 
+                fontSize: '12px', 
+                lineHeight: '1.5',
+                color: 'var(--text-secondary)'
+              }}>
+                <div style={{ marginBottom: '6px', display: 'flex', justifyContent: 'space-between' }}>
+                  <span>Всего курсов:</span>
+                  <strong style={{ color: 'var(--text)' }}>{totalCount}</strong>
+                </div>
+                <div style={{ marginBottom: '6px', display: 'flex', justifyContent: 'space-between' }}>
+                  <span>На странице:</span>
+                  <strong style={{ color: 'var(--text)' }}>{PAGE_SIZE}</strong>
+                </div>
+                <div style={{ marginBottom: '6px', display: 'flex', justifyContent: 'space-between' }}>
+                  <span>Страница:</span>
+                  <strong style={{ color: 'var(--text)' }}>{page} из {totalPages}</strong>
+                </div>
+                <div style={{ marginBottom: '6px', display: 'flex', justifyContent: 'space-between' }}>
+                  <span>Показано:</span>
+                  <strong style={{ color: 'var(--text)' }}>{courses.length}</strong>
+                </div>
+                {showMyCourses && (
+                  <div style={{ 
+                    marginTop: '10px', 
+                    paddingTop: '10px', 
+                    borderTop: '1px solid var(--border)',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center'
+                  }}>
+                    <span>Режим:</span>
+                    <span style={{ 
+                      background: 'var(--accent-light)',
+                      color: 'var(--accent)',
+                      padding: '3px 10px',
+                      borderRadius: '12px',
+                      fontSize: '11px',
+                      fontWeight: 600,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px'
+                    }}>
+                      👤 Мои курсы
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -650,15 +712,16 @@ const CoursesPage: React.FC = () => {
             padding: '16px 20px',
             background: 'var(--surface)',
             borderRadius: 'var(--radius)',
+            border: '1px solid var(--border)',
             boxShadow: 'var(--shadow-sm)'
           }}>
             <div>
-              <h2 style={{ margin: 0, fontSize: '20px', fontWeight: 700 }}>
+              <h2 style={{ margin: 0, fontSize: '20px', fontWeight: 700, color: 'var(--text)' }}>
                 {showMyCourses ? 'Мои курсы' : 'Все курсы'}
               </h2>
               {courses.length > 0 && (
                 <div style={{ fontSize: '14px', color: 'var(--muted)', marginTop: '4px' }}>
-                  Показано <strong>{courses.length}</strong> из <strong>{totalCount}</strong> курсов • Страница <strong>{page}</strong> из <strong>{totalPages}</strong>
+                  Показано <strong style={{ color: 'var(--text)' }}>{courses.length}</strong> из <strong style={{ color: 'var(--text)' }}>{totalCount}</strong> курсов • Страница <strong style={{ color: 'var(--text)' }}>{page}</strong> из <strong style={{ color: 'var(--text)' }}>{totalPages}</strong>
                 </div>
               )}
             </div>
@@ -674,8 +737,8 @@ const CoursesPage: React.FC = () => {
                 style={{
                   padding: '8px 12px',
                   borderRadius: '8px',
-                  border: '1px solid var(--glass)',
-                  background: 'transparent',
+                  border: '1px solid var(--border)',
+                  background: 'var(--surface)',
                   color: 'var(--text)',
                   cursor: 'pointer',
                   fontSize: '14px',
@@ -698,18 +761,18 @@ const CoursesPage: React.FC = () => {
               padding: '80px 20px',
               background: 'var(--surface)',
               borderRadius: 'var(--radius)',
-              border: '1px solid var(--glass)'
+              border: '1px solid var(--border)'
             }}>
               <div style={{ 
                 width: '60px', 
                 height: '60px', 
-                border: '3px solid var(--glass)',
+                border: '3px solid var(--border)',
                 borderTopColor: 'var(--accent)',
                 borderRadius: '50%',
                 margin: '0 auto 24px',
                 animation: 'spin 1s linear infinite'
               }} />
-              <h3 style={{ marginBottom: '12px', fontSize: '18px' }}>⏳ Загружаем курсы...</h3>
+              <h3 style={{ marginBottom: '12px', fontSize: '18px', color: 'var(--text)' }}>⏳ Загружаем курсы...</h3>
               <p style={{ color: 'var(--muted)', fontSize: '14px' }}>
                 {showMyCourses ? 'Ищем ваши курсы...' : 'Загружаем каталог курсов...'}
               </p>
@@ -722,25 +785,39 @@ const CoursesPage: React.FC = () => {
               padding: '40px', 
               background: 'var(--surface)', 
               borderRadius: 'var(--radius)',
-              border: '1px solid var(--glass)',
+              border: '1px solid var(--border)',
               textAlign: 'center',
               marginBottom: '24px'
             }}>
               <div style={{ fontSize: '64px', marginBottom: '20px' }}>😞</div>
-              <h3 style={{ marginBottom: '12px', fontSize: '20px' }}>Произошла ошибка</h3>
+              <h3 style={{ marginBottom: '12px', fontSize: '20px', color: 'var(--text)' }}>Произошла ошибка</h3>
               <p style={{ color: '#EF4444', marginBottom: '24px', fontSize: '15px' }}>{error}</p>
               <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
                 <button 
                   className="btn btn-primary" 
                   onClick={() => fetchCourses(page)}
-                  style={{ padding: '10px 20px' }}
+                  style={{ 
+                    padding: '10px 20px',
+                    background: 'var(--accent)',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '8px',
+                    cursor: 'pointer'
+                  }}
                 >
                   🔄 Попробовать снова
                 </button>
                 <button 
                   className="btn btn-ghost" 
                   onClick={handleClearFilters}
-                  style={{ padding: '10px 20px' }}
+                  style={{ 
+                    padding: '10px 20px',
+                    background: 'transparent',
+                    color: 'var(--text)',
+                    border: '1px solid var(--border)',
+                    borderRadius: '8px',
+                    cursor: 'pointer'
+                  }}
                 >
                   Сбросить фильтры
                 </button>
@@ -765,10 +842,14 @@ const CoursesPage: React.FC = () => {
                       style={{ 
                         cursor: 'pointer',
                         position: 'relative',
-                        border: isMyCourse ? '2px solid var(--accent)' : undefined,
+                        border: isMyCourse ? '2px solid var(--accent)' : '1px solid var(--border)',
                         height: '100%',
                         display: 'flex',
-                        flexDirection: 'column'
+                        flexDirection: 'column',
+                        background: 'var(--surface)',
+                        borderRadius: '12px',
+                        overflow: 'hidden',
+                        transition: 'all 0.3s ease'
                       }}
                     >
                       {/* Бейдж "Мой курс" */}
@@ -792,14 +873,12 @@ const CoursesPage: React.FC = () => {
                         </div>
                       )}
                       
-                      {/* Заголовок курса с цветным фоном или аватаром */}
                       <div style={{
                         height: '160px',
                         width: '100%',
                         position: 'relative',
                         overflow: 'hidden'
                       }}>
-                        {/* Изображение курса */}
                         {renderCourseImage(course)}
                         
                         {/* Рейтинг */}
@@ -817,7 +896,8 @@ const CoursesPage: React.FC = () => {
                             gap: '6px',
                             backdropFilter: 'blur(4px)',
                             fontWeight: 600,
-                            zIndex: 2
+                            zIndex: 2,
+                            color: 'white'
                           }}>
                             <span>⭐</span>
                             <span>{course.average_rating.toFixed(1)}</span>
@@ -836,15 +916,15 @@ const CoursesPage: React.FC = () => {
                           fontSize: '18px',
                           lineHeight: '1.4',
                           fontWeight: 700,
-                          marginBottom: '12px'
+                          marginBottom: '12px',
+                          color: 'var(--text)'
                         }}>
                           {course.title}
                         </h3>
                         
-                        {/* Краткое описание */}
                         <p style={{ 
                           fontSize: '14px', 
-                          color: 'var(--muted)',
+                          color: 'var(--text-secondary)',
                           margin: '0 0 16px 0',
                           lineHeight: '1.5',
                           flex: 1,
@@ -867,7 +947,11 @@ const CoursesPage: React.FC = () => {
                                 style={{ 
                                   fontSize: '12px',
                                   padding: '5px 10px',
-                                  marginBottom: '8px'
+                                  marginBottom: '8px',
+                                  marginRight: '6px',
+                                  background: 'var(--chip-bg)',
+                                  color: 'var(--chip-text)',
+                                  border: '1px solid var(--chip-border)'
                                 }}
                                 onClick={(e) => {
                                   e.stopPropagation();
@@ -883,7 +967,10 @@ const CoursesPage: React.FC = () => {
                                 style={{ 
                                   fontSize: '12px',
                                   padding: '5px 10px',
-                                  marginBottom: '8px'
+                                  marginBottom: '8px',
+                                  background: 'var(--chip-bg)',
+                                  color: 'var(--chip-text)',
+                                  border: '1px solid var(--chip-border)'
                                 }}
                               >
                                 +{course.tags.length - 4}
@@ -900,9 +987,14 @@ const CoursesPage: React.FC = () => {
                           marginTop: '16px',
                           fontSize: '13px',
                           paddingTop: '16px',
-                          borderTop: '1px solid var(--glass)'
+                          borderTop: '1px solid var(--border)'
                         }}>
-                          <span style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--muted)' }}>
+                          <span style={{ 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            gap: '6px', 
+                            color: 'var(--muted)' 
+                          }}>
                             <span>📅</span>
                             {new Date(course.created_at).toLocaleDateString('ru-RU')}
                           </span>
@@ -910,7 +1002,8 @@ const CoursesPage: React.FC = () => {
                             display: 'flex',
                             alignItems: 'center',
                             gap: '6px',
-                            fontWeight: 600
+                            fontWeight: 600,
+                            color: 'var(--text)'
                           }}>
                             {course.ratings_count > 0 ? (
                               <>
@@ -939,18 +1032,23 @@ const CoursesPage: React.FC = () => {
                   padding: '24px',
                   background: 'var(--surface)',
                   borderRadius: 'var(--radius)',
-                  border: '1px solid var(--glass)'
+                  border: '1px solid var(--border)'
                 }}>
                   <button
-                    className="btn btn-ghost"
-                    onClick={() => setPage(p => Math.max(1, p - 1))}
+                    onClick={handlePrevPage}
                     disabled={page === 1}
                     style={{ 
                       padding: '10px 20px',
                       display: 'flex',
                       alignItems: 'center',
                       gap: '8px',
-                      fontSize: '15px'
+                      fontSize: '15px',
+                      background: 'transparent',
+                      color: 'var(--text)',
+                      border: '1px solid var(--border)',
+                      borderRadius: '8px',
+                      cursor: page === 1 ? 'not-allowed' : 'pointer',
+                      opacity: page === 1 ? 0.5 : 1
                     }}
                   >
                     ◀️ Назад
@@ -960,18 +1058,15 @@ const CoursesPage: React.FC = () => {
                     {(() => {
                       const pages = [];
                       
-                      // Всегда показываем первую страницу
                       if (page > 3) {
                         pages.push(1);
                         if (page > 4) pages.push('...');
                       }
                       
-                      // Показываем страницы вокруг текущей
                       for (let i = Math.max(1, page - 2); i <= Math.min(totalPages, page + 2); i++) {
                         pages.push(i);
                       }
                       
-                      // Всегда показываем последнюю страницу
                       if (page < totalPages - 2) {
                         if (page < totalPages - 3) pages.push('...');
                         pages.push(totalPages);
@@ -993,12 +1088,16 @@ const CoursesPage: React.FC = () => {
                         ) : (
                           <button
                             key={pageNum}
-                            className={`btn ${page === pageNum ? 'btn-primary' : 'btn-ghost'}`}
-                            onClick={() => setPage(pageNum as number)}
+                            onClick={() => handlePageClick(pageNum as number)}
                             style={{ 
                               padding: '10px 16px',
                               minWidth: '44px',
-                              fontSize: '15px'
+                              fontSize: '15px',
+                              background: page === pageNum ? 'var(--accent)' : 'transparent',
+                              color: page === pageNum ? 'white' : 'var(--text)',
+                              border: `1px solid ${page === pageNum ? 'var(--accent)' : 'var(--border)'}`,
+                              borderRadius: '8px',
+                              cursor: 'pointer'
                             }}
                           >
                             {pageNum}
@@ -1009,15 +1108,20 @@ const CoursesPage: React.FC = () => {
                   </div>
                   
                   <button
-                    className="btn btn-ghost"
-                    onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                    onClick={handleNextPage}
                     disabled={page === totalPages}
                     style={{ 
                       padding: '10px 20px',
                       display: 'flex',
                       alignItems: 'center',
                       gap: '8px',
-                      fontSize: '15px'
+                      fontSize: '15px',
+                      background: 'transparent',
+                      color: 'var(--text)',
+                      border: '1px solid var(--border)',
+                      borderRadius: '8px',
+                      cursor: page === totalPages ? 'not-allowed' : 'pointer',
+                      opacity: page === totalPages ? 0.5 : 1
                     }}
                   >
                     Вперед ▶️
@@ -1031,12 +1135,15 @@ const CoursesPage: React.FC = () => {
           {!isLoading && !error && courses.length === 0 && (
             <div className="empty-state" style={{ 
               padding: '60px 40px',
-              textAlign: 'center'
+              textAlign: 'center',
+              background: 'var(--surface)',
+              borderRadius: 'var(--radius)',
+              border: '1px solid var(--border)'
             }}>
               <div style={{ fontSize: '80px', marginBottom: '24px' }}>
                 {showMyCourses ? '📭' : '🔍'}
               </div>
-              <h3 style={{ marginBottom: '16px', fontSize: '24px' }}>
+              <h3 style={{ marginBottom: '16px', fontSize: '24px', color: 'var(--text)' }}>
                 {showMyCourses ? 'У вас пока нет курсов' : 'Курсы не найдены'}
               </h3>
               <p style={{ 
@@ -1054,7 +1161,19 @@ const CoursesPage: React.FC = () => {
               
               {!showMyCourses && (
                 <div style={{ marginTop: '24px' }}>
-                  <Link to="/courses/new" className="btn btn-primary" style={{ padding: '12px 24px' }}>
+                  <Link 
+                    to="/courses/new" 
+                    className="btn btn-primary" 
+                    style={{ 
+                      padding: '12px 24px',
+                      background: 'var(--accent)',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '8px',
+                      textDecoration: 'none',
+                      display: 'inline-block'
+                    }}
+                  >
                     + Создать новый курс
                   </Link>
                 </div>
@@ -1064,7 +1183,7 @@ const CoursesPage: React.FC = () => {
         </div>
       </div>
       
-      {/* CSS для анимации спиннера */}
+      {/* CSS для анимации спиннера и темы */}
       <style>{`
         @keyframes spin {
           0% { transform: rotate(0deg); }
@@ -1075,6 +1194,96 @@ const CoursesPage: React.FC = () => {
           transform: translateY(-8px);
           box-shadow: 0 16px 32px rgba(0, 0, 0, 0.12);
           transition: transform var(--transition), box-shadow var(--transition);
+        }
+        
+        /* CSS переменные для темной темы */
+        [data-theme="dark"] {
+          --card-bg: #1e1e2e;
+          --border: #313244;
+          --text: #cdd6f4;
+          --text-secondary: #a6adc8;
+          --muted: #6c7086;
+          --accent: #89b4fa;
+          --accent-light: rgba(137, 180, 250, 0.1);
+          --accent-2: #f5c2e7;
+          --accent-dark: #74c7ec;
+          --accent-lightest: rgba(137, 180, 250, 0.05);
+          --surface: #181825;
+          --glass: rgba(30, 30, 46, 0.5);
+          --chip-bg: #313244;
+          --chip-text: #a6adc8;
+          --chip-border: #45475a;
+          --chip-active-bg: #89b4fa;
+          --chip-active-text: #1e1e2e;
+          --radius: 12px;
+          --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.2);
+          --transition: 0.2s ease;
+        }
+        
+        [data-theme="light"] {
+          --card-bg: #f8f9fa;
+          --border: #e1e4e8;
+          --text: #212529;
+          --text-secondary: #495057;
+          --muted: #6c757d;
+          --accent: #007bff;
+          --accent-light: rgba(0, 123, 255, 0.1);
+          --accent-2: #6f42c1;
+          --accent-dark: #0056b3;
+          --accent-lightest: rgba(0, 123, 255, 0.05);
+          --surface: #ffffff;
+          --glass: rgba(255, 255, 255, 0.5);
+          --chip-bg: #f1f3f5;
+          --chip-text: #495057;
+          --chip-border: #dee2e6;
+          --chip-active-bg: #007bff;
+          --chip-active-text: #ffffff;
+          --radius: 12px;
+          --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.05);
+          --transition: 0.2s ease;
+        }
+        
+        /* Стили для чипсов (тегов) */
+        .chip {
+          display: inline-block;
+          padding: 6px 10px;
+          border-radius: 16px;
+          font-size: 13px;
+          font-weight: 500;
+          background: var(--chip-bg);
+          color: var(--chip-text);
+          border: 1px solid var(--chip-border);
+          cursor: pointer;
+          transition: all 0.2s ease;
+          text-decoration: none;
+          user-select: none;
+        }
+        
+        .chip:hover {
+          background: var(--accent-light);
+          color: var(--accent);
+          border-color: var(--accent);
+          transform: translateY(-1px);
+        }
+        
+        .chip.active {
+          background: var(--chip-active-bg);
+          color: var(--chip-active-text);
+          border-color: var(--chip-active-bg);
+          font-weight: 600;
+        }
+        
+        .chip.active:hover {
+          background: var(--accent-dark);
+          border-color: var(--accent-dark);
+          color: var(--chip-active-text);
+        }
+        
+        /* Стили для сетки курсов */
+        .courses-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+          gap: 24px;
         }
         
         /* Адаптивность */
