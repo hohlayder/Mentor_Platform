@@ -665,7 +665,7 @@ const CourseEnrollPage: React.FC = () => {
         <span style={{ margin: '0 8px', color: 'var(--muted)' }}>/</span>
         <Link to="/courses" style={{ color: 'var(--muted)' }}>Курсы</Link>
         <span style={{ margin: '0 8px', color: 'var(--muted)' }}>/</span>
-        <Link to={`/course/${id}`} style={{ color: 'var(--muted)' }}>{course.title}</Link>
+        <Link to={`/courses/${id}`} style={{ color: 'var(--muted)' }}>{course.title}</Link>
         <span style={{ margin: '0 8px', color: 'var(--muted)' }}>/</span>
         <span style={{ color: 'var(--accent)' }}>Запись</span>
       </nav>

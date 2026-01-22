@@ -698,7 +698,7 @@ const CoursesPage: React.FC = () => {
                 fontWeight: 500,
                 fontSize: '13px'
               }}>
-                📊 Информация
+                Информация
               </div>
               <div style={{ 
                 fontSize: '12px', 
@@ -839,7 +839,6 @@ const CoursesPage: React.FC = () => {
               textAlign: 'center',
               marginBottom: '24px'
             }}>
-              <div style={{ fontSize: '64px', marginBottom: '20px' }}>😞</div>
               <h3 style={{ marginBottom: '12px', fontSize: '20px', color: 'var(--text)' }}>Произошла ошибка</h3>
               <p style={{ color: '#EF4444', marginBottom: '24px', fontSize: '15px' }}>{error}</p>
               <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
@@ -1045,7 +1044,6 @@ const CoursesPage: React.FC = () => {
                             gap: '6px', 
                             color: 'var(--muted)' 
                           }}>
-                            <span>📅</span>
                             {new Date(course.created_at).toLocaleDateString('ru-RU')}
                           </span>
                           <span style={{ 
@@ -1101,7 +1099,7 @@ const CoursesPage: React.FC = () => {
                       opacity: page === 1 ? 0.5 : 1
                     }}
                   >
-                    ◀️ Назад
+                    Назад
                   </button>
                   
                   <div style={{ display: 'flex', gap: '8px' }}>
@@ -1174,7 +1172,7 @@ const CoursesPage: React.FC = () => {
                       opacity: page === totalPages ? 0.5 : 1
                     }}
                   >
-                    Вперед ▶️
+                    Вперед
                   </button>
                 </div>
               )}
@@ -1253,18 +1251,18 @@ const CoursesPage: React.FC = () => {
           --text: #cdd6f4;
           --text-secondary: #a6adc8;
           --muted: #6c7086;
-          --accent: #89b4fa;
-          --accent-light: rgba(137, 180, 250, 0.1);
-          --accent-2: #f5c2e7;
-          --accent-dark: #74c7ec;
-          --accent-lightest: rgba(137, 180, 250, 0.05);
+          --accent: #007bff; /* Оставляем яркий синий для акцентов */
+          --accent-light: rgba(0, 123, 255, 0.1);
+          --accent-2: #6f42c1; /* Яркий фиолетовый */
+          --accent-dark: #0056b3; /* Темно-синий */
+          --accent-lightest: rgba(0, 123, 255, 0.05);
           --surface: #181825;
           --glass: rgba(30, 30, 46, 0.5);
           --chip-bg: #313244;
           --chip-text: #a6adc8;
           --chip-border: #45475a;
-          --chip-active-bg: #89b4fa;
-          --chip-active-text: #1e1e2e;
+          --chip-active-bg: #007bff; /* Яркий синий для активных тегов */
+          --chip-active-text: #ffffff; /* Белый текст для контраста */
           --radius: 12px;
           --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.2);
           --transition: 0.2s ease;

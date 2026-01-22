@@ -788,7 +788,7 @@ const CreateSlotsPage: React.FC = () => {
           <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
             <button
               className="btn btn-primary"
-              onClick={() => navigate(`/course/${postId}`)}
+              onClick={() => navigate(`/courses/${postId}`)}
             >
               Вернуться к курсу
             </button>
@@ -839,7 +839,7 @@ const CreateSlotsPage: React.FC = () => {
         <span style={{ margin: '0 8px', color: 'var(--muted)' }}>/</span>
         <Link to="/courses" style={{ color: 'var(--muted)' }}>Курсы</Link>
         <span style={{ margin: '0 8px', color: 'var(--muted)' }}>/</span>
-        <Link to={`/course/${postId}`} style={{ color: 'var(--muted)' }}>{courseTitle}</Link>
+        <Link to={`/courses/${postId}`} style={{ color: 'var(--muted)' }}>{courseTitle}</Link>
         <span style={{ margin: '0 8px', color: 'var(--muted)' }}>/</span>
         <span style={{ color: 'var(--accent)' }}>Управление слотами</span>
       </nav>
@@ -847,41 +847,13 @@ const CreateSlotsPage: React.FC = () => {
       {/* Заголовок */}
       <div style={{ marginBottom: '32px' }}>
         <h1 style={{ margin: '0 0 12px 0', fontSize: '28px' }}>
-          🎯 Управление слотами для курса: {courseTitle}
+          Управление слотами для курса: {courseTitle}
         </h1>
         <p style={{ color: 'var(--muted)', fontSize: '16px' }}>
           Создавайте и управляйте временными слотами для консультаций по вашему курсу. 
           Слоты автоматически привязываются к этому курсу.
         </p>
       </div>
-
-      {/* Информация о текущем курсе */}
-      <div className="card" style={{ 
-        marginBottom: '24px',
-        padding: '16px',
-        background: 'var(--glass)',
-        borderRadius: '8px',
-        borderLeft: '4px solid var(--accent)'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div>
-            <div style={{ fontWeight: 600, marginBottom: '4px' }}>Курс ID:</div>
-            <code style={{ 
-              background: 'rgba(0,0,0,0.05)', 
-              padding: '4px 8px', 
-              borderRadius: '4px',
-              fontSize: '12px',
-              wordBreak: 'break-all'
-            }}>
-              {postId}
-            </code>
-          </div>
-          <div style={{ fontSize: '12px', color: 'var(--muted)' }}>
-            Все создаваемые слоты будут привязаны к этому курсу
-          </div>
-        </div>
-      </div>
-
       {/* Информация о проверке пересечений */}
       <div className="card" style={{ 
         marginBottom: '24px',
@@ -1275,10 +1247,10 @@ const CreateSlotsPage: React.FC = () => {
             }}>
               <button
                 className="btn btn-outline"
-                onClick={() => navigate(`/course/${postId}`)}
+                onClick={() => navigate(`/courses/${postId}`)}
                 style={{ padding: '12px 24px' }}
               >
-                ← Вернуться к курсу
+                Вернуться к курсу
               </button>
             </div>
           </>

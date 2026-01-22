@@ -91,6 +91,15 @@ const getAvatarUrl = (avatarUrl: string | null | undefined): string => {
   return avatarUrl;
 };
 
+// Функция для получения градиента аватара
+const getAvatarGradient = (userId?: string, isCurrentUser?: boolean) => {
+  // Всегда используем яркие цвета независимо от темы
+  if (isCurrentUser) {
+    return 'linear-gradient(135deg, #007bff, #0056b3)'; // Яркий синий для текущего пользователя
+  }
+  return 'linear-gradient(135deg, #6f42c1, #5a32a3)'; // Яркий фиолетовый для других пользователей
+};
+
 const Chats: React.FC = () => {
   const navigate = useNavigate();
   const { token, user, logout } = useAuth();
@@ -658,7 +667,7 @@ const Chats: React.FC = () => {
                   height: '40px',
                   borderRadius: '50%',
                   overflow: 'hidden',
-                  background: foundUser.avatar_url ? 'transparent' : 'linear-gradient(135deg, var(--accent), var(--accent-2))',
+                  background: foundUser.avatar_url ? 'transparent' : getAvatarGradient(foundUser.user_id, false),
                   display: 'grid',
                   placeContent: 'center',
                   flexShrink: 0
@@ -928,7 +937,7 @@ const Chats: React.FC = () => {
                       height: '48px',
                       borderRadius: '50%',
                       overflow: 'hidden',
-                      background: chat.other_user?.avatar_url ? 'transparent' : 'linear-gradient(135deg, var(--accent), var(--accent-2))',
+                      background: chat.other_user?.avatar_url ? 'transparent' : getAvatarGradient(chat.other_user?.user_id, false),
                       display: 'grid',
                       placeContent: 'center',
                       flexShrink: 0
@@ -1045,7 +1054,7 @@ const Chats: React.FC = () => {
                     height: '44px',
                     borderRadius: '50%',
                     overflow: 'hidden',
-                    background: selectedChat.other_user?.avatar_url ? 'transparent' : 'linear-gradient(135deg, var(--accent), var(--accent-2))',
+                    background: selectedChat.other_user?.avatar_url ? 'transparent' : getAvatarGradient(selectedChat.other_user?.user_id, false),
                     display: 'grid',
                     placeContent: 'center',
                     flexShrink: 0
@@ -1178,7 +1187,7 @@ const Chats: React.FC = () => {
                             height: '36px',
                             borderRadius: '50%',
                             overflow: 'hidden',
-                            background: selectedChat.other_user?.avatar_url ? 'transparent' : 'linear-gradient(135deg, var(--accent-2), var(--accent-3))',
+                            background: selectedChat.other_user?.avatar_url ? 'transparent' : getAvatarGradient(selectedChat.other_user?.user_id, false),
                             display: 'grid',
                             placeContent: 'center',
                             flexShrink: 0,
@@ -1472,6 +1481,57 @@ const Chats: React.FC = () => {
         
         .chat-layout {
           min-height: calc(100vh - 200px);
+        }
+        
+        /* CSS переменные для темной темы - исправленные цвета */
+        [data-theme="dark"] {
+          --card-bg: #1e1e2e;
+          --border: #313244;
+          --text: #cdd6f4;
+          --text-secondary: #a6adc8;
+          --muted: #6c7086;
+          --accent: #007bff; /* Яркий синий */
+          --accent-light: rgba(0, 123, 255, 0.1);
+          --accent-2: #6f42c1; /* Яркий фиолетовый */
+          --accent-3: #5a32a3; /* Темный фиолетовый */
+          --accent-dark: #0056b3; /* Темно-синий */
+          --accent-lightest: rgba(0, 123, 255, 0.05);
+          --surface: #181825;
+          --glass: rgba(30, 30, 46, 0.5);
+          --chip-bg: #313244;
+          --chip-text: #a6adc8;
+          --chip-border: #45475a;
+          --chip-active-bg: #007bff;
+          --chip-active-text: #ffffff;
+          --radius: 12px;
+          --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.2);
+          --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.25);
+          --transition: 0.2s ease;
+        }
+        
+        [data-theme="light"] {
+          --card-bg: #f8f9fa;
+          --border: #e1e4e8;
+          --text: #212529;
+          --text-secondary: #495057;
+          --muted: #6c757d;
+          --accent: #007bff;
+          --accent-light: rgba(0, 123, 255, 0.1);
+          --accent-2: #6f42c1;
+          --accent-3: #5a32a3;
+          --accent-dark: #0056b3;
+          --accent-lightest: rgba(0, 123, 255, 0.05);
+          --surface: #ffffff;
+          --glass: rgba(255, 255, 255, 0.5);
+          --chip-bg: #f1f3f5;
+          --chip-text: #495057;
+          --chip-border: #dee2e6;
+          --chip-active-bg: #007bff;
+          --chip-active-text: #ffffff;
+          --radius: 12px;
+          --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.05);
+          --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.1);
+          --transition: 0.2s ease;
         }
         
         /* Адаптивность */
