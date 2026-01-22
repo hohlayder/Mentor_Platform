@@ -10,7 +10,8 @@ import EditProfilePage from './pages/ProfileEdit';
 import CoursePage from './pages/Course';
 import CourseEnrollmentPage from './pages/CourseEnrollPage';
 import CreateSlotsPage from "./pages/ManageSlotsPage";
-import Chats from './pages/Chats'; // Импортируем новый компонент
+import Chats from './pages/Chats';
+import Dashboard from "./pages/Dashboard"; // Импортируем новый компонент
 
 
 console.log("🚀 App.tsx запускается!")
@@ -33,6 +34,7 @@ export default function App() {
           <Route path="/chats" element={<Chats />} />
           <Route path="/course/:id/enroll" element={<CourseEnrollmentPage />} />
           <Route path="/course/:id/create-slots" element={<CreateSlotsPage />} />
+          <Route path="/dashboard" element={<Dashboard />} />
 
           <Route path="*" element={<div>404 - Страница не найдена</div>} />
         </Routes>

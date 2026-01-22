@@ -18,12 +18,26 @@ const Header: React.FC<HeaderProps> = ({ theme, toggleTheme }) => {
     navigate('/');
   };
 
-  const getAvatarUrl = (filename?: string): string => {
-    if (!filename) return '';
-    if (filename.startsWith('http://') || filename.startsWith('https://')) {
-      return filename;
+  const getAvatarUrl = (avatarUrl?: string | null): string => {
+    if (!avatarUrl) return '';
+
+    if (avatarUrl.startsWith('http')) {
+      return avatarUrl;
     }
-    return `http://localhost:8080/api/v1/files/avatar/${filename}`;
+
+    if (avatarUrl && !avatarUrl.includes('/')) {
+      return `http://localhost:8080/api/v1/files/avatar/${avatarUrl}`;
+    }
+
+    if (avatarUrl.startsWith('/')) {
+      return `http://localhost:8080${avatarUrl}`;
+    }
+
+    if (avatarUrl.startsWith('files/avatar/')) {
+      return `http://localhost:8080/api/v1/${avatarUrl}`;
+    }
+
+    return avatarUrl;
   };
 
   return (
@@ -94,6 +108,23 @@ const Header: React.FC<HeaderProps> = ({ theme, toggleTheme }) => {
                 onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
               >
                 Курсы
+              </Link>
+              <Link 
+                to="/dashboard" 
+                style={{ 
+                  padding: "8px 12px",
+                  borderRadius: "6px",
+                  border: "1px solid var(--glass)",
+                  background: "transparent",
+                  color: "var(--text)",
+                  textDecoration: "none",
+                  fontSize: "14px",
+                  transition: "all 0.2s"
+                }}
+                onMouseOver={(e) => e.currentTarget.style.background = "var(--glass)"}
+                onMouseOut={(e) => e.currentTarget.style.background = "transparent"}
+              >
+                Статистика
               </Link>
               
               <Link 
@@ -229,6 +260,7 @@ const Header: React.FC<HeaderProps> = ({ theme, toggleTheme }) => {
               >
                 Курсы
               </Link>
+              
               
               <button 
                 onClick={toggleTheme} 

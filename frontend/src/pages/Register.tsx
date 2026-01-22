@@ -100,9 +100,9 @@ export const Register: React.FC = () => {
             navigate("/", { replace: true });
           } else if (res.status === 400) {
             const data = await res.json(); 
-            setError("Некорректные данные. Проверьте ввод.");
+            setError("Invalid data. Please check the fields.");
           } else if (res.status === 401) {
-            setError("Неверный логин или пароль");
+            setError("Invalid email or password.");
           } else {
             setError(`${res.status} Error`);
           }
@@ -111,8 +111,10 @@ export const Register: React.FC = () => {
           setError("Не удалось подключиться к серверу.");
         }
 
+      } else if (res.status === 409) {
+        setError("Email already registered. Please sign in.");
       } else if (res.status === 400) {
-        setError("Некорректные данные. Проверьте ввод.");
+        setError("Invalid data. Please check the fields.");
       } else {
         setError(`${res.status} Error`);
       }

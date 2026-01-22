@@ -62,6 +62,14 @@ func (h *AuthHandler) Register(c *gin.Context) {
 	userID, err := h.service.Register(c.Request.Context(), req.Name, req.Surname, req.Email, req.Password)
 	if err != nil {
 		slog.Error("Failed to register user", "error", err)
+		if strings.Contains(err.Error(), "AlreadyExists") || strings.Contains(err.Error(), "already exists") {
+			c.JSON(409, utils.ErrorResponse{
+				Error:   "ALREADY_EXISTS",
+				Message: "Email already registered",
+				Details: "User with this email already exists",
+			})
+			return
+		}
 		c.JSON(500, utils.ErrorResponse{
 			Error:   "INTERNAL_ERROR",
 			Message: "Failed to register user",

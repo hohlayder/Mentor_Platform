@@ -166,7 +166,7 @@ const CoursesPage: React.FC = () => {
     
     try {
       // Собираем параметры запроса
-      const params = new URLSearchParams({
+      const baseParams = new URLSearchParams({
         page_size: PAGE_SIZE.toString(),
         status: 'published',
         ...(searchQuery && { search: searchQuery }),
@@ -174,10 +174,9 @@ const CoursesPage: React.FC = () => {
         ...(showMyCourses && user && { author_id: user.user_id }),
       });
       
-      // Добавляем сортировку
       const [sortField, sortOrder] = sortBy.split('-') as [SortField, SortOrder];
-      params.append('sort_field', sortField);
-      params.append('sort_order', sortOrder);
+      baseParams.append('sort_field', sortField);
+      baseParams.append('sort_order', sortOrder);
       
       // Пагинация через page_token
       const tokenForPage = pageTokens.get(pageNum - 1);
@@ -185,7 +184,6 @@ const CoursesPage: React.FC = () => {
         params.append('page_token', tokenForPage);
       }
       
-      // Запрос к API
       const response = await fetch(`http://localhost:8080/api/v1/posts?${params}`, {
         headers: {
           ...(token && { Authorization: `Bearer ${token}` }),
@@ -206,7 +204,13 @@ const CoursesPage: React.FC = () => {
       
       // Сохраняем токен для следующей страницы
       if (data.next_page_token) {
-        setPageTokens(prev => new Map(prev).set(pageNum, data.next_page_token!));
+        setPageTokens(prev => {
+          const next = updatedTokens ? new Map(updatedTokens) : new Map(prev);
+          next.set(pageNum, data.next_page_token!);
+          return next;
+        });
+      } else if (updatedTokens) {
+        setPageTokens(new Map(updatedTokens));
       }
       
     } catch (err) {

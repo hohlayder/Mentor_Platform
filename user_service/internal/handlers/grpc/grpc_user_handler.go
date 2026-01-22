@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"strings"
 
 	userv1 "github.com/Sergey-1214/contracts_mentors/user/v1"
 	"github.com/hohlayder/Mentor_Platform/user_service/internal/domain"
@@ -40,6 +41,9 @@ func (h *GRPCHandler) Register(server *grpc.Server) {
 func (h *GRPCHandler) CreateUser(ctx context.Context, req *userv1.CreateUserRequest) (*userv1.CreateUserResponse, error) {
 	id, err := h.service.CreateUser(ctx, req.FirstName, req.LastName, req.Email)
 	if err != nil {
+		if strings.Contains(err.Error(), "email already exists") {
+			return nil, status.Error(codes.AlreadyExists, "email already exists")
+		}
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 

@@ -130,7 +130,7 @@ export const Login: React.FC = () => {
       {error && <p style={{ color: "red", marginTop: 10 }}>{error}</p>}
       {success && <p style={{ color: "green", marginTop: 10 }}>{success}</p>}
       <p style={{ marginTop: "12px" }}>
-        Нет аккаунта? <a href="/signup">Зарегестрироваться</a>
+        Нет аккаунта? <a href="/signup">Зарегистрироваться</a>
       </p>
     </div>
   );

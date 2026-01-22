@@ -24,6 +24,9 @@ func (r *UserRepositoryPostgres) CreateUser(ctx context.Context, name string, su
 	query := `INSERT INTO users (email, name, surname) VALUES ($1, $2, $3) RETURNING id`
 	row := r.db.QueryRowContext(ctx, query, email, name, surname)
 	if err := row.Scan(&userId); err != nil {
+		if strings.Contains(err.Error(), "duplicate key value") || strings.Contains(err.Error(), "users_email_key") {
+			return "", fmt.Errorf("email already exists")
+		}
 		return "", fmt.Errorf("failed to get user id: %w", err)
 	}
 
