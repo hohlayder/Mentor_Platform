@@ -20,6 +20,17 @@ interface SlotResponse {
   updated_at: string;
 }
 
+interface SessionResponse {
+  id: string;
+  slot_id: string;
+  student_id: string;
+  payment_status: string;
+  rating?: number;
+  review?: string;
+  created_at: string;
+  updated_at: string;
+}
+
 interface CreateSlotRequest {
   mentor_id: string;
   title: string;
@@ -103,6 +114,13 @@ const SLOT_STATUSES = {
   closed: { label: 'Закрыт', color: '#ef4444', emoji: '🔴', bgColor: 'rgba(239, 68, 68, 0.1)', borderColor: 'rgba(239, 68, 68, 0.2)' }
 } as const;
 
+const PAYMENT_STATUSES = {
+  pending: { label: '\u041e\u0436\u0438\u0434\u0430\u0435\u0442 \u043e\u043f\u043b\u0430\u0442\u044b', color: '#f59e0b' },
+  paid: { label: '\u041e\u043f\u043b\u0430\u0447\u0435\u043d\u043e', color: '#10b981' },
+  failed: { label: '\u041e\u043f\u043b\u0430\u0442\u0430 \u043d\u0435 \u043f\u0440\u043e\u0448\u043b\u0430', color: '#ef4444' },
+  refunded: { label: '\u0412\u043e\u0437\u0432\u0440\u0430\u0442', color: '#6b7280' }
+} as const;
+
 type SlotStatus = keyof typeof SLOT_STATUSES;
 
 const CreateSlotsPage: React.FC = () => {
@@ -119,6 +137,9 @@ const CreateSlotsPage: React.FC = () => {
   const [loadingCourse, setLoadingCourse] = useState(true);
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [slots, setSlots] = useState<SlotResponse[]>([]);
+  const [sessions, setSessions] = useState<SessionResponse[]>([]);
+  const [loadingSessions, setLoadingSessions] = useState(false);
+  const [updatingSessionId, setUpdatingSessionId] = useState<string | null>(null);
   const [allMentorSlots, setAllMentorSlots] = useState<SlotResponse[]>([]); // Все слоты ментора для проверки пересечений
   const [updatingSlotId, setUpdatingSlotId] = useState<string | null>(null);
   const [creatingSlot, setCreatingSlot] = useState(false);
@@ -251,6 +272,56 @@ const CreateSlotsPage: React.FC = () => {
   }, [token, user]);
 
   // Загрузка слотов для этого конкретного поста
+  const loadMentorSessions = useCallback(async () => {
+    if (!token || !user) return;
+
+    setLoadingSessions(true);
+    try {
+      const sessionsData = await apiFetch<{ sessions: SessionResponse[] }>(
+        `http://localhost:8080/api/v1/mentors/${user.user_id}/sessions`,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      setSessions(sessionsData.sessions || []);
+    } catch (err) {
+      console.error('Failed to load mentor sessions:', err);
+      setSessions([]);
+    } finally {
+      setLoadingSessions(false);
+    }
+  }, [token, user]);
+
+  const updateSessionPaymentStatus = async (sessionId: string, status: string) => {
+    if (!token) return;
+
+    setUpdatingSessionId(sessionId);
+    try {
+      await apiFetch(
+        `http://localhost:8080/api/v1/sessions/${sessionId}`,
+        {
+          method: 'PUT',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ payment_status: status })
+        }
+      );
+
+      await loadMentorSessions();
+    } catch (err) {
+      console.error('Failed to update payment status:', err);
+      alert('Failed to update payment status');
+    } finally {
+      setUpdatingSessionId(null);
+    }
+  };
+
   const loadPostSlots = useCallback(async () => {
     if (!token || !user || !postId) return;
     
@@ -290,8 +361,9 @@ const CreateSlotsPage: React.FC = () => {
   useEffect(() => {
     if (token && user && isAuthor && postId) {
       loadPostSlots();
+      loadMentorSessions();
     }
-  }, [token, user, isAuthor, postId, currentWeekStart, loadPostSlots]);
+  }, [token, user, isAuthor, postId, currentWeekStart, loadPostSlots, loadMentorSessions]);
 
   // Генерация временных слотов (с 8 утра до 22 вечера)
   const generateTimeSlots = useCallback(() => {
@@ -658,6 +730,11 @@ const CreateSlotsPage: React.FC = () => {
   };
 
   // Получение информации о статусе слота
+  const getPaymentStatusInfo = (status?: string) => {
+    const normalized = (status || 'pending').toLowerCase();
+    return PAYMENT_STATUSES[normalized as keyof typeof PAYMENT_STATUSES] || PAYMENT_STATUSES.pending;
+  };
+
   const getSlotStatusInfo = (slot: SlotResponse) => {
     return SLOT_STATUSES[slot.status as SlotStatus] || SLOT_STATUSES.available;
   };
@@ -827,6 +904,50 @@ const CreateSlotsPage: React.FC = () => {
       </div>
 
       {/* Навигация по неделям */}
+      <div className="card" style={{ marginBottom: '24px', padding: '16px' }}>
+        <h3 style={{ margin: '0 0 12px 0' }}>{'\u0421\u0435\u0441\u0441\u0438\u0438 \u043f\u043e \u044d\u0442\u043e\u043c\u0443 \u043a\u0443\u0440\u0441\u0443'}</h3>
+        {loadingSessions ? (
+          <div style={{ color: 'var(--muted)' }}>{'\u0417\u0430\u0433\u0440\u0443\u0437\u043a\u0430 \u0441\u0435\u0441\u0441\u0438\u0439...'}</div>
+        ) : (
+          <div style={{ display: 'grid', gap: '12px' }}>
+            {sessions
+              .filter(session => slots.find(slot => slot.id === session.slot_id))
+              .map(session => {
+                const slot = slots.find(s => s.id === session.slot_id);
+                const statusInfo = getPaymentStatusInfo(session.payment_status);
+                return (
+                  <div key={session.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', padding: '12px', border: '1px solid var(--glass)', borderRadius: '8px' }}>
+                    <div>
+                      <div style={{ fontWeight: 600 }}>{slot?.title || '\u0421\u0435\u0441\u0441\u0438\u044f'}</div>
+                      <div style={{ fontSize: '13px', color: 'var(--muted)' }}>
+                        {slot ? formatTime(slot.start_time) : '-'}
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <span style={{ fontSize: '12px', padding: '4px 8px', borderRadius: '999px', background: statusInfo.color + '20', color: statusInfo.color }}>
+                        {statusInfo.label}
+                      </span>
+                      {session.payment_status !== 'paid' && (
+                        <button
+                          className="btn btn-ghost"
+                          onClick={() => updateSessionPaymentStatus(session.id, 'paid')}
+                          disabled={updatingSessionId === session.id}
+                          style={{ fontSize: '12px', padding: '6px 10px', color: '#10b981' }}
+                        >
+                          {updatingSessionId === session.id ? '...' : '\u041e\u0442\u043c\u0435\u0442\u0438\u0442\u044c \u043e\u043f\u043b\u0430\u0447\u0435\u043d\u043d\u043e\u0439'}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            {sessions.filter(session => slots.find(slot => slot.id === session.slot_id)).length === 0 && (
+              <div style={{ color: 'var(--muted)' }}>{'\u0421\u0435\u0441\u0441\u0438\u0439 \u043f\u043e\u043a\u0430 \u043d\u0435\u0442.'}</div>
+            )}
+          </div>
+        )}
+      </div>
+
       <div style={{ 
         display: 'flex', 
         justifyContent: 'space-between', 

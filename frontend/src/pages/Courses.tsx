@@ -177,14 +177,66 @@ const CoursesPage: React.FC = () => {
       const [sortField, sortOrder] = sortBy.split('-') as [SortField, SortOrder];
       baseParams.append('sort_field', sortField);
       baseParams.append('sort_order', sortOrder);
+
+      const buildParams = () => new URLSearchParams(baseParams);
+
+      const fetchNextPageToken = async (pageToken?: string) => {
+        const params = buildParams();
+        if (pageToken) {
+          params.append('page_token', pageToken);
+        }
+
+        const response = await fetch(`http://localhost:8080/api/v1/posts?${params}`, {
+          headers: {
+            ...(token && { Authorization: `Bearer ${token}` }),
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (!response.ok) {
+          return null;
+        }
+
+        const data: ListPostsResponse = await response.json();
+        return data.next_page_token || null;
+      };
+
+      const ensurePageToken = async (targetPage: number) => {
+        if (targetPage <= 1) return new Map(pageTokens);
+
+        const tokens = new Map(pageTokens);
+
+        if (!tokens.has(1)) {
+          const firstToken = await fetchNextPageToken();
+          if (!firstToken) return tokens;
+          tokens.set(1, firstToken);
+        }
+
+        for (let pageIndex = 2; pageIndex <= targetPage; pageIndex += 1) {
+          if (tokens.has(pageIndex)) {
+            continue;
+          }
+
+          const prevToken = tokens.get(pageIndex - 1);
+          if (!prevToken) break;
+
+          const nextToken = await fetchNextPageToken(prevToken);
+          if (!nextToken) break;
+
+          tokens.set(pageIndex, nextToken);
+        }
+
+        return tokens;
+      };
       
       // Пагинация через page_token
-      const tokenForPage = pageTokens.get(pageNum - 1);
+      const updatedTokens = pageNum > 1 ? await ensurePageToken(pageNum - 1) : null;
+      const tokenForPage = (updatedTokens ?? pageTokens).get(pageNum - 1);
       if (pageNum > 1 && tokenForPage) {
-        params.append('page_token', tokenForPage);
+        baseParams.append('page_token', tokenForPage);
       }
       
-      const response = await fetch(`http://localhost:8080/api/v1/posts?${params}`, {
+      const response = await fetch(`http://localhost:8080/api/v1/posts?${baseParams}`, {
         headers: {
           ...(token && { Authorization: `Bearer ${token}` }),
           'Content-Type': 'application/json',
@@ -203,15 +255,13 @@ const CoursesPage: React.FC = () => {
       setTotalCount(data.total_count || 0);
       
       // Сохраняем токен для следующей страницы
-      if (data.next_page_token) {
-        setPageTokens(prev => {
-          const next = updatedTokens ? new Map(updatedTokens) : new Map(prev);
+      setPageTokens(prev => {
+        const next = new Map(updatedTokens ?? prev);
+        if (data.next_page_token) {
           next.set(pageNum, data.next_page_token!);
-          return next;
-        });
-      } else if (updatedTokens) {
-        setPageTokens(new Map(updatedTokens));
-      }
+        }
+        return next;
+      });
       
     } catch (err) {
       console.error('Ошибка при загрузке курсов:', err);

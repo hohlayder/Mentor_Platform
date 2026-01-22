@@ -598,6 +598,14 @@ func (h *SessionHandler) UpdateSession(c *gin.Context) {
 		return
 	}
 
+	if req.PaymentStatus != nil && slot.MentorID != userId {
+		c.JSON(http.StatusForbidden, utils.ErrorResponse{
+			Error:   "FORBIDDEN_ERROR",
+			Message: "Only the mentor can update payment status",
+		})
+		return
+	}
+
 	err = h.service.UpdateSession(c.Request.Context(), sessionID, &req)
 	if err != nil {
 		if handleServiceError(c, err, "update session") {
