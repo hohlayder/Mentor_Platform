@@ -143,7 +143,7 @@ func InitRoutes(handlers Handlers) *gin.Engine {
 				posts.DELETE("/:id", handlers.PostHandler.DeletePost)
 				posts.POST("/:id/rate", handlers.PostHandler.RatePost)
 				posts.POST("/:id/favorite", handlers.PostHandler.AddToFavorites)
-				posts.DELETE("/:id/favorite", handlers.PostHandler.AddToFavorites)
+				posts.DELETE("/:id/favorite", handlers.PostHandler.RemoveFromFavorites)
 				posts.GET("/:id/slots", handlers.SessionHandler.GetSlotsByPost)
 				posts.GET("/:id/available-slots", handlers.SessionHandler.GetAvailableSlotsByPost)
 			}
