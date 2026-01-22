@@ -209,6 +209,9 @@ const Dashboard: React.FC = () => {
       try {
         return await promise;
       } catch (err) {
+        if (err instanceof DOMException && err.name === "AbortError") {
+          return fallback;
+        }
         console.error("Dashboard request failed:", err);
         return fallback;
       }
@@ -327,6 +330,9 @@ const Dashboard: React.FC = () => {
         setSiteMentorsCount(mentorsCount ?? null);
         setSiteUsersCount(parseUserCount(usersCount));
       } catch (err) {
+        if (err instanceof DOMException && err.name === "AbortError") {
+          return;
+        }
         console.error("Dashboard load failed:", err);
         setError("Не удалось загрузить данные дашборда.");
       } finally {
