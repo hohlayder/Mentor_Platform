@@ -6,5 +6,5 @@ db:
   ssl_mode: "disable"
 
 token:
-  access_expiry: 15m
+  access_expiry: 60m
   refresh_expiry: 43200m

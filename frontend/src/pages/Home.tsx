@@ -412,7 +412,7 @@ export const Home: React.FC = () => {
             <div style={{ textAlign: 'center', padding: '40px', color: 'var(--muted)' }}>
               <p>Пока нет доступных курсов</p>
               {token && (
-                <Link to="/courses/new" className="btn btn-primary" style={{ marginTop: '10px' }}>
+                <Link to="/course/create" className="btn btn-primary" style={{ marginTop: '10px' }}>
                   Создать первый курс
                 </Link>
               )}

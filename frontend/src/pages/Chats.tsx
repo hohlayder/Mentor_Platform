@@ -1080,21 +1080,6 @@ const Chats: React.FC = () => {
                   </div>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontWeight: 700, fontSize: '16px' }}>{getOtherUserName(selectedChat)}</div>
-                    <div style={{ 
-                      fontSize: '13px', 
-                      color: 'var(--muted)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '6px'
-                    }}>
-                      <div style={{
-                        width: '8px',
-                        height: '8px',
-                        borderRadius: '50%',
-                        backgroundColor: isConnected ? '#10B981' : '#EF4444'
-                      }} />
-                      {isConnected ? 'онлайн' : 'оффлайн'}
-                    </div>
                   </div>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>

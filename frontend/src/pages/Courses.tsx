@@ -1212,7 +1212,7 @@ const CoursesPage: React.FC = () => {
               {!showMyCourses && (
                 <div style={{ marginTop: '24px' }}>
                   <Link 
-                    to="/courses/new" 
+                    to="/course/create" 
                     className="btn btn-primary" 
                     style={{ 
                       padding: '12px 24px',
