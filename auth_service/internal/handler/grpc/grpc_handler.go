@@ -36,6 +36,9 @@ func (h *GRPCHandler) Register(ctx context.Context, req *authv1.RegisterRequest)
     id, err := h.service.Register(ctx, req.Name, req.Surname, req.Email, req.Password)
     if err != nil {
 		slog.Error(err.Error())
+		if strings.Contains(err.Error(), "already exists") {
+			return nil, status.Error(codes.AlreadyExists, "email already exists")
+		}
         return nil, status.Error(codes.Internal, "failed to register user")
     }
 
