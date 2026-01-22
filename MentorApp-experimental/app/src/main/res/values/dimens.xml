@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="radius_s">10dp</dimen>
+    <dimen name="radius_m">12dp</dimen>
+    <dimen name="radius_l">16dp</dimen>
+    <dimen name="radius_xl">20dp</dimen>
+
+    <dimen name="elev_s">2dp</dimen>
+    <dimen name="elev_m">6dp</dimen>
+    <dimen name="elev_l">10dp</dimen>
+</resources>

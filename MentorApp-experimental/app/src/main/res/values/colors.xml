@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- From frontend/src/styles/global.css (light theme) -->
+    <color name="app_primary">#4F46E5</color>
+    <color name="app_on_primary">#FFFFFF</color>
+
+    <color name="app_secondary">#06B6D4</color>
+    <color name="app_on_secondary">#001018</color>
+
+    <color name="app_bg">#F9FAFB</color>
+    <color name="app_on_bg">#0F172A</color>
+
+    <color name="app_surface">#FFFFFF</color>
+    <color name="app_on_surface">#0F172A</color>
+
+    <color name="app_surface_variant">#F5F5FF</color>
+    <color name="app_on_surface_variant">#6B7280</color>
+
+    <color name="app_accent_dark">#312E81</color>
+    <color name="app_accent_light">#EEF2FF</color>
+    <color name="app_accent_lightest">#F5F5FF</color>
+
+    <!-- derived for borders (subtle) -->
+    <color name="app_stroke">#1F0F172A</color>
+
+    <color name="app_card_tint">#FFFFFFFF</color>
+    <color name="app_chip_bg">#EEF2FF</color>
+</resources>

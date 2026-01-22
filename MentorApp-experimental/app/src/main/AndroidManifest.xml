@@ -1,0 +1,41 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.INTERNET"/>
+
+    <application
+        android:name=".MentorApp"
+        android:allowBackup="true"
+        android:usesCleartextTraffic="true"
+        android:networkSecurityConfig="@xml/network_security_config"
+        android:label="MentorApp"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.MentorApp">
+
+        <activity android:name=".ui.chat.ChatActivity" android:exported="false"/>
+        <activity android:name=".ui.main.CourseDetailsActivity" android:exported="false"/>
+        <activity android:name=".ui.main.CourseEditorActivity" android:exported="false"/>
+        <activity android:name=".ui.main.ProfileEditActivity" android:exported="false"/>
+        <activity android:name=".ui.main.EnrollActivity" android:exported="false"/>
+        <activity android:name=".ui.main.SessionDetailsActivity" android:exported="false"/>
+        <activity android:name=".ui.main.SlotsManageActivity" android:exported="false"/>
+        <activity android:name=".ui.main.CreateSlotActivity" android:exported="false"/>
+
+        <activity
+            android:name=".ui.main.MainActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".ui.auth.RegisterActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".ui.auth.LoginActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+    </application>
+
+</manifest>

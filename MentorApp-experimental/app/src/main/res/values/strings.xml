@@ -1,0 +1,13 @@
+<resources>
+    <string name="app_name">MentorApp</string>
+    <!-- TODO: Remove or change this placeholder text -->
+    <string name="home_screen_title">HOME SCREEN</string>
+    <!-- TODO: Remove or change this placeholder text -->
+    <string name="search_screen_title">SEARCH SCREEN</string>
+    <!-- TODO: Remove or change this placeholder text -->
+    <string name="chats_screen_title">CHATS SCREEN</string>
+    <!-- TODO: Remove or change this placeholder text -->
+    <string name="notifications_screen_title">NOTIFICATIONS SCREEN</string>
+    <!-- TODO: Remove or change this placeholder text -->
+    <string name="profile_screen_title">PROFILE SCREEN</string>
+</resources>
